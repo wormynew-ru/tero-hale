@@ -37,20 +37,59 @@ extends PanelContainer
 ]
 
 
+var _held_slot_item_ids: Array[String] = ["", "", "", "", "", ""]
+var _last_locations_sig: String = ""
+
+
 func _ready() -> void:
 	GameManager.stats_changed.connect(_refresh)
 	GameManager.inventory_changed.connect(_refresh)
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.difficulty_changed.connect(_refresh)
-	GameManager.game_reset.connect(_refresh)
+	GameManager.game_reset.connect(_on_reset)
 
 	for i: int in range(_slot_buttons.size()):
 		var slot_idx: int = i
-		_slot_buttons[i].pressed.connect(func() -> void: _on_slot_pressed(slot_idx))
+		var btn: Button = _slot_buttons[i]
+		btn.button_down.connect(func() -> void: _snapshot_held_slot(slot_idx))
+		btn.pressed.connect(func() -> void: _on_slot_pressed(slot_idx))
+		HoldAutoClicker.attach(
+			btn,
+			50.0,
+			0.25,
+			func() -> bool: return _can_repeat_slot(slot_idx)
+		)
 
 	_refresh()
 	if GameManager.current_location != null:
 		_on_location_changed(GameManager.current_location)
+
+
+func _on_reset() -> void:
+	_last_locations_sig = ""
+	_refresh()
+
+
+func _snapshot_held_slot(slot_index: int) -> void:
+	var item_id: String = ""
+	if slot_index >= 0 and slot_index < GameManager.inventory.size():
+		var entry: Dictionary = GameManager.inventory[slot_index]
+		var item: ItemData = entry["item"] as ItemData
+		if item != null and item.item_type == ItemData.ItemType.CONSUMABLE:
+			item_id = item.id
+	_held_slot_item_ids[slot_index] = item_id
+
+
+func _can_repeat_slot(slot_index: int) -> bool:
+	var expected_id: String = _held_slot_item_ids[slot_index]
+	if expected_id.is_empty():
+		return false
+	if slot_index < 0 or slot_index >= GameManager.inventory.size():
+		return false
+	var entry: Dictionary = GameManager.inventory[slot_index]
+	var item: ItemData = entry["item"] as ItemData
+	var cnt: int = int(entry["count"])
+	return item != null and cnt > 0 and item.item_type == ItemData.ItemType.CONSUMABLE and item.id == expected_id
 
 
 func _on_slot_pressed(slot_index: int) -> void:
@@ -98,7 +137,23 @@ func _on_location_changed(location: LocationData) -> void:
 	_rebuild_location_buttons()
 
 
+func _compute_locations_sig() -> String:
+	var parts: Array[String] = []
+	for loc: LocationData in GameManager.locations:
+		if loc.required_difficulty > 1 and GameManager.max_unlocked_difficulty < loc.required_difficulty:
+			continue
+		var unlocked: int = 1 if GameManager.is_location_unlocked(loc) else 0
+		var is_cur: int = 1 if GameManager.current_location == loc else 0
+		parts.append("%s:%d:%d" % [loc.id, unlocked, is_cur])
+	return "|".join(parts)
+
+
 func _rebuild_location_buttons() -> void:
+	var sig: String = _compute_locations_sig()
+	if sig == _last_locations_sig:
+		return
+	_last_locations_sig = sig
+
 	for child: Node in locations_row.get_children():
 		child.queue_free()
 
@@ -126,3 +181,4 @@ func _rebuild_location_buttons() -> void:
 		btn.disabled = not unlocked
 		btn.pressed.connect(func() -> void: GameManager.select_location(loc))
 		locations_row.add_child(btn)
+

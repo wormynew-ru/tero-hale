@@ -17,18 +17,33 @@ signal new_run_started
 
 var _selected_difficulty: int = 1
 var _confirm_deadline_ms: int = 0
+var _dirty: bool = true
 
 
 func _ready() -> void:
 	_selected_difficulty = GameManager.difficulty_level
 	GameManager.difficulty_changed.connect(_on_manager_updated)
-	GameManager.dark_skills_changed.connect(_refresh)
+	GameManager.dark_skills_changed.connect(_on_state_updated)
 	GameManager.game_reset.connect(_on_reset)
 
 	diff_minus_button.pressed.connect(func() -> void: _set_selected_difficulty(_selected_difficulty - 1))
 	diff_plus_button.pressed.connect(func() -> void: _set_selected_difficulty(_selected_difficulty + 1))
+	HoldAutoClicker.attach(diff_minus_button, 50.0)
+	HoldAutoClicker.attach(diff_plus_button, 50.0)
 	diff_max_button.pressed.connect(func() -> void: _set_selected_difficulty(GameManager.max_unlocked_difficulty))
 	start_new_run_button.pressed.connect(_on_start_new_run_pressed)
+	_refresh()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree() and _dirty:
+		_refresh()
+
+
+func _on_state_updated() -> void:
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	_refresh()
 
 
@@ -50,7 +65,7 @@ func _on_manager_updated() -> void:
 		GameManager.max_unlocked_difficulty
 	)
 	_confirm_deadline_ms = 0
-	_refresh()
+	_on_state_updated()
 
 
 func _set_selected_difficulty(target: int) -> void:
@@ -75,6 +90,7 @@ func _refresh_start_button_text() -> void:
 
 
 func _refresh() -> void:
+	_dirty = false
 	_selected_difficulty = clampi(_selected_difficulty, 1, GameManager.max_unlocked_difficulty)
 	current_run_label.text = "💀 Текущий ран: Сложность %d (Открыто до %d  |  Пройдено ранов: %d)" % [
 		GameManager.difficulty_level,

@@ -20,6 +20,7 @@ var _last_brew_sig: String = ""
 var _light_plot_widgets: Array[Dictionary] = []
 var _dark_plot_widgets: Array[Dictionary] = []
 var _brew_widgets: Array[Dictionary] = []
+var _spirit_widgets: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -271,27 +272,10 @@ func _refresh_lure_bar() -> void:
 	]
 
 
-func _sync_spirit_training(force: bool) -> void:
-	var fruit_item: ItemData = load("res://resources/items/spirit_primordial_harvest.tres") as ItemData
-	var fruit_cnt: int = GameManager.get_item_count_in_inventory(fruit_item) if fruit_item != null else 0
-	var is_spirit: bool = GameManager.has_hero_class("spirit")
-	var lvls: Array[String] = []
-	for sk: String in GameManager.SPIRIT_KEYS:
-		lvls.append("%s=%d" % [sk, GameManager.get_spirit_training_level(sk)])
-	var sig: String = "%s|%d|%s" % ["1" if is_spirit else "0", fruit_cnt, ",".join(lvls)]
-	if not force and sig == _last_spirit_sig:
-		return
-	_last_spirit_sig = sig
-
-	if not is_spirit:
-		spirit_training_status_label.text = "🔒 Дрессировка духов открыта только при активном классе 🌿 Спирит (Сл.50+). Плодов первоцвета в рюкзаке: %d." % fruit_cnt
-		spirit_training_status_label.modulate = Color(0.84, 0.78, 0.52, 1.0)
-	else:
-		spirit_training_status_label.text = "🌟 Класс 🌿 Спирит активен! Плодов первоцвета духов в рюкзаке: %d (стоимость дрессировки: 1 плод → +15%% силы и +3%% скорости духа)." % fruit_cnt
-		spirit_training_status_label.modulate = Color(0.45, 0.98, 0.85, 1.0)
-
+func _build_spirit_training() -> void:
 	for child: Node in spirit_training_box.get_children():
 		child.queue_free()
+	_spirit_widgets.clear()
 
 	var defs: Array[Dictionary] = [
 		{"key": "fire", "title": "🔥 Дух Огня", "desc": "Магический удар каждые 1.4с"},
@@ -302,7 +286,6 @@ func _sync_spirit_training(force: bool) -> void:
 
 	for d: Dictionary in defs:
 		var skey: String = str(d["key"])
-		var lvl: int = GameManager.get_spirit_training_level(skey)
 		var card: PanelContainer = PanelContainer.new()
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
@@ -310,26 +293,63 @@ func _sync_spirit_training(force: bool) -> void:
 		var lbl: Label = Label.new()
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl.text = "%s [Ур.%d] — %s (+%d%% сила, +%d%% скорость)" % [
-			str(d["title"]),
-			lvl,
-			str(d["desc"]),
-			lvl * 15,
-			lvl * 3,
-		]
 		row.add_child(lbl)
 
 		var btn: Button = Button.new()
 		btn.custom_minimum_size = Vector2(190.0, 44.0)
-		btn.disabled = (not is_spirit) or (fruit_cnt <= 0)
-		btn.text = "🌟 Дрессировать (1 плод)" if is_spirit else "🔒 Нужен Спирит"
 		btn.pressed.connect(func() -> void:
 			var res: Dictionary = GameManager.train_spirit(skey)
 			feedback_label.text = str(res.get("message", ""))
 		)
+		HoldAutoClicker.attach(btn, 50.0)
 		row.add_child(btn)
 		card.add_child(row)
 		spirit_training_box.add_child(card)
+		_spirit_widgets.append({
+			"key": skey,
+			"title": str(d["title"]),
+			"desc": str(d["desc"]),
+			"lbl": lbl,
+			"btn": btn,
+		})
+
+
+func _sync_spirit_training(force: bool) -> void:
+	var fruit_item: ItemData = load("res://resources/items/spirit_primordial_harvest.tres") as ItemData
+	var fruit_cnt: int = GameManager.get_item_count_in_inventory(fruit_item) if fruit_item != null else 0
+	var is_spirit: bool = GameManager.has_hero_class("spirit")
+	var lvls: Array[String] = []
+	for sk: String in GameManager.SPIRIT_KEYS:
+		lvls.append("%s=%d" % [sk, GameManager.get_spirit_training_level(sk)])
+	var sig: String = "%s|%d|%s" % ["1" if is_spirit else "0", fruit_cnt, ",".join(lvls)]
+	if not force and sig == _last_spirit_sig and _spirit_widgets.size() == 4:
+		return
+	_last_spirit_sig = sig
+
+	if _spirit_widgets.size() != 4:
+		_build_spirit_training()
+
+	if not is_spirit:
+		spirit_training_status_label.text = "🔒 Дрессировка духов открыта только при активном классе 🌿 Спирит (Сл.50+). Плодов первоцвета в рюкзаке: %d." % fruit_cnt
+		spirit_training_status_label.modulate = Color(0.84, 0.78, 0.52, 1.0)
+	else:
+		spirit_training_status_label.text = "🌟 Класс 🌿 Спирит активен! Плодов первоцвета духов в рюкзаке: %d (стоимость дрессировки: 1 плод → +15%% силы и +3%% скорости духа)." % fruit_cnt
+		spirit_training_status_label.modulate = Color(0.45, 0.98, 0.85, 1.0)
+
+	for w: Dictionary in _spirit_widgets:
+		var skey: String = str(w["key"])
+		var lvl: int = GameManager.get_spirit_training_level(skey)
+		var lbl: Label = w["lbl"] as Label
+		var btn: Button = w["btn"] as Button
+		lbl.text = "%s [Ур.%d] — %s (+%d%% сила, +%d%% скорость)" % [
+			str(w["title"]),
+			lvl,
+			str(w["desc"]),
+			lvl * 15,
+			lvl * 3,
+		]
+		btn.disabled = (not is_spirit) or (fruit_cnt <= 0)
+		btn.text = "🌟 Дрессировать (1 плод)" if is_spirit else "🔒 Нужен Спирит"
 
 
 func _compute_dark_sig(unlocked: bool, seeds_owned: Array[Dictionary]) -> String:

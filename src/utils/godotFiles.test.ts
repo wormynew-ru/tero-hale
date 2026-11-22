@@ -531,6 +531,50 @@ test('all GameManager.<member> references across GDScript files exist on GameMan
   }
 });
 
+test('HoldAutoClicker provides 50/sec hold repeat across multi-tap UIs and no GDScript file has duplicate func declarations', () => {
+  const autoClickerPath = path.join(GODOT_ROOT, 'scripts/utils/HoldAutoClicker.gd');
+  assert.ok(fs.existsSync(autoClickerPath), 'HoldAutoClicker.gd must exist');
+  const acContent = fs.readFileSync(autoClickerPath, 'utf-8');
+  assert.ok(acContent.includes('DEFAULT_CLICKS_PER_SECOND: float = 50.0'), 'HoldAutoClicker must default to 50.0 clicks/sec');
+  assert.ok(acContent.includes('static func attach('), 'HoldAutoClicker must expose attach() helper');
+
+  const expectedWiredScripts = [
+    'scripts/ui/StatsUI.gd',
+    'scripts/ui/EnchantUI.gd',
+    'scripts/ui/ShopUI.gd',
+    'scripts/ui/InventoryUI.gd',
+    'scripts/ui/RightSidebarUI.gd',
+    'scripts/ui/PetUI.gd',
+    'scripts/ui/SanctuaryUI.gd',
+    'scripts/ui/DifficultyUI.gd',
+  ];
+  for (const rel of expectedWiredScripts) {
+    const content = fs.readFileSync(path.join(GODOT_ROOT, rel), 'utf-8');
+    assert.ok(content.includes('HoldAutoClicker.attach('), `${rel} must attach HoldAutoClicker`);
+    assert.ok(content.includes('50.0'), `${rel} must configure 50.0 clicks/sec`);
+  }
+
+  // Ensure AbilitySlotButton preserves its intentional 1.0s auto-cast hold instead of 50/sec repeat.
+  const abilityBtn = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/AbilitySlotButton.gd'), 'utf-8');
+  assert.ok(!abilityBtn.includes('HoldAutoClicker'), 'AbilitySlotButton must preserve 1.0s auto-cast hold behavior');
+
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  assert.ok(gmContent.includes('func save_game(force_immediate: bool = false)'), 'GameManager.save_game must throttle rapid bursts safely');
+
+  // Verify no GDScript file declares duplicate top-level functions.
+  const allGd = collectFilesRecursive(path.join(GODOT_ROOT, 'scripts'), '.gd');
+  for (const gdFile of allGd) {
+    const content = fs.readFileSync(gdFile, 'utf-8');
+    const seenFuncs = new Set<string>();
+    for (const m of content.matchAll(/^(?:static\s+)?func\s+([a-zA-Z0-9_]+)\s*\(/gm)) {
+      const fnName = m[1];
+      assert.ok(!seenFuncs.has(fnName), `Duplicate function "${fnName}" in ${path.relative(GODOT_ROOT, gdFile)}`);
+      seenFuncs.add(fnName);
+    }
+  }
+});
+
+
 
 
 

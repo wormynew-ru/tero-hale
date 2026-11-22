@@ -31,16 +31,22 @@ signal reset_triggered
 @onready var reset_button: Button = %ResetButton
 
 var _reset_confirm_deadline_ms: int = 0
+var _dirty: bool = true
 
 
 func _ready() -> void:
-	GameManager.stats_changed.connect(_refresh)
-	GameManager.skills_changed.connect(_refresh)
-	GameManager.dark_skills_changed.connect(_refresh)
-	GameManager.difficulty_changed.connect(_refresh)
-	GameManager.mastery_changed.connect(func(_s: String, _l: int, _up: bool) -> void: _refresh_masteries())
-	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _refresh())
-	GameManager.pets_changed.connect(_refresh)
+	GameManager.stats_changed.connect(_on_state_updated)
+	GameManager.skills_changed.connect(_on_state_updated)
+	GameManager.dark_skills_changed.connect(_on_state_updated)
+	GameManager.difficulty_changed.connect(_on_state_updated)
+	GameManager.mastery_changed.connect(func(_s: String, _l: int, _up: bool) -> void:
+		if is_visible_in_tree():
+			_refresh_masteries()
+		else:
+			_dirty = true
+	)
+	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_state_updated())
+	GameManager.pets_changed.connect(_on_state_updated)
 
 	str_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("strength"))
 	agi_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("agility"))
@@ -50,7 +56,26 @@ func _ready() -> void:
 	agi_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("agility"))
 	end_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("endurance"))
 
+	HoldAutoClicker.attach(str_sp_button, 50.0)
+	HoldAutoClicker.attach(agi_sp_button, 50.0)
+	HoldAutoClicker.attach(end_sp_button, 50.0)
+	HoldAutoClicker.attach(str_gold_button, 50.0)
+	HoldAutoClicker.attach(agi_gold_button, 50.0)
+	HoldAutoClicker.attach(end_gold_button, 50.0)
+
 	reset_button.pressed.connect(_on_reset_button_pressed)
+	_refresh()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree() and _dirty:
+		_refresh()
+
+
+func _on_state_updated() -> void:
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	_refresh()
 
 
@@ -61,6 +86,7 @@ func _process(_delta: float) -> void:
 
 
 func _refresh() -> void:
+	_dirty = false
 	var hc: HeroClassData = GameManager.get_current_class()
 	var pet: PetData = GameManager.get_equipped_pet()
 	var pet_text: String = "  |  🐾 Путник: %s %s (Ур.%d)" % [pet.icon_emoji, pet.pet_name, GameManager.get_pet_training_level(pet.id)] if pet != null else "  |  🐾 Путник: не выбран"

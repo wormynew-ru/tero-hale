@@ -14,23 +14,42 @@ extends ScrollContainer
 @onready var armor_enchant_button: Button = %ArmorEnchantButton
 
 
+var _dirty: bool = true
+
+
 func _ready() -> void:
-	GameManager.stats_changed.connect(_refresh)
-	GameManager.inventory_changed.connect(_refresh)
-	GameManager.enchant_changed.connect(_refresh)
-	GameManager.difficulty_changed.connect(_refresh)
-	GameManager.dark_skills_changed.connect(_refresh)
-	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _refresh())
+	GameManager.stats_changed.connect(_on_state_updated)
+	GameManager.inventory_changed.connect(_on_state_updated)
+	GameManager.enchant_changed.connect(_on_state_updated)
+	GameManager.difficulty_changed.connect(_on_state_updated)
+	GameManager.dark_skills_changed.connect(_on_state_updated)
+	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_state_updated())
 	GameManager.game_reset.connect(_on_reset)
 
 	weapon_enchant_button.pressed.connect(func() -> void: _on_enchant_pressed(ItemData.ItemType.WEAPON))
 	armor_enchant_button.pressed.connect(func() -> void: _on_enchant_pressed(ItemData.ItemType.ARMOR))
+	HoldAutoClicker.attach(weapon_enchant_button, 50.0)
+	HoldAutoClicker.attach(armor_enchant_button, 50.0)
+	_refresh()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree() and _dirty:
+		_refresh()
+
+
+func _on_state_updated() -> void:
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	_refresh()
 
 
 func _on_reset() -> void:
 	feedback_label.text = ""
-	_refresh()
+	_dirty = true
+	if is_visible_in_tree():
+		_refresh()
 
 
 func _on_enchant_pressed(slot_type: ItemData.ItemType) -> void:
@@ -43,6 +62,7 @@ func _on_enchant_pressed(slot_type: ItemData.ItemType) -> void:
 
 
 func _refresh() -> void:
+	_dirty = false
 	var max_lvl: int = GameManager.get_max_enchant_level()
 	if GameManager.is_equipment_disabled():
 		header_hint_label.text = "🌿 Класс Спирит не использует экипировку и ковку — вместо вещей сражаются 4 природных духа."

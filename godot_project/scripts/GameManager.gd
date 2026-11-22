@@ -526,6 +526,8 @@ var _autosave_timer: float = 0.0
 var _afk_ui_sync_timer: float = 0.0
 var _buff_ui_sync_timer: float = 0.0
 var _sanctuary_ui_sync_timer: float = 0.0
+var _save_throttle_timer: float = 0.0
+var _save_pending: bool = false
 
 
 func _ready() -> void:
@@ -549,10 +551,15 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _save_throttle_timer > 0.0:
+		_save_throttle_timer = maxf(0.0, _save_throttle_timer - delta)
+		if _save_throttle_timer <= 0.0 and _save_pending:
+			save_game(true)
+
 	_autosave_timer += delta
 	if _autosave_timer >= AUTOSAVE_INTERVAL:
 		_autosave_timer = 0.0
-		save_game()
+		save_game(true)
 
 	var max_mana: float = get_max_mana()
 	if current_mana < max_mana:
@@ -597,11 +604,11 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		RenderingServer.render_loop_enabled = true
 		DisplayServer.screen_set_keep_on(false)
-		save_game()
+		save_game(true)
 	elif what == NOTIFICATION_APPLICATION_PAUSED:
-		save_game()
+		save_game(true)
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT:
-		save_game()
+		save_game(true)
 
 
 func _emit_all_refresh_signals() -> void:
@@ -812,7 +819,7 @@ func start_new_run(target_difficulty: int) -> void:
 	if boss_defeated_this_run:
 		total_runs_completed += 1
 	_init_run_state(clamped_diff)
-	save_game()
+	save_game(true)
 	_emit_all_refresh_signals()
 	game_reset.emit()
 
@@ -822,7 +829,7 @@ func reset_progress() -> void:
 		DirAccess.remove_absolute(SAVE_PATH)
 	set_afk_mode(false)
 	_init_full_reset_state()
-	save_game()
+	save_game(true)
 	_emit_all_refresh_signals()
 	game_reset.emit()
 
@@ -3339,7 +3346,12 @@ func clear_brewing_slot(slot_index: int) -> void:
 	save_game()
 
 
-func save_game() -> void:
+func save_game(force_immediate: bool = false) -> void:
+	if not force_immediate and _save_throttle_timer > 0.0:
+		_save_pending = true
+		return
+	_save_pending = false
+	_save_throttle_timer = 0.35
 	var save_data: SaveData = SaveData.new()
 	save_data.level = level
 	save_data.current_xp = current_xp
