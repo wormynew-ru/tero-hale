@@ -18,6 +18,7 @@ const VillageMapUIScript = preload("res://scripts/ui/VillageMapUI.gd")
 @onready var open_dark_skills_button: Button = %OpenDarkSkillsButton
 @onready var open_inventory_button: Button = %OpenInventoryButton
 @onready var open_enchant_button: Button = %OpenEnchantButton
+@onready var open_dark_forge_button: Button = %OpenDarkForgeButton
 @onready var open_shop_button: Button = %OpenShopButton
 @onready var open_difficulty_button: Button = %OpenDifficultyButton
 @onready var open_faq_button: Button = %OpenFaqButton
@@ -33,6 +34,7 @@ const VillageMapUIScript = preload("res://scripts/ui/VillageMapUI.gd")
 @onready var dark_skill_tree_ui: Control = %DarkSkillTreeUI
 @onready var inventory_ui: ScrollContainer = %InventoryUI
 @onready var enchant_ui: ScrollContainer = %EnchantUI
+@onready var dark_forge_ui: ScrollContainer = %DarkForgeUI
 @onready var shop_ui: ScrollContainer = %ShopUI
 @onready var difficulty_ui: DifficultyUIScript = %DifficultyUI
 @onready var faq_ui: ScrollContainer = %FaqUI
@@ -60,6 +62,7 @@ func _ready() -> void:
 	open_dark_skills_button.pressed.connect(func() -> void: open_page("dark_skills"))
 	open_inventory_button.pressed.connect(func() -> void: open_page("inventory"))
 	open_enchant_button.pressed.connect(func() -> void: open_page("enchant"))
+	open_dark_forge_button.pressed.connect(func() -> void: open_page("dark_forge"))
 	open_shop_button.pressed.connect(func() -> void: open_page("shop"))
 	open_difficulty_button.pressed.connect(func() -> void: open_page("difficulty"))
 	open_faq_button.pressed.connect(func() -> void: open_page("faq"))
@@ -141,6 +144,9 @@ func open_page(page_id: String) -> void:
 		"enchant":
 			menu_title_label.text = "⚒️ Кузня (Зачарование)"
 			enchant_ui.visible = true
+		"dark_forge":
+			menu_title_label.text = "🔥 Тёмная кузня (Вечная ковка)"
+			dark_forge_ui.visible = true
 		"shop":
 			menu_title_label.text = "🏪 Лавка"
 			shop_ui.visible = true
@@ -177,6 +183,7 @@ func _hide_all_pages() -> void:
 	dark_skill_tree_ui.visible = false
 	inventory_ui.visible = false
 	enchant_ui.visible = false
+	dark_forge_ui.visible = false
 	shop_ui.visible = false
 	difficulty_ui.visible = false
 	faq_ui.visible = false

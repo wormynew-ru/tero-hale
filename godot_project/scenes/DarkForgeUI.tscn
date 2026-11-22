@@ -1,0 +1,176 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/DarkForgeUI.gd" id="1_dark_forge_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dark_card"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+bg_color = Color(0.11, 0.09, 0.16, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.55, 0.34, 0.72, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_res_bar"]
+content_margin_left = 12.0
+content_margin_top = 8.0
+content_margin_right = 12.0
+content_margin_bottom = 8.0
+bg_color = Color(0.08, 0.07, 0.12, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.45, 0.28, 0.62, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="DarkForgeUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_dark_forge_ui")
+
+[node name="DarkForgeVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="DarkForgeHeaderLabel" type="Label" parent="DarkForgeVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.78, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "🔥 Тёмная кузня: вечная ковка за 🌑 Очки Тьмы и материалы Шахты. Выкованные вечные вещи и Тёмная заточка (🌑+0→+1: 25%, +1→+2: 20%, минимум 15%) НИКОГДА не сбрасываются между ранами!"
+autowrap_mode = 3
+
+[node name="ResourcesBar" type="PanelContainer" parent="DarkForgeVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_res_bar")
+
+[node name="DarkForgeResourcesLabel" type="Label" parent="DarkForgeVBox/ResourcesBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.86, 0.48, 1)
+theme_override_font_sizes/font_size = 15
+text = "🌑 Очки Тьмы: 0   |   ⛏️ Руда Бездны: 0   |   📜 Древние листы: 0"
+autowrap_mode = 3
+
+[node name="DarkForgeFeedbackLabel" type="Label" parent="DarkForgeVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.78, 0.35, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+autowrap_mode = 3
+
+[node name="EnchantSectionTitle" type="Label" parent="DarkForgeVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.65, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "🌑 Вечная тёмная заточка слотов (сохраняется навсегда)"
+
+[node name="DarkWeaponCard" type="PanelContainer" parent="DarkForgeVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dark_card")
+
+[node name="DarkWeaponVBox" type="VBoxContainer" parent="DarkForgeVBox/DarkWeaponCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DarkWeaponHeaderLabel" type="Label" parent="DarkForgeVBox/DarkWeaponCard/DarkWeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⚔️ Тёмная заточка оружия (🌑+0)"
+
+[node name="DarkWeaponStatsLabel" type="Label" parent="DarkForgeVBox/DarkWeaponCard/DarkWeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Суммируется с обычной заточкой (+15% мощи и +2 Силы / +3 Инты за уровень)."
+autowrap_mode = 3
+
+[node name="DarkWeaponActionRow" type="HBoxContainer" parent="DarkForgeVBox/DarkWeaponCard/DarkWeaponVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DarkWeaponNextLabel" type="Label" parent="DarkForgeVBox/DarkWeaponCard/DarkWeaponVBox/DarkWeaponActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.78, 0.44, 1)
+theme_override_font_sizes/font_size = 13
+text = "🌑+0 → 🌑+1 | Шанс: 25% | Цена: 4 🌑"
+autowrap_mode = 3
+
+[node name="DarkWeaponEnchantButton" type="Button" parent="DarkForgeVBox/DarkWeaponCard/DarkWeaponVBox/DarkWeaponActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(196, 44)
+layout_mode = 2
+text = "🔥 Закалить (4 🌑)"
+
+[node name="DarkArmorCard" type="PanelContainer" parent="DarkForgeVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dark_card")
+
+[node name="DarkArmorVBox" type="VBoxContainer" parent="DarkForgeVBox/DarkArmorCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DarkArmorHeaderLabel" type="Label" parent="DarkForgeVBox/DarkArmorCard/DarkArmorVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🛡️ Тёмная заточка брони (🌑+0)"
+
+[node name="DarkArmorStatsLabel" type="Label" parent="DarkForgeVBox/DarkArmorCard/DarkArmorVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Суммируется с обычной заточкой (+15% мощи и +2 Выносливости / +2 Инты за уровень)."
+autowrap_mode = 3
+
+[node name="DarkArmorActionRow" type="HBoxContainer" parent="DarkForgeVBox/DarkArmorCard/DarkArmorVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DarkArmorNextLabel" type="Label" parent="DarkForgeVBox/DarkArmorCard/DarkArmorVBox/DarkArmorActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.78, 0.44, 1)
+theme_override_font_sizes/font_size = 13
+text = "🌑+0 → 🌑+1 | Шанс: 25% | Цена: 4 🌑"
+autowrap_mode = 3
+
+[node name="DarkArmorEnchantButton" type="Button" parent="DarkForgeVBox/DarkArmorCard/DarkArmorVBox/DarkArmorActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(196, 44)
+layout_mode = 2
+text = "🔥 Закалить (4 🌑)"
+
+[node name="CraftSeparator" type="HSeparator" parent="DarkForgeVBox"]
+layout_mode = 2
+
+[node name="CraftSectionTitle" type="Label" parent="DarkForgeVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.78, 0.36, 1)
+theme_override_font_sizes/font_size = 16
+text = "⚒️ Ковка вечного снаряжения и Древних книг"
+
+[node name="RecipeListContainer" type="VBoxContainer" parent="DarkForgeVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10

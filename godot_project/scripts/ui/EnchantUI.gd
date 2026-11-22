@@ -112,7 +112,6 @@ func _refresh_slot(
 		return
 
 	var elvl: int = GameManager.get_enchant_level(slot_type)
-	var mult: float = GameManager.get_enchant_power_multiplier(elvl)
 
 	if item == null:
 		header_lbl.text = "%s [+%d]: [Не экипировано]" % [slot_title, elvl]
@@ -122,13 +121,17 @@ func _refresh_slot(
 		btn.disabled = true
 		return
 
-	header_lbl.text = "%s [+%d]: %s" % [slot_title, elvl, item.get_display_name()]
+	var dark_lvl: int = GameManager.get_dark_enchant_level(slot_type)
+	var total_mult: float = GameManager.get_enchant_power_multiplier(elvl + dark_lvl)
+	var dark_tag: String = " | 🌑+%d" % dark_lvl if dark_lvl > 0 else ""
+	header_lbl.text = "%s [+%d%s]: %s" % [slot_title, elvl, dark_tag, item.get_display_name()]
 	var bonuses: Dictionary = GameManager.get_equipped_stat_bonuses(slot_type)
-	stats_lbl.text = "Итоговые бонусы (x%.2f): +%d Сила, +%d Ловкость, +%d Выносливость" % [
-		mult,
+	stats_lbl.text = "Итоговые бонусы (x%.2f): +%d Сила, +%d Ловкость, +%d Выносливость, +%d Инта" % [
+		total_mult,
 		int(bonuses["strength"]),
 		int(bonuses["agility"]),
 		int(bonuses["endurance"]),
+		int(bonuses["intellect"]),
 	]
 
 	var max_lvl: int = GameManager.get_max_enchant_level()

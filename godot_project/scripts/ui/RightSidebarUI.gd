@@ -46,6 +46,7 @@ func _ready() -> void:
 	GameManager.inventory_changed.connect(_refresh)
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.difficulty_changed.connect(_refresh)
+	GameManager.mine_state_changed.connect(_refresh)
 	GameManager.game_reset.connect(_on_reset)
 
 	for i: int in range(_slot_buttons.size()):
@@ -139,6 +140,7 @@ func _on_location_changed(location: LocationData) -> void:
 
 func _compute_locations_sig() -> String:
 	var parts: Array[String] = []
+	parts.append("M:%s:%d" % ["1" if GameManager.mine_locked_this_run else "0", GameManager.mine_depth])
 	for loc: LocationData in GameManager.locations:
 		if loc.required_difficulty > 1 and GameManager.max_unlocked_difficulty < loc.required_difficulty:
 			continue
@@ -169,12 +171,19 @@ func _rebuild_location_buttons() -> void:
 		var unlocked: bool = GameManager.is_location_unlocked(loc)
 		var is_current: bool = GameManager.current_location == loc
 
-		if unlocked:
+		if loc.is_one_attempt_mine and GameManager.mine_locked_this_run:
+			btn.text = "💀 %s (Заход окончен)" % loc.location_name
+			btn.modulate = Color(0.75, 0.52, 0.56, 0.85)
+		elif unlocked:
 			var prefix: String = "● " if is_current else ""
-			var suffix: String = " ★" if loc.always_open_once_unlocked else ""
-			btn.text = "%s%s %s%s" % [prefix, loc.icon_emoji, loc.location_name, suffix]
-			if loc.always_open_once_unlocked:
-				btn.modulate = Color(0.92, 0.78, 1.0, 1.0)
+			if loc.is_one_attempt_mine:
+				btn.text = "%s%s %s [Гл.%d] (1 заход)" % [prefix, loc.icon_emoji, loc.location_name, GameManager.mine_depth]
+				btn.modulate = Color(0.68, 0.92, 1.0, 1.0)
+			else:
+				var suffix: String = " ★" if loc.always_open_once_unlocked else ""
+				btn.text = "%s%s %s%s" % [prefix, loc.icon_emoji, loc.location_name, suffix]
+				if loc.always_open_once_unlocked:
+					btn.modulate = Color(0.92, 0.78, 1.0, 1.0)
 		else:
 			btn.text = "🔒 %s (Ур.%d)" % [loc.location_name, loc.required_level]
 

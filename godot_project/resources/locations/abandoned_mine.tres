@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/mine_kobold.tres" id="3_kobold"]
+[ext_resource type="Resource" path="res://resources/enemies/rock_golem.tres" id="4_golem"]
+[ext_resource type="Resource" path="res://resources/enemies/crystal_spider.tres" id="5_spider"]
+[ext_resource type="Resource" path="res://resources/enemies/mine_overseer.tres" id="6_overseer"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "abandoned_mine"
+location_name = "Древняя Шахта"
+icon_emoji = "⛏️"
+description = "Опасная выработка на 1 ЗАХОД за ран! Здесь добываются ⛏️ Руда Бездны и 📜 Древние листы (и во время боя, и с врагов). При смерти доступ в Шахту закрывается до Нового рана!"
+required_level = 3
+required_difficulty = 1
+always_open_once_unlocked = false
+is_one_attempt_mine = true
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_kobold"), ExtResource("4_golem"), ExtResource("5_spider"), ExtResource("6_overseer")])
+background_color = Color(0.11, 0.11, 0.15, 1)

@@ -17,7 +17,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.74, 0.82, 0.92, 1)
 theme_override_font_sizes/font_size = 14
-text = "🏪 Лавка торговца — зелья, базовая экипировка, луки/арбалеты и снаряды. Хорошее снаряжение ближнего боя и редкая броня выпадают только с врагов!"
+text = "🏪 Лавка торговца — зелья, базовая броня/робы, мечи, посохи, книги-снаряды и весь дальний бой. Топовые клинки, посохи, робы и латы выпадают с врагов, а вечная экипировка куётся в 🔥 Тёмной кузне!"
 autowrap_mode = 3
 
 [node name="ShopFeedbackLabel" type="Label" parent="ShopVBox"]

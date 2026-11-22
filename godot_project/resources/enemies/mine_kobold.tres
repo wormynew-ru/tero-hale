@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/abyss_ore.tres" id="3_ore"]
+[ext_resource type="Resource" path="res://resources/items/ancient_page.tres" id="4_page"]
+[ext_resource type="Resource" path="res://resources/items/tome_intellect_flow.tres" id="5_tome1"]
+[ext_resource type="Resource" path="res://resources/items/small_mana_potion.tres" id="6_mana"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "mine_kobold"
+enemy_name = "Кобольд-рудокоп"
+icon_emoji = "🧌"
+max_hp = 165.0
+max_mana = 0.0
+attack_damage = 19.0
+agility = 12
+defense = 4.0
+xp_reward = 75
+gold_reward = 45
+spawn_weight = 1.0
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_ore"), ExtResource("4_page"), ExtResource("5_tome1"), ExtResource("6_mana")])
+drop_chances = Array[float]([0.38, 0.22, 0.10, 0.25])
+sprite_color = Color(0.65, 0.56, 0.44, 1)

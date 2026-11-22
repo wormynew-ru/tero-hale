@@ -8,18 +8,21 @@ enum ItemType {
 	AMMO,
 	SEED,
 	HARVEST,
+	MATERIAL,
 }
 
 enum WeaponStyle {
 	MELEE,
 	BOW,
 	CROSSBOW,
+	STAFF,
 }
 
 enum AmmoKind {
 	NONE,
 	ARROW,
 	BOLT,
+	TOME,
 }
 
 @export var id: String = ""
@@ -32,6 +35,7 @@ enum AmmoKind {
 @export var bonus_strength: int = 0
 @export var bonus_agility: int = 0
 @export var bonus_endurance: int = 0
+@export var bonus_intellect: int = 0
 
 @export_group("Ranged & Ammo")
 @export var weapon_style: WeaponStyle = WeaponStyle.MELEE
@@ -41,6 +45,12 @@ enum AmmoKind {
 @export var bonus_crit_chance: float = 0.0
 @export var armor_penetration: float = 0.0
 @export var shop_pack_amount: int = 1
+
+@export_group("Mage & Dark Forge")
+@export var bonus_mana_cost_red: float = 0.0
+@export var bonus_spell_power_pct: float = 0.0
+@export var bonus_effect_duration_pct: float = 0.0
+@export var is_dark_forged: bool = false
 
 @export_group("Consumable & Economy")
 @export var heal_amount: float = 0.0
@@ -71,6 +81,14 @@ func is_ranged_weapon() -> bool:
 	return item_type == ItemType.WEAPON and (weapon_style == WeaponStyle.BOW or weapon_style == WeaponStyle.CROSSBOW)
 
 
+func is_mage_staff() -> bool:
+	return item_type == ItemType.WEAPON and weapon_style == WeaponStyle.STAFF
+
+
+func uses_ammo() -> bool:
+	return is_ranged_weapon() or is_mage_staff()
+
+
 func is_buff_potion() -> bool:
 	return item_type == ItemType.CONSUMABLE and not buff_id.is_empty() and buff_duration > 0.0
 
@@ -86,6 +104,8 @@ func get_style_tag() -> String:
 				return "🏹 Лук (Стрелы)"
 			WeaponStyle.CROSSBOW:
 				return "🎯 Арбалет (Болты)"
+			WeaponStyle.STAFF:
+				return "🪄 Посох (Книга)"
 			_:
 				return "⚔️ Ближний"
 	if item_type == ItemType.AMMO:
@@ -94,15 +114,21 @@ func get_style_tag() -> String:
 				return "🏹 Стрелы"
 			AmmoKind.BOLT:
 				return "🔩 Болты"
+			AmmoKind.TOME:
+				return "📚 Маг. книга"
 	if item_type == ItemType.SEED:
 		return "☀️ Семя Светлого сада" if garden_category == "light" else "🌑 Семя Тёмного сада"
 	if item_type == ItemType.HARVEST:
 		return "☀️ Светлое растение (Приманка/Дрессировка)" if garden_category == "light" else "🌑 Тёмный урожай (Зельеварение/Духи)"
+	if item_type == ItemType.MATERIAL:
+		return "⛏️ Ресурс / Реликвия Шахты"
 	return ""
 
 
 func get_summary_text() -> String:
 	var parts: Array[String] = []
+	if is_dark_forged:
+		parts.append("🔥 Вечный")
 	var tag: String = get_style_tag()
 	if not tag.is_empty():
 		parts.append(tag)
@@ -114,6 +140,14 @@ func get_summary_text() -> String:
 		parts.append("+%d Ловкость" % bonus_agility)
 	if bonus_endurance > 0:
 		parts.append("+%d Выносливость" % bonus_endurance)
+	if bonus_intellect > 0:
+		parts.append("+%d Инта" % bonus_intellect)
+	if bonus_spell_power_pct > 0.0:
+		parts.append("+%d%% Чары" % roundi(bonus_spell_power_pct * 100.0))
+	if bonus_mana_cost_red > 0.0:
+		parts.append("-%d%% Манакост" % roundi(bonus_mana_cost_red * 100.0))
+	if bonus_effect_duration_pct > 0.0:
+		parts.append("+%d%% Длит. эффектов" % roundi(bonus_effect_duration_pct * 100.0))
 	if bonus_crit_chance > 0.0:
 		parts.append("+%d%% Крит" % roundi(bonus_crit_chance * 100.0))
 	if armor_penetration > 0.0:

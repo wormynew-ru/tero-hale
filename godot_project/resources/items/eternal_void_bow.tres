@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "eternal_void_bow"
+item_name = "Вечный лук Пустоты"
+icon_emoji = "🏹"
+description = "Выкован в Тёмной кузне. Стреляет стрелами и НЕ сбрасывается при начале нового рана!"
+item_type = 0
+bonus_strength = 22
+bonus_agility = 52
+bonus_endurance = 10
+bonus_intellect = 0
+weapon_style = 1
+required_ammo = 1
+ammo_kind = 0
+bonus_damage = 125.0
+bonus_crit_chance = 0.14
+armor_penetration = 28.0
+shop_pack_amount = 1
+is_dark_forged = true
+heal_amount = 0.0
+buy_price = 3500
+sell_value = 1500
+icon_color = Color(0.54, 0.88, 0.96, 1)

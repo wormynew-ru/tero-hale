@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="EnemyData" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="EnemyData" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
 [ext_resource type="Resource" path="res://resources/items/astral_greatsword.tres" id="3_astral"]
 [ext_resource type="Resource" path="res://resources/items/abyssal_carapace.tres" id="4_carapace"]
 [ext_resource type="Resource" path="res://resources/items/ambrosia_flask.tres" id="5_ambrosia"]
+[ext_resource type="Resource" path="res://resources/items/astral_staff.tres" id="6_astral_staff"]
+[ext_resource type="Resource" path="res://resources/items/astral_vestments.tres" id="7_astral_robe"]
+[ext_resource type="Resource" path="res://resources/items/tome_primordial_grimoire.tres" id="8_tome_grim"]
 
 [resource]
 script = ExtResource("1_enemy")
@@ -19,6 +22,6 @@ defense = 52.0
 xp_reward = 6800
 gold_reward = 4100
 spawn_weight = 0.45
-drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_astral"), ExtResource("4_carapace"), ExtResource("5_ambrosia")])
-drop_chances = Array[float]([0.1, 0.22, 0.4])
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_astral"), ExtResource("4_carapace"), ExtResource("5_ambrosia"), ExtResource("6_astral_staff"), ExtResource("7_astral_robe"), ExtResource("8_tome_grim")])
+drop_chances = Array[float]([0.1, 0.22, 0.4, 0.14, 0.16, 0.24])
 sprite_color = Color(0.45, 0.68, 1, 1)

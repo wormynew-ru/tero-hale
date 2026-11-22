@@ -24,6 +24,9 @@ signal garden_changed
 signal brewing_changed
 signal afk_mode_changed(is_afk: bool)
 signal afk_stats_updated(elapsed_seconds: float, kills: int, gold_earned: float, xp_earned: float)
+signal dark_forge_changed
+signal mine_state_changed
+signal mine_run_failed(depth_reached: int)
 signal game_reset
 
 const SAVE_PATH: String = "user://save.tres"
@@ -48,6 +51,109 @@ const DEFAULT_EQUIPPED_ABILITIES: Array[String] = ["fireball", "nature_mend", "a
 const FINAL_BOSS_ID: String = "eternal_titan"
 const CURSE_WARDEN_ID: String = "curse_warden"
 const SPIRIT_KEYS: Array[String] = ["fire", "wind", "forest", "earth"]
+const HP_THRESHOLD_PRESETS: Array[int] = [20, 35, 50, 70, 85]
+const MANA_THRESHOLD_PRESETS: Array[int] = [15, 30, 50, 70]
+
+const BUFF_POTION_CATALOG: Array[Dictionary] = [
+	{"id": "fury_potion", "label": "💢 Ярость", "path": "res://resources/items/fury_potion.tres"},
+	{"id": "ironhide_potion", "label": "🛡️ Каменная кожа", "path": "res://resources/items/ironhide_potion.tres"},
+	{"id": "swiftwind_potion", "label": "💨 Вихрь", "path": "res://resources/items/swiftwind_potion.tres"},
+	{"id": "arcane_wisdom_potion", "label": "🧠 Прозрение", "path": "res://resources/items/arcane_wisdom_potion.tres"},
+	{"id": "titan_blood_brew", "label": "🔥 Кровь титана", "path": "res://resources/items/titan_blood_brew.tres"},
+	{"id": "immortal_dew_potion", "label": "🥛 Роса бессмертия", "path": "res://resources/items/immortal_dew_potion.tres"},
+	{"id": "crimson_petal_elixir", "label": "🌺 Алый лепесток", "path": "res://resources/items/crimson_petal_elixir.tres"},
+]
+
+const DARK_FORGE_RECIPES: Array[Dictionary] = [
+	{
+		"id": "eternal_abyss_blade",
+		"title": "🗡️ Вечный клинок Бездны",
+		"desc": "Меч (+150 урон, +48 Силы, +10% крит). НЕ сбрасывается между ранами!",
+		"dark_points": 3,
+		"abyss_ore": 5,
+		"ancient_page": 0,
+		"result_path": "res://resources/items/eternal_abyss_blade.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "eternal_void_bow",
+		"title": "🏹 Вечный лук Пустоты",
+		"desc": "Лук (+125 урон, +52 Ловкости, +14% крит). НЕ сбрасывается между ранами!",
+		"dark_points": 3,
+		"abyss_ore": 5,
+		"ancient_page": 1,
+		"result_path": "res://resources/items/eternal_void_bow.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "eternal_astral_staff",
+		"title": "🌟 Вечный посох Бездны",
+		"desc": "Посох (+140 урон, +60 Инта, +65% чар, -15% манакост). НЕ сбрасывается!",
+		"dark_points": 3,
+		"abyss_ore": 4,
+		"ancient_page": 4,
+		"result_path": "res://resources/items/eternal_astral_staff.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "eternal_titan_plate",
+		"title": "🛡️ Вечные латы Титана",
+		"desc": "Броня (+82 Выносливость, +30 Сила, +24 Ловкость). НЕ сбрасывается!",
+		"dark_points": 3,
+		"abyss_ore": 6,
+		"ancient_page": 0,
+		"result_path": "res://resources/items/eternal_titan_plate.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "eternal_mage_archrobe",
+		"title": "🧙 Вечное облачение Архимага",
+		"desc": "Мантия (+55 Инта, +45% чар, -18% манакост, +25% длит.). НЕ сбрасывается!",
+		"dark_points": 3,
+		"abyss_ore": 3,
+		"ancient_page": 5,
+		"result_path": "res://resources/items/eternal_mage_archrobe.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "tome_eternal_codex",
+		"title": "📖 Вечный фолиант Вечности",
+		"desc": "БЕСКОНЕЧНАЯ книга-снаряд (+22 Инта, -20% манакост, +40% чары и длит.). Не тратится!",
+		"dark_points": 4,
+		"abyss_ore": 2,
+		"ancient_page": 8,
+		"result_path": "res://resources/items/tome_eternal_codex.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "craft_tome_archon",
+		"title": "📓 Кодекс Архонта (x50)",
+		"desc": "Сшить 50 зарядов книги-снаряда (Тип 1: +16 Инта, -22% манакост) из Древних листов.",
+		"dark_points": 0,
+		"abyss_ore": 0,
+		"ancient_page": 3,
+		"result_path": "res://resources/items/tome_archon_mind.tres",
+		"amount": 50,
+		"eternal": false,
+	},
+	{
+		"id": "craft_tome_primordial",
+		"title": "📙 Первозданный гримуар (x50)",
+		"desc": "Сшить 50 зарядов книги-снаряда (Тип 2: +40% чары, +45% длит.) из Древних листов.",
+		"dark_points": 0,
+		"abyss_ore": 0,
+		"ancient_page": 3,
+		"result_path": "res://resources/items/tome_primordial_grimoire.tres",
+		"amount": 50,
+		"eternal": false,
+	},
+]
 
 const CROP_PATHS: Array[String] = [
 	"res://resources/crops/moon_mint.tres",
@@ -230,6 +336,7 @@ const STARTER_POTION_PATH: String = "res://resources/items/small_healing_potion.
 const LOCATION_PATHS: Array[String] = [
 	"res://resources/locations/quiet_glade.tres",
 	"res://resources/locations/dark_forest.tres",
+	"res://resources/locations/abandoned_mine.tres",
 	"res://resources/locations/ancient_ruins.tres",
 	"res://resources/locations/swamp_marshes.tres",
 	"res://resources/locations/frost_peaks.tres",
@@ -256,9 +363,14 @@ const SHOP_ITEM_PATHS: Array[String] = [
 	"res://resources/items/arcane_wisdom_potion.tres",
 	"res://resources/items/swiftwind_potion.tres",
 	"res://resources/items/wooden_sword.tres",
+	"res://resources/items/apprentice_staff.tres",
+	"res://resources/items/crystal_wand.tres",
 	"res://resources/items/wooden_bow.tres",
 	"res://resources/items/wooden_arrows.tres",
+	"res://resources/items/tome_intellect_flow.tres",
+	"res://resources/items/tome_spell_amplify.tres",
 	"res://resources/items/leather_jacket.tres",
+	"res://resources/items/mage_robe.tres",
 	"res://resources/items/hunter_dagger.tres",
 	"res://resources/items/iron_sword.tres",
 	"res://resources/items/iron_crossbow.tres",
@@ -267,6 +379,8 @@ const SHOP_ITEM_PATHS: Array[String] = [
 	"res://resources/items/elven_longbow.tres",
 	"res://resources/items/steel_arrows.tres",
 	"res://resources/items/mithril_bolts.tres",
+	"res://resources/items/tome_archon_mind.tres",
+	"res://resources/items/tome_primordial_grimoire.tres",
 	"res://resources/items/dragon_crossbow.tres",
 	"res://resources/items/astral_arrows.tres",
 	"res://resources/items/abyss_bolts.tres",
@@ -507,6 +621,20 @@ var ability_auto_cast: Array[bool] = [false, false, false]
 var active_buffs: Array[Dictionary] = []
 
 var auto_potion_enabled: bool = false
+var auto_hp_threshold_pct: int = 35
+var auto_hp_condition: String = "combat"
+var auto_mana_enabled: bool = false
+var auto_mana_threshold_pct: int = 30
+var auto_mana_condition: String = "combat"
+var auto_buff_enabled: bool = false
+var auto_buff_condition: String = "on_expire_combat"
+var auto_buff_whitelist: Array[String] = []
+
+var dark_weapon_enchant_level: int = 0
+var dark_armor_enchant_level: int = 0
+var mine_locked_this_run: bool = false
+var mine_depth: int = 0
+
 var is_afk_mode: bool = false
 var afk_elapsed_seconds: float = 0.0
 var afk_kills: int = 0
@@ -626,6 +754,8 @@ func _emit_all_refresh_signals() -> void:
 	pets_changed.emit()
 	garden_changed.emit()
 	brewing_changed.emit()
+	dark_forge_changed.emit()
+	mine_state_changed.emit()
 	mastery_changed.emit("melee", melee_level, false)
 	mastery_changed.emit("ranged", ranged_level, false)
 	mastery_changed.emit("magic", magic_level, false)
@@ -728,6 +858,23 @@ func _init_full_reset_state() -> void:
 	owned_pet_ids.clear()
 	equipped_pet_id = ""
 	auto_potion_enabled = false
+	auto_hp_threshold_pct = 35
+	auto_hp_condition = "combat"
+	auto_mana_enabled = false
+	auto_mana_threshold_pct = 30
+	auto_mana_condition = "combat"
+	auto_buff_enabled = false
+	auto_buff_condition = "on_expire_combat"
+	auto_buff_whitelist.clear()
+	dark_weapon_enchant_level = 0
+	dark_armor_enchant_level = 0
+	mine_locked_this_run = false
+	mine_depth = 0
+	equipped_weapon = null
+	equipped_armor = null
+	equipped_ammo = null
+	equipped_ammo_count = 0
+	inventory.clear()
 	enemies_defeated = 0
 	garden_plots.clear()
 	light_garden_plots.clear()
@@ -753,6 +900,8 @@ func _init_run_state(target_difficulty: int) -> void:
 	boss_defeated_this_run = false
 	reroll_boss_kills_in_run = 0
 	kills_in_run = 0
+	mine_locked_this_run = false
+	mine_depth = 0
 
 	var start_mastery_lvl: int = 3 if has_dark_skill("ancient_memory") else 1
 	melee_level = start_mastery_lvl
@@ -781,13 +930,23 @@ func _init_run_state(target_difficulty: int) -> void:
 	for entry: Dictionary in inventory:
 		var existing_item: ItemData = entry["item"] as ItemData
 		var existing_cnt: int = int(entry["count"])
-		if existing_item != null and existing_cnt > 0 and (existing_item.item_type == ItemData.ItemType.SEED or existing_item.item_type == ItemData.ItemType.HARVEST):
+		if existing_item != null and existing_cnt > 0 and (
+			existing_item.item_type == ItemData.ItemType.SEED
+			or existing_item.item_type == ItemData.ItemType.HARVEST
+			or existing_item.item_type == ItemData.ItemType.MATERIAL
+			or existing_item.is_dark_forged
+		):
 			preserved_garden_items.append({"item": existing_item, "count": existing_cnt})
 
-	equipped_weapon = null
-	equipped_armor = null
-	equipped_ammo = null
-	equipped_ammo_count = 0
+	var preserved_weapon: ItemData = equipped_weapon if (equipped_weapon != null and equipped_weapon.is_dark_forged) else null
+	var preserved_armor: ItemData = equipped_armor if (equipped_armor != null and equipped_armor.is_dark_forged) else null
+	var preserved_ammo: ItemData = equipped_ammo if (equipped_ammo != null and equipped_ammo.is_dark_forged) else null
+	var preserved_ammo_cnt: int = equipped_ammo_count if preserved_ammo != null else 0
+
+	equipped_weapon = preserved_weapon
+	equipped_armor = preserved_armor
+	equipped_ammo = preserved_ammo
+	equipped_ammo_count = maxi(1, preserved_ammo_cnt) if preserved_ammo != null else 0
 	weapon_enchant_level = 0
 	armor_enchant_level = 0
 	inventory.clear()
@@ -1514,6 +1673,18 @@ func get_enchant_cost(current_lvl: int) -> float:
 	return maxf(1.0, round(base_cost * mult))
 
 
+func get_dark_enchant_level(slot_type: ItemData.ItemType) -> int:
+	if slot_type == ItemData.ItemType.WEAPON:
+		return dark_weapon_enchant_level
+	if slot_type == ItemData.ItemType.ARMOR:
+		return dark_armor_enchant_level
+	return 0
+
+
+func get_total_slot_enchant_level(slot_type: ItemData.ItemType) -> int:
+	return get_enchant_level(slot_type) + get_dark_enchant_level(slot_type)
+
+
 func get_enchant_power_multiplier(enchant_lvl: int) -> float:
 	var per_level: float = 0.15 * (1.25 if has_dark_skill("blacksmith_brand") else 1.0)
 	return 1.0 + float(enchant_lvl) * per_level
@@ -1521,22 +1692,30 @@ func get_enchant_power_multiplier(enchant_lvl: int) -> float:
 
 func get_equipped_stat_bonuses(slot_type: ItemData.ItemType) -> Dictionary:
 	if is_equipment_disabled():
-		return {"strength": 0, "agility": 0, "endurance": 0}
+		return {"strength": 0, "agility": 0, "endurance": 0, "intellect": 0}
 	var item: ItemData = equipped_weapon if slot_type == ItemData.ItemType.WEAPON else equipped_armor
 	if item == null:
-		return {"strength": 0, "agility": 0, "endurance": 0}
-	var elvl: int = get_enchant_level(slot_type)
-	var mult: float = get_enchant_power_multiplier(elvl)
+		return {"strength": 0, "agility": 0, "endurance": 0, "intellect": 0}
+	var run_elvl: int = get_enchant_level(slot_type)
+	var dark_elvl: int = get_dark_enchant_level(slot_type)
+	var total_elvl: int = run_elvl + dark_elvl
+	var mult: float = get_enchant_power_multiplier(total_elvl)
 	var flat_per_lvl: int = 2 if has_dark_skill("blacksmith_brand") else 1
 
 	var s: int = roundi(float(item.bonus_strength) * mult)
 	var a: int = roundi(float(item.bonus_agility) * mult)
 	var e: int = roundi(float(item.bonus_endurance) * mult)
+	var intel: int = roundi(float(item.bonus_intellect) * mult)
 	if slot_type == ItemData.ItemType.WEAPON:
-		s += elvl * flat_per_lvl
+		if item.is_mage_staff():
+			intel += run_elvl * flat_per_lvl + dark_elvl * 3
+		else:
+			s += run_elvl * flat_per_lvl + dark_elvl * 2
 	elif slot_type == ItemData.ItemType.ARMOR:
-		e += elvl * flat_per_lvl
-	return {"strength": s, "agility": a, "endurance": e}
+		e += run_elvl * flat_per_lvl + dark_elvl * 2
+		if item.bonus_intellect > 0:
+			intel += dark_elvl * 2
+	return {"strength": s, "agility": a, "endurance": e, "intellect": intel}
 
 
 func try_enchant_slot(slot_type: ItemData.ItemType) -> Dictionary:
@@ -1600,12 +1779,157 @@ func try_enchant_slot(slot_type: ItemData.ItemType) -> Dictionary:
 	}
 
 
-# --- Ranged & Ammo Helpers ---
+# --- Dark Forge (Permanent Crafting & Persistent Enchanting with Dark Points) ---
+
+func get_dark_forge_enchant_chance(current_lvl: int) -> float:
+	if current_lvl <= 0:
+		return 25.0
+	# +1 -> +2 = 20%, decreasing down to minimum 15%
+	return maxf(15.0, 20.0 - float(current_lvl - 1) * 1.0)
+
+
+func get_dark_forge_enchant_cost(current_lvl: int) -> int:
+	return 4 + maxi(0, current_lvl) * 2
+
+
+func try_dark_forge_enchant(slot_type: ItemData.ItemType) -> Dictionary:
+	if is_equipment_disabled():
+		return {"success": false, "message": "Класс Спирит не может использовать Тёмную заточку."}
+	var item: ItemData = equipped_weapon if slot_type == ItemData.ItemType.WEAPON else equipped_armor
+	if item == null:
+		return {"success": false, "message": "Сначала экипируйте предмет в этот слот."}
+
+	var current_lvl: int = get_dark_enchant_level(slot_type)
+	var cost: int = get_dark_forge_enchant_cost(current_lvl)
+	if dark_points < cost:
+		return {"success": false, "message": "Нужно %d 🌑 Очков Тьмы (у вас %d 🌑)." % [cost, dark_points]}
+
+	dark_points -= cost
+	var chance: float = get_dark_forge_enchant_chance(current_lvl)
+	var succeeded: bool = (randf() * 100.0) < chance
+
+	if succeeded:
+		var prev_max_hp: float = get_max_hp()
+		var prev_max_mana: float = get_max_mana()
+		if slot_type == ItemData.ItemType.WEAPON:
+			dark_weapon_enchant_level += 1
+		else:
+			dark_armor_enchant_level += 1
+
+		var new_max_hp: float = get_max_hp()
+		if new_max_hp > prev_max_hp:
+			current_hp = minf(new_max_hp, current_hp + (new_max_hp - prev_max_hp))
+		var new_max_mana: float = get_max_mana()
+		if new_max_mana > prev_max_mana:
+			current_mana = minf(new_max_mana, current_mana + (new_max_mana - prev_max_mana))
+
+		stats_changed.emit()
+		dark_skills_changed.emit()
+		enchant_changed.emit()
+		dark_forge_changed.emit()
+		hp_changed.emit(current_hp, new_max_hp)
+		mana_changed.emit(current_mana, new_max_mana)
+		save_game()
+		return {
+			"success": true,
+			"message": "🔥 Тёмный успех! Вечная заточка слота повышена до 🌑+%d (шанс %.0f%%) — сохранится навсегда!" % [current_lvl + 1, chance],
+		}
+
+	stats_changed.emit()
+	dark_skills_changed.emit()
+	dark_forge_changed.emit()
+	save_game()
+	return {
+		"success": false,
+		"message": "💨 Пламя Тёмной кузни дрогнуло (шанс %.0f%%). Уровень сохранён на 🌑+%d." % [chance, current_lvl],
+	}
+
+
+func get_dark_forge_material_count(item_id: String) -> int:
+	var item: ItemData = load("res://resources/items/%s.tres" % item_id) as ItemData
+	if item == null:
+		return 0
+	return get_item_count_in_inventory(item)
+
+
+func _get_dark_forge_recipe(recipe_id: String) -> Dictionary:
+	for r: Dictionary in DARK_FORGE_RECIPES:
+		if str(r.get("id", "")) == recipe_id:
+			return r
+	return {}
+
+
+func can_craft_dark_forge_recipe(recipe_id: String) -> bool:
+	var r: Dictionary = _get_dark_forge_recipe(recipe_id)
+	if r.is_empty():
+		return false
+	if dark_points < int(r.get("dark_points", 0)):
+		return false
+	var need_ore: int = int(r.get("abyss_ore", 0))
+	var need_page: int = int(r.get("ancient_page", 0))
+	if need_ore > 0 and get_dark_forge_material_count("abyss_ore") < need_ore:
+		return false
+	if need_page > 0 and get_dark_forge_material_count("ancient_page") < need_page:
+		return false
+	return true
+
+
+func craft_dark_forge_item(recipe_id: String) -> Dictionary:
+	var r: Dictionary = _get_dark_forge_recipe(recipe_id)
+	if r.is_empty():
+		return {"success": false, "message": "Рецепт не найден."}
+	var need_dp: int = int(r.get("dark_points", 0))
+	var need_ore: int = int(r.get("abyss_ore", 0))
+	var need_page: int = int(r.get("ancient_page", 0))
+
+	if dark_points < need_dp:
+		return {"success": false, "message": "Недостаточно 🌑 Очков Тьмы (нужно %d, у вас %d)." % [need_dp, dark_points]}
+	var ore_item: ItemData = load("res://resources/items/abyss_ore.tres") as ItemData
+	var page_item: ItemData = load("res://resources/items/ancient_page.tres") as ItemData
+	if need_ore > 0 and (ore_item == null or get_item_count_in_inventory(ore_item) < need_ore):
+		return {"success": false, "message": "Недостаточно ⛏️ Руды Бездны (нужно %d)." % need_ore}
+	if need_page > 0 and (page_item == null or get_item_count_in_inventory(page_item) < need_page):
+		return {"success": false, "message": "Недостаточно 📜 Древних листов (нужно %d)." % need_page}
+
+	var result_item: ItemData = load(str(r.get("result_path", ""))) as ItemData
+	if result_item == null:
+		return {"success": false, "message": "Предмет рецепта повреждён."}
+
+	dark_points -= need_dp
+	if need_ore > 0 and ore_item != null:
+		remove_item(ore_item, need_ore)
+	if need_page > 0 and page_item != null:
+		remove_item(page_item, need_page)
+
+	var amt: int = maxi(1, int(r.get("amount", 1)))
+	add_item(result_item, amt, true)
+	dark_skills_changed.emit()
+	dark_forge_changed.emit()
+	stats_changed.emit()
+	save_game()
+	var eternal_note: String = " (Вечный — не сбрасывается между ранами!)" if bool(r.get("eternal", false)) else ""
+	return {
+		"success": true,
+		"message": "🔥 Выковано: %s x%d%s" % [result_item.get_display_name(), amt, eternal_note],
+	}
+
+
+# --- Ranged, Staff & Ammo Helpers ---
 
 func is_using_ranged_weapon() -> bool:
 	if is_equipment_disabled() or equipped_weapon == null:
 		return false
 	return equipped_weapon.is_ranged_weapon()
+
+
+func is_using_mage_staff() -> bool:
+	if is_equipment_disabled() or equipped_weapon == null:
+		return false
+	return equipped_weapon.is_mage_staff()
+
+
+func is_using_ammo_weapon() -> bool:
+	return is_using_ranged_weapon() or is_using_mage_staff()
 
 
 func _try_refill_ammo_from_inventory(required_kind: ItemData.AmmoKind) -> bool:
@@ -1625,10 +1949,10 @@ func _try_refill_ammo_from_inventory(required_kind: ItemData.AmmoKind) -> bool:
 
 
 func has_matching_ammo() -> bool:
-	if not is_using_ranged_weapon():
+	if not is_using_ammo_weapon():
 		return false
 	var req_kind: ItemData.AmmoKind = equipped_weapon.required_ammo
-	if equipped_ammo != null and equipped_ammo_count > 0 and equipped_ammo.ammo_kind == req_kind:
+	if equipped_ammo != null and equipped_ammo.ammo_kind == req_kind and (equipped_ammo_count > 0 or equipped_ammo.is_dark_forged):
 		return true
 	return _try_refill_ammo_from_inventory(req_kind)
 
@@ -1637,7 +1961,7 @@ func get_ammo_save_chance() -> float:
 	var chance: float = get_skill_bonus("ammo_save")
 	if has_dark_skill("shadow_quiver"):
 		chance += 0.30
-	if has_hero_class("abyss_ranger"):
+	if has_hero_class("abyss_ranger") and is_using_ranged_weapon():
 		chance += 0.60
 	return clampf(chance, 0.0, 0.92)
 
@@ -1645,6 +1969,8 @@ func get_ammo_save_chance() -> float:
 func consume_one_ammo() -> bool:
 	if not has_matching_ammo():
 		return false
+	if equipped_ammo != null and equipped_ammo.is_dark_forged:
+		return true
 	if randf() < get_ammo_save_chance():
 		return true
 	equipped_ammo_count = maxi(0, equipped_ammo_count - 1)
@@ -1688,6 +2014,59 @@ func get_total_endurance() -> int:
 	return maxi(1, roundi(total))
 
 
+func get_total_intellect() -> int:
+	var wb: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.WEAPON)
+	var ab: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.ARMOR)
+	var tome_int: int = 0
+	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
+		tome_int = equipped_ammo.bonus_intellect
+	var total: float = float(int(wb["intellect"]) + int(ab["intellect"]) + tome_int)
+	if has_hero_class("spirit"):
+		total *= 1.35
+	elif has_hero_class("blood_archmage"):
+		total *= 1.20
+	return maxi(0, roundi(total))
+
+
+func get_equipped_mana_cost_reduction() -> float:
+	if is_equipment_disabled():
+		return 0.0
+	var red: float = 0.0
+	if equipped_weapon != null:
+		red += equipped_weapon.bonus_mana_cost_red
+	if equipped_armor != null:
+		red += equipped_armor.bonus_mana_cost_red
+	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
+		red += equipped_ammo.bonus_mana_cost_red
+	return clampf(red, 0.0, 0.65)
+
+
+func get_equipped_spell_power_bonus() -> float:
+	if is_equipment_disabled():
+		return 0.0
+	var sp: float = 0.0
+	if equipped_weapon != null:
+		sp += equipped_weapon.bonus_spell_power_pct
+	if equipped_armor != null:
+		sp += equipped_armor.bonus_spell_power_pct
+	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
+		sp += equipped_ammo.bonus_spell_power_pct
+	return maxf(0.0, sp)
+
+
+func get_effect_duration_multiplier() -> float:
+	if is_equipment_disabled():
+		return 1.0
+	var bonus: float = 0.0
+	if equipped_weapon != null:
+		bonus += equipped_weapon.bonus_effect_duration_pct
+	if equipped_armor != null:
+		bonus += equipped_armor.bonus_effect_duration_pct
+	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
+		bonus += equipped_ammo.bonus_effect_duration_pct
+	return maxf(1.0, 1.0 + bonus)
+
+
 func get_max_hp() -> float:
 	var hp_val: float = 100.0 + float(get_total_endurance()) * 15.0
 	if has_dark_skill("immortal_pact"):
@@ -1700,11 +2079,11 @@ func get_max_hp() -> float:
 
 
 func get_max_mana() -> float:
-	return 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 2.0 + get_skill_bonus("max_mana")
+	return 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 2.0 + float(get_total_intellect()) * 4.0 + get_skill_bonus("max_mana")
 
 
 func get_mana_regen_per_sec() -> float:
-	var regen: float = 2.5 + float(get_total_endurance()) * 0.25 + get_skill_bonus("mana_regen")
+	var regen: float = 2.5 + float(get_total_endurance()) * 0.25 + float(get_total_intellect()) * 0.45 + get_skill_bonus("mana_regen")
 	regen *= (1.0 + float(magic_level - 1) * 0.04)
 	regen *= (1.0 + get_dark_bonus("mana_fountain"))
 	regen *= (1.0 + get_active_buff_sum("mana_regen_pct"))
@@ -1837,12 +2216,13 @@ func clear_ability_slot(slot_index: int) -> void:
 func apply_ability_buff(ability: AbilityData, potency_scale: float = 1.0) -> void:
 	if ability == null or ability.duration <= 0.0:
 		return
+	var final_dur: float = maxf(1.0, ability.duration * get_effect_duration_multiplier())
 	var entry: Dictionary = {
 		"id": ability.id,
 		"title": ability.title,
 		"icon_emoji": ability.icon_emoji,
-		"remaining": ability.duration,
-		"duration": ability.duration,
+		"remaining": final_dur,
+		"duration": final_dur,
 		"damage_pct": ability.buff_damage_pct * potency_scale,
 		"attack_speed_pct": ability.buff_attack_speed_pct * potency_scale,
 		"armor_pct": ability.buff_armor_pct * potency_scale,
@@ -1909,6 +2289,7 @@ func get_ability_mana_cost(ability: AbilityData) -> float:
 	if has_dark_skill("mana_fountain"):
 		cost *= 0.80
 	cost *= maxf(0.35, 1.0 - get_skill_bonus("mana_cost_red"))
+	cost *= maxf(0.25, 1.0 - get_equipped_mana_cost_reduction())
 	if has_hero_class("blood_archmage"):
 		cost *= 0.50
 	cost *= (1.0 + get_curse_value("clumsy_hands"))
@@ -1932,7 +2313,7 @@ func get_ability_power_multiplier(ability: AbilityData) -> float:
 		return 1.0
 	var mult: float = ability.power_multiplier
 	mult *= get_mastery_bonus_multiplier("magic")
-	mult *= (1.0 + get_skill_bonus("spell_power") + get_active_buff_sum("spell_power_pct"))
+	mult *= (1.0 + get_skill_bonus("spell_power") + get_active_buff_sum("spell_power_pct") + get_equipped_spell_power_bonus() + float(get_total_intellect()) * 0.015)
 	if has_dark_skill("swift_runes"):
 		mult *= 1.35
 	if has_hero_class("blood_archmage"):
@@ -1998,9 +2379,12 @@ func get_berserk_bonus() -> float:
 func get_player_damage(preview_ammo_ready: bool = true) -> float:
 	if has_hero_class("reflector"):
 		return 0.0
+	var total_weapon_elvl: int = get_total_slot_enchant_level(ItemData.ItemType.WEAPON)
 	var dmg: float = BASE_DAMAGE + float(get_total_strength()) * 1.5
+	if is_using_mage_staff():
+		dmg = BASE_DAMAGE + float(get_total_strength()) * 0.8 + float(get_total_intellect()) * 2.2
 	if not is_equipment_disabled() and equipped_weapon != null and equipped_weapon.bonus_damage > 0.0:
-		dmg += equipped_weapon.bonus_damage * get_enchant_power_multiplier(weapon_enchant_level)
+		dmg += equipped_weapon.bonus_damage * get_enchant_power_multiplier(total_weapon_elvl)
 
 	if is_using_ranged_weapon():
 		if preview_ammo_ready and has_matching_ammo():
@@ -2013,6 +2397,14 @@ func get_player_damage(preview_ammo_ready: bool = true) -> float:
 				dmg *= 1.40
 			if has_hero_class("abyss_ranger"):
 				dmg *= 1.40
+		else:
+			dmg *= 0.45
+	elif is_using_mage_staff():
+		if preview_ammo_ready and has_matching_ammo():
+			if equipped_ammo != null:
+				dmg += equipped_ammo.bonus_damage
+			dmg *= get_mastery_bonus_multiplier("magic")
+			dmg *= (1.0 + get_skill_bonus("spell_power") * 0.5 + get_equipped_spell_power_bonus() * 0.5)
 		else:
 			dmg *= 0.45
 	else:
@@ -2029,7 +2421,7 @@ func get_player_armor_penetration() -> float:
 	var pen: float = 0.0
 	if equipped_weapon != null:
 		pen += equipped_weapon.armor_penetration
-	if is_using_ranged_weapon() and has_matching_ammo() and equipped_ammo != null:
+	if is_using_ammo_weapon() and has_matching_ammo() and equipped_ammo != null:
 		pen += equipped_ammo.armor_penetration
 	return pen
 
@@ -2072,6 +2464,8 @@ func get_crit_chance() -> float:
 		extra += float(maxi(0, ranged_level - 1)) * 0.003
 		if has_matching_ammo() and equipped_ammo != null:
 			extra += equipped_ammo.bonus_crit_chance
+	elif is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
+		extra += equipped_ammo.bonus_crit_chance
 	extra += get_dark_bonus("deadeye_abyss")
 	return clampf(BASE_CRIT_CHANCE + get_skill_bonus("crit_chance") + extra - get_curse_value("dull_edge"), 0.02, 0.95)
 
@@ -2129,6 +2523,52 @@ func get_item_sell_value(item: ItemData) -> float:
 
 func set_auto_potion(enabled: bool) -> void:
 	auto_potion_enabled = enabled
+	stats_changed.emit()
+	save_game()
+
+
+func set_auto_hp_settings(enabled: bool, threshold_pct: int, condition: String) -> void:
+	auto_potion_enabled = enabled
+	auto_hp_threshold_pct = clampi(threshold_pct, 10, 95)
+	auto_hp_condition = "always" if condition == "always" else "combat"
+	stats_changed.emit()
+	save_game()
+
+
+func set_auto_mana_settings(enabled: bool, threshold_pct: int, condition: String) -> void:
+	auto_mana_enabled = enabled
+	auto_mana_threshold_pct = clampi(threshold_pct, 10, 95)
+	auto_mana_condition = "always" if condition == "always" else "combat"
+	stats_changed.emit()
+	save_game()
+
+
+func set_auto_buff_settings(enabled: bool, condition: String) -> void:
+	auto_buff_enabled = enabled
+	auto_buff_condition = "on_expire_always" if condition == "on_expire_always" else "on_expire_combat"
+	stats_changed.emit()
+	save_game()
+
+
+func is_buff_potion_whitelisted(potion_id: String) -> bool:
+	if auto_buff_whitelist.is_empty():
+		return true
+	return auto_buff_whitelist.has(potion_id)
+
+
+func toggle_buff_potion_whitelist(potion_id: String) -> void:
+	if auto_buff_whitelist.is_empty():
+		# Enable explicit filter containing everything except toggled item
+		for entry: Dictionary in BUFF_POTION_CATALOG:
+			var bid: String = str(entry.get("id", ""))
+			if not bid.is_empty() and bid != potion_id:
+				auto_buff_whitelist.append(bid)
+	elif auto_buff_whitelist.has(potion_id):
+		auto_buff_whitelist.erase(potion_id)
+	else:
+		auto_buff_whitelist.append(potion_id)
+		if auto_buff_whitelist.size() >= BUFF_POTION_CATALOG.size():
+			auto_buff_whitelist.clear()
 	stats_changed.emit()
 	save_game()
 
@@ -2203,17 +2643,67 @@ func use_best_mana_potion() -> String:
 	return use_or_equip_item(best_item)
 
 
-func try_auto_use_potion() -> String:
+func try_auto_use_potion(is_in_combat: bool = true) -> String:
 	if not auto_potion_enabled:
+		return ""
+	if auto_hp_condition == "combat" and not is_in_combat:
 		return ""
 	var max_hp: float = get_max_hp()
 	if current_hp <= 0.0 or max_hp <= 0.0:
 		return ""
-	if (current_hp / max_hp) >= AUTO_POTION_HP_THRESHOLD:
+	var hp_ratio: float = float(auto_hp_threshold_pct) / 100.0
+	if (current_hp / max_hp) >= hp_ratio:
 		return ""
 	if get_total_potion_count() <= 0:
 		return ""
 	return use_best_healing_potion()
+
+
+func try_auto_use_mana_potion(is_in_combat: bool = true) -> String:
+	if not auto_mana_enabled:
+		return ""
+	if auto_mana_condition == "combat" and not is_in_combat:
+		return ""
+	var max_mp: float = get_max_mana()
+	if current_hp <= 0.0 or max_mp <= 0.0:
+		return ""
+	var mp_ratio: float = float(auto_mana_threshold_pct) / 100.0
+	if (current_mana / max_mp) >= mp_ratio:
+		return ""
+	if get_total_mana_potion_count() <= 0:
+		return ""
+	return use_best_mana_potion()
+
+
+func try_auto_use_buff_potions(is_in_combat: bool = true) -> String:
+	if not auto_buff_enabled:
+		return ""
+	if current_hp <= 0.0:
+		return ""
+	if auto_buff_condition == "on_expire_combat" and not is_in_combat:
+		return ""
+	for entry: Dictionary in inventory:
+		var item: ItemData = entry["item"] as ItemData
+		var cnt: int = int(entry["count"])
+		if item == null or cnt <= 0 or not item.is_buff_potion():
+			continue
+		if not is_buff_potion_whitelisted(item.id):
+			continue
+		var buff_key: String = item.buff_id if not item.buff_id.is_empty() else ("potion_" + item.id)
+		if not has_active_buff(buff_key):
+			return use_or_equip_item(item)
+	return ""
+
+
+func try_auto_use_all_potions(is_in_combat: bool) -> String:
+	var res_hp: String = try_auto_use_potion(is_in_combat)
+	if not res_hp.is_empty():
+		return res_hp
+	var res_mp: String = try_auto_use_mana_potion(is_in_combat)
+	if not res_mp.is_empty():
+		return res_mp
+	var res_buff: String = try_auto_use_buff_potions(is_in_combat)
+	return res_buff
 
 
 func set_afk_mode(enabled: bool) -> void:
@@ -2246,8 +2736,15 @@ func record_afk_rewards(xp_earned: float, gold_earned: float) -> void:
 	afk_stats_updated.emit(afk_elapsed_seconds, afk_kills, afk_gold_earned, afk_xp_earned)
 
 
+func is_mine_location(loc: LocationData = null) -> bool:
+	var target: LocationData = loc if loc != null else current_location
+	return target != null and target.is_one_attempt_mine
+
+
 func is_location_unlocked(location: LocationData) -> bool:
 	if location == null:
+		return false
+	if location.is_one_attempt_mine and mine_locked_this_run:
 		return false
 	if max_unlocked_difficulty < location.required_difficulty:
 		return false
@@ -2265,6 +2762,48 @@ func select_location(location: LocationData) -> bool:
 	location_changed.emit(current_location)
 	save_game()
 	return true
+
+
+func record_mine_kill() -> void:
+	if not is_mine_location():
+		return
+	mine_depth += 1
+	mine_state_changed.emit()
+
+
+func fail_mine_run() -> void:
+	if not is_mine_location():
+		return
+	var reached: int = mine_depth
+	mine_locked_this_run = true
+	if not locations.is_empty():
+		current_location = locations[0]
+	mine_state_changed.emit()
+	mine_run_failed.emit(reached)
+	if current_location != null:
+		location_changed.emit(current_location)
+	save_game(true)
+
+
+func roll_mine_ambient_find() -> String:
+	if not is_mine_location():
+		return ""
+	var r: float = randf()
+	if r < 0.44:
+		var ore_item: ItemData = load("res://resources/items/abyss_ore.tres") as ItemData
+		if ore_item != null:
+			add_item(ore_item, 1, true)
+			return "⛏️ Найдена жила: +1 Руда Бездны!"
+	elif r < 0.78:
+		var page_item: ItemData = load("res://resources/items/ancient_page.tres") as ItemData
+		if page_item != null:
+			add_item(page_item, 1, true)
+			return "📜 Найден тайник: +1 Древний лист!"
+	else:
+		var bonus_gold: float = round((25.0 + float(mine_depth) * 8.0) * get_gold_multiplier())
+		add_gold(bonus_gold)
+		return "🪙 Золотая жила: +%s з." % NumberFormatter.format_number(bonus_gold)
+	return ""
 
 
 func add_xp(amount: float) -> void:
@@ -2537,7 +3076,7 @@ func use_or_equip_item(item: ItemData) -> String:
 					var restored: float = restore_mana(item.mana_amount * mana_mult)
 					parts.append("+%s MP" % NumberFormatter.format_number(restored))
 				if has_buff:
-					var dur_scale: float = cauldron_bonus * (1.30 if has_hero_class("alchemist") else 1.0)
+					var dur_scale: float = cauldron_bonus * (1.30 if has_hero_class("alchemist") else 1.0) * get_effect_duration_multiplier()
 					apply_potion_buff(item, dur_scale)
 					parts.append("бафф %.0fс" % (item.buff_duration * dur_scale))
 				save_game()
@@ -2557,6 +3096,8 @@ func use_or_equip_item(item: ItemData) -> String:
 			if item.id == "spirit_primordial_harvest":
 				return "Сакральный плод %s используется для дрессировки духов класса Спирит в Убежище." % item.get_display_name()
 			return "Урожай %s используется в котле зельеварения Убежища (или продаётся в лавке)." % item.get_display_name()
+		ItemData.ItemType.MATERIAL:
+			return "Ресурс Шахты %s используется в 🔥 Тёмной кузне для ковки вечного снаряжения и древних книг (не сбрасывается между ранами)." % item.get_display_name()
 		ItemData.ItemType.WEAPON:
 			if is_equipment_disabled():
 				return "Класс Спирит не может носить оружие."
@@ -3381,6 +3922,18 @@ func save_game(force_immediate: bool = false) -> void:
 	save_data.equipped_ability_ids = equipped_ability_ids.duplicate()
 	save_data.ability_auto_cast = ability_auto_cast.duplicate()
 	save_data.auto_potion_enabled = auto_potion_enabled
+	save_data.auto_hp_threshold_pct = auto_hp_threshold_pct
+	save_data.auto_hp_condition = auto_hp_condition
+	save_data.auto_mana_enabled = auto_mana_enabled
+	save_data.auto_mana_threshold_pct = auto_mana_threshold_pct
+	save_data.auto_mana_condition = auto_mana_condition
+	save_data.auto_buff_enabled = auto_buff_enabled
+	save_data.auto_buff_condition = auto_buff_condition
+	save_data.auto_buff_whitelist = auto_buff_whitelist.duplicate()
+	save_data.dark_weapon_enchant_level = dark_weapon_enchant_level
+	save_data.dark_armor_enchant_level = dark_armor_enchant_level
+	save_data.mine_locked_this_run = mine_locked_this_run
+	save_data.mine_depth = mine_depth
 
 	save_data.difficulty_level = difficulty_level
 	save_data.max_unlocked_difficulty = max_unlocked_difficulty
@@ -3436,6 +3989,21 @@ func load_game() -> bool:
 	magic_level = maxi(1, save_data.magic_level)
 	magic_xp = maxf(0.0, save_data.magic_xp)
 	auto_potion_enabled = save_data.auto_potion_enabled
+	auto_hp_threshold_pct = clampi(save_data.auto_hp_threshold_pct, 10, 95)
+	auto_hp_condition = "always" if save_data.auto_hp_condition == "always" else "combat"
+	auto_mana_enabled = save_data.auto_mana_enabled
+	auto_mana_threshold_pct = clampi(save_data.auto_mana_threshold_pct, 10, 95)
+	auto_mana_condition = "always" if save_data.auto_mana_condition == "always" else "combat"
+	auto_buff_enabled = save_data.auto_buff_enabled
+	auto_buff_condition = "on_expire_always" if save_data.auto_buff_condition == "on_expire_always" else "on_expire_combat"
+	auto_buff_whitelist.clear()
+	for bw: String in save_data.auto_buff_whitelist:
+		if not bw.is_empty() and not auto_buff_whitelist.has(bw):
+			auto_buff_whitelist.append(bw)
+	dark_weapon_enchant_level = maxi(0, save_data.dark_weapon_enchant_level)
+	dark_armor_enchant_level = maxi(0, save_data.dark_armor_enchant_level)
+	mine_locked_this_run = save_data.mine_locked_this_run
+	mine_depth = maxi(0, save_data.mine_depth)
 
 	max_unlocked_difficulty = maxi(1, save_data.max_unlocked_difficulty)
 	difficulty_level = clampi(save_data.difficulty_level, 1, max_unlocked_difficulty)
@@ -3512,8 +4080,11 @@ func load_game() -> bool:
 	if not is_equipment_disabled() and not save_data.equipped_ammo_path.is_empty() and ResourceLoader.exists(save_data.equipped_ammo_path):
 		equipped_ammo = load(save_data.equipped_ammo_path) as ItemData
 		equipped_ammo_count = maxi(0, save_data.equipped_ammo_count)
-		if equipped_ammo_count == 0:
-			equipped_ammo = null
+		if equipped_ammo != null:
+			if equipped_ammo.is_dark_forged:
+				equipped_ammo_count = maxi(1, equipped_ammo_count)
+			elif equipped_ammo_count == 0:
+				equipped_ammo = null
 
 	inventory.clear()
 	var item_count: int = mini(save_data.inventory_paths.size(), save_data.inventory_counts.size())

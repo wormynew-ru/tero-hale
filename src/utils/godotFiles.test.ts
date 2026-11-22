@@ -350,7 +350,7 @@ test('all 34 regular skills cost 1 SP with empowered bonuses, XP curve is steepe
 
 test('mana potions, buff potions, village map hotspots, Diff-10 Sanctuary garden/brewing, scarlet petal (2000 boss kills), and deterministic Alchemist safety flag are implemented', () => {
   const itemFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/items'), '.tres');
-  assert.equal(itemFiles.length, 63, 'Expected 63 item resources (including 4 light seeds/harvests and spirit primordial seed/harvest)');
+  assert.equal(itemFiles.length, 82, 'Expected 82 item resources (including mage gear, mine materials, and eternal dark-forged gear)');
 
   const cropFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/crops'), '.tres');
   assert.equal(cropFiles.length, 10, 'Expected 10 Sanctuary crop resources (4 light + 6 dark)');
@@ -547,6 +547,7 @@ test('HoldAutoClicker provides 50/sec hold repeat across multi-tap UIs and no GD
     'scripts/ui/PetUI.gd',
     'scripts/ui/SanctuaryUI.gd',
     'scripts/ui/DifficultyUI.gd',
+    'scripts/ui/DarkForgeUI.gd',
   ];
   for (const rel of expectedWiredScripts) {
     const content = fs.readFileSync(path.join(GODOT_ROOT, rel), 'utf-8');
@@ -573,6 +574,83 @@ test('HoldAutoClicker provides 50/sec hold repeat across multi-tap UIs and no GD
     }
   }
 });
+
+test('soul_overload (overcharge_burn) fires at 12 ticks per second for up to 12 ticks', () => {
+  const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  assert.ok(
+    combatContent.includes('OVERCHARGE_TICKS_PER_SECOND: float = 12.0'),
+    'CombatSystem must define 12 ticks per second for overcharge_burn',
+  );
+  assert.ok(
+    combatContent.includes('OVERCHARGE_TICK_INTERVAL: float = 1.0 / OVERCHARGE_TICKS_PER_SECOND'),
+    'CombatSystem must compute tick interval as 1.0 / OVERCHARGE_TICKS_PER_SECOND',
+  );
+  assert.ok(
+    combatContent.includes('OVERCHARGE_MAX_TICKS: int = 12'),
+    'CombatSystem must cap overcharge_burn at 12 ticks (1 second max)',
+  );
+
+  const soulOverloadTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/abilities/soul_overload.tres'), 'utf-8');
+  assert.ok(soulOverloadTres.includes('12 тиков/с'), 'soul_overload.tres description must mention 12 тиков/с');
+  assert.ok(/^duration\s*=\s*1\.0$/m.test(soulOverloadTres), 'soul_overload.tres duration must be 1.0s');
+});
+
+test('Mage staffs & 2 tome types, Dark Forge (25%->20%->min 15% + eternal items), 1-attempt Mine, and configurable Auto-Potions are wired cleanly', () => {
+  // 1. Mage equipment & drop-only top mage gear
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const shopMatch = /const SHOP_ITEM_PATHS: Array\[String\] = \[([\s\S]*?)\]/.exec(gmContent);
+  assert.ok(shopMatch, 'Expected SHOP_ITEM_PATHS in GameManager.gd');
+  const shopBlock = shopMatch[1];
+
+  for (const dropOnlyMage of ['druid_staff.tres', 'lich_scepter.tres', 'astral_staff.tres', 'astral_vestments.tres']) {
+    assert.ok(!shopBlock.includes(dropOnlyMage), `Top mage gear ${dropOnlyMage} should be drop-only`);
+  }
+  for (const starterMage of ['apprentice_staff.tres', 'crystal_wand.tres', 'mage_robe.tres', 'tome_intellect_flow.tres', 'tome_spell_amplify.tres']) {
+    assert.ok(shopBlock.includes(starterMage), `Starter mage item ${starterMage} must remain in shop`);
+  }
+
+  const tomeType1 = fs.readFileSync(path.join(GODOT_ROOT, 'resources/items/tome_intellect_flow.tres'), 'utf-8');
+  assert.ok(/bonus_intellect\s*=\s*\d+/.test(tomeType1) && /bonus_mana_cost_red\s*=\s*0\.\d+/.test(tomeType1), 'Type 1 tome must boost intellect and reduce mana cost');
+
+  const tomeType2 = fs.readFileSync(path.join(GODOT_ROOT, 'resources/items/tome_spell_amplify.tres'), 'utf-8');
+  assert.ok(/bonus_spell_power_pct\s*=\s*0\.\d+/.test(tomeType2) && /bonus_effect_duration_pct\s*=\s*0\.\d+/.test(tomeType2), 'Type 2 tome must boost spell power and effect duration');
+
+  const eternalCodex = fs.readFileSync(path.join(GODOT_ROOT, 'resources/items/tome_eternal_codex.tres'), 'utf-8');
+  assert.ok(/is_dark_forged\s*=\s*true/.test(eternalCodex), 'tome_eternal_codex must be eternal (is_dark_forged = true)');
+
+  // 2. Dark Forge chances & UI wiring
+  assert.ok(gmContent.includes('return 25.0') && gmContent.includes('maxf(15.0, 20.0'), 'Dark Forge enchant must use 25% -> 20% -> min 15% curve');
+  assert.ok(gmContent.includes('item.is_dark_forged') && gmContent.includes('ItemData.ItemType.MATERIAL'), 'start_new_run() must preserve dark-forged items and mine materials');
+  assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'scenes/DarkForgeUI.tscn')), 'DarkForgeUI.tscn must exist');
+  const heroMenuTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/HeroMenuUI.tscn'), 'utf-8');
+  assert.ok(heroMenuTscn.includes('DarkForgeUI'), 'HeroMenuUI.tscn must embed DarkForgeUI');
+  const villageTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/VillageMapUI.tscn'), 'utf-8');
+  assert.ok(villageTscn.includes('GoDarkForgeButton'), 'VillageMapUI.tscn must link to Dark Forge');
+
+  // 3. 1-Attempt Mine location, enemies, materials, lockout
+  const mineLoc = fs.readFileSync(path.join(GODOT_ROOT, 'resources/locations/abandoned_mine.tres'), 'utf-8');
+  assert.ok(/is_one_attempt_mine\s*=\s*true/.test(mineLoc), 'abandoned_mine.tres must set is_one_attempt_mine = true');
+  const locFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/locations'), '.tres');
+  assert.equal(locFiles.length, 12, 'Expected 12 locations including abandoned_mine');
+  const enemyFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/enemies'), '.tres');
+  assert.equal(enemyFiles.length, 26, 'Expected 26 enemies including 4 Mine enemies');
+  assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items/abyss_ore.tres')), 'abyss_ore.tres must exist');
+  assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items/ancient_page.tres')), 'ancient_page.tres must exist');
+
+  const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  assert.ok(combatContent.includes('fail_mine_run()'), 'CombatSystem must lock Mine on player death');
+  assert.ok(combatContent.includes('roll_mine_ambient_find()'), 'CombatSystem must trigger ambient Mine finds');
+
+  // 4. Configurable Auto-Potions (HP/MP thresholds + conditions + buff on-expire whitelist)
+  const invScene = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/InventoryUI.tscn'), 'utf-8');
+  for (const nodeName of ['AutoHpThresholdButton', 'AutoHpConditionButton', 'AutoManaToggle', 'AutoManaThresholdButton', 'AutoBuffToggle', 'AutoBuffConditionButton', 'BuffWhitelistFlow']) {
+    assert.ok(invScene.includes(nodeName), `InventoryUI.tscn must include ${nodeName}`);
+  }
+  assert.ok(gmContent.includes('func try_auto_use_all_potions('), 'GameManager must implement try_auto_use_all_potions');
+  assert.ok(combatContent.includes('try_auto_use_all_potions'), 'CombatSystem must invoke configurable auto-potions');
+});
+
+
 
 
 

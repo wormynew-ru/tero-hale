@@ -1,6 +1,22 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/InventoryUI.gd" id="1_inventory_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_auto_potion_card"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.1, 0.13, 0.18, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.45, 0.62, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="InventoryUI" type="ScrollContainer"]
 layout_mode = 2
@@ -64,7 +80,7 @@ theme_override_constants/separation = 10
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🏹 Снаряды: [Пусто]"
+text = "🏹 Снаряды / Книги: [Пусто]"
 autowrap_mode = 3
 
 [node name="UnequipAmmoButton" type="Button" parent="InventoryVBox/AmmoRow"]
@@ -94,24 +110,109 @@ text = "Убрать"
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="AutoPotionToggle" type="CheckButton" parent="InventoryVBox/PotionControlsRow"]
+[node name="QuickPotionButton" type="Button" parent="InventoryVBox/PotionControlsRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "🤖 Авто-зелье (<35% HP)"
-
-[node name="QuickPotionButton" type="Button" parent="InventoryVBox/PotionControlsRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(165, 44)
-layout_mode = 2
 text = "🧪 Выпить HP (2)"
 
 [node name="QuickManaPotionButton" type="Button" parent="InventoryVBox/PotionControlsRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(165, 44)
+custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
+size_flags_horizontal = 3
 text = "💧 Выпить MP (0)"
+
+[node name="AutoPotionSettingsCard" type="PanelContainer" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_auto_potion_card")
+
+[node name="AutoPotionVBox" type="VBoxContainer" parent="InventoryVBox/AutoPotionSettingsCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AutoPotionTitle" type="Label" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.88, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "🤖 Настройки авто-использования зелий"
+
+[node name="AutoHpRow" type="HBoxContainer" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AutoPotionToggle" type="CheckButton" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoHpRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🧪 Авто-HP"
+
+[node name="AutoHpThresholdButton" type="Button" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoHpRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(126, 40)
+layout_mode = 2
+text = "Порог: <35%"
+
+[node name="AutoHpConditionButton" type="Button" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoHpRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(146, 40)
+layout_mode = 2
+text = "⚔️ В бою"
+
+[node name="AutoManaRow" type="HBoxContainer" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AutoManaToggle" type="CheckButton" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoManaRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "💧 Авто-MP"
+
+[node name="AutoManaThresholdButton" type="Button" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoManaRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(126, 40)
+layout_mode = 2
+text = "Порог: <30%"
+
+[node name="AutoManaConditionButton" type="Button" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoManaRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(146, 40)
+layout_mode = 2
+text = "⚔️ В бою"
+
+[node name="AutoBuffRow" type="HBoxContainer" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AutoBuffToggle" type="CheckButton" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoBuffRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "✨ Авто-бафф по истечению"
+
+[node name="AutoBuffConditionButton" type="Button" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoBuffRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 40)
+layout_mode = 2
+text = "⚔️ По истечении в бою"
+
+[node name="BuffWhitelistHint" type="Label" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.78, 0.88, 1)
+theme_override_font_sizes/font_size = 12
+text = "Фильтр бафф-зелий для авто-приёма (если ничего не снято — пьются все доступные):"
+autowrap_mode = 3
+
+[node name="BuffWhitelistFlow" type="HFlowContainer" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
 
 [node name="InvSeparator" type="HSeparator" parent="InventoryVBox"]
 layout_mode = 2

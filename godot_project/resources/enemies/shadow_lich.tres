@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="EnemyData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
 [ext_resource type="Resource" path="res://resources/items/dragonscale_armor.tres" id="3_dragonscale"]
 [ext_resource type="Resource" path="res://resources/items/elixir_of_life.tres" id="4_elixir"]
+[ext_resource type="Resource" path="res://resources/items/lich_scepter.tres" id="5_lich_scepter"]
+[ext_resource type="Resource" path="res://resources/items/tome_archon_mind.tres" id="6_tome_archon"]
 
 [resource]
 script = ExtResource("1_enemy")
@@ -18,6 +20,6 @@ defense = 14.0
 xp_reward = 860
 gold_reward = 510
 spawn_weight = 0.45
-drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_dragonscale"), ExtResource("4_elixir")])
-drop_chances = Array[float]([0.12, 0.42])
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_dragonscale"), ExtResource("4_elixir"), ExtResource("5_lich_scepter"), ExtResource("6_tome_archon")])
+drop_chances = Array[float]([0.12, 0.42, 0.14, 0.22])
 sprite_color = Color(0.66, 0.32, 0.92, 1)

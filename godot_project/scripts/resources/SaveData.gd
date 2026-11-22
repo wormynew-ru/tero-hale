@@ -56,3 +56,17 @@ extends Resource
 @export var alchemist_next_mistake_safe: bool = false
 @export var pet_training_levels: Dictionary = {}
 @export var spirit_training_levels: Dictionary = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}
+
+@export var dark_weapon_enchant_level: int = 0
+@export var dark_armor_enchant_level: int = 0
+@export var mine_locked_this_run: bool = false
+@export var mine_depth: int = 0
+
+@export var auto_hp_threshold_pct: int = 35
+@export var auto_hp_condition: String = "combat"
+@export var auto_mana_enabled: bool = false
+@export var auto_mana_threshold_pct: int = 30
+@export var auto_mana_condition: String = "combat"
+@export var auto_buff_enabled: bool = false
+@export var auto_buff_condition: String = "on_expire_combat"
+@export var auto_buff_whitelist: Array[String] = []

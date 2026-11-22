@@ -27,6 +27,7 @@ signal overcharge_state_changed(is_active: bool, slot_index: int, tick_num: int)
 signal dot_tick_landed(emoji: String, title: String, damage: float)
 signal enemy_stun_changed(remaining_seconds: float)
 signal pet_action_performed(pet_emoji: String, text_value: String, color: Color)
+signal mine_find_triggered(msg: String)
 
 const SPAWN_DELAY: float = 1.5
 const REGEN_RATE_PER_SEC: float = 0.15
@@ -38,8 +39,9 @@ const SPIRIT_WIND_INTERVAL: float = 0.95
 const SPIRIT_FOREST_INTERVAL: float = 2.5
 const SPIRIT_EARTH_INTERVAL: float = 2.0
 
-const OVERCHARGE_TICK_INTERVAL: float = 1.0
-const OVERCHARGE_MAX_TICKS: int = 10
+const OVERCHARGE_TICKS_PER_SECOND: float = 12.0
+const OVERCHARGE_TICK_INTERVAL: float = 1.0 / OVERCHARGE_TICKS_PER_SECOND
+const OVERCHARGE_MAX_TICKS: int = 12
 
 var current_state: State = State.IDLE
 var is_seeking_battle: bool = false
@@ -73,6 +75,8 @@ var _pet_stun_used_this_fight: bool = false
 var _pet_pulse_timer: float = 0.0
 var _pet_lightning_timer: float = 0.0
 var _reflector_pulse_timer: float = 0.0
+var _mine_ambient_timer: float = 0.0
+var _auto_potion_timer: float = 0.0
 
 
 func _ready() -> void:
@@ -405,7 +409,7 @@ func _apply_enemy_dot(ability: AbilityData, power_mult: float) -> void:
 		"id": ability.id,
 		"title": ability.title,
 		"icon_emoji": ability.icon_emoji,
-		"remaining": maxf(1.0, ability.duration),
+		"remaining": maxf(1.0, ability.duration * GameManager.get_effect_duration_multiplier()),
 		"tick_timer": 0.0,
 		"power_mult": power_mult,
 		"armor_ignore_pct": clampf(ability.armor_ignore_pct, 0.0, 1.0),
@@ -491,7 +495,37 @@ func _process_idle(delta: float) -> void:
 	if GameManager.current_hp < max_hp:
 		var regen_mult: float = 2.0 if GameManager.has_dark_skill("arcane_barrier") else 1.0
 		GameManager.heal(max_hp * REGEN_RATE_PER_SEC * regen_mult * delta)
+	_process_auto_potions(delta, false)
 	attack_progress_updated.emit(0.0, 0.0)
+
+
+func _process_auto_potions(delta: float, is_in_combat: bool) -> void:
+	_auto_potion_timer += delta
+	if _auto_potion_timer >= 0.25:
+		_auto_potion_timer = 0.0
+		GameManager.try_auto_use_all_potions(is_in_combat)
+
+
+func _handle_player_death() -> void:
+	_clear_combat_effects()
+	_player_attack_timer = 0.0
+	_enemy_attack_timer = 0.0
+	_mine_ambient_timer = 0.0
+	if GameManager.is_mine_location():
+		is_seeking_battle = false
+		_spawn_timer = 0.0
+		current_enemy = null
+		enemy_hp = 0.0
+		enemy_max_hp = 0.0
+		enemy_mana = 0.0
+		enemy_troll_armor_shred = 0
+		troll_shred_updated.emit(0)
+		enemy_cleared.emit()
+		battle_search_changed.emit(false)
+		_set_state(State.RESTING)
+		GameManager.fail_mine_run()
+		return
+	_set_state(State.RESTING)
 
 
 func _process_fighting(delta: float) -> void:
@@ -517,11 +551,18 @@ func _process_fighting(delta: float) -> void:
 		var rot_dmg: float = GameManager.get_max_hp() * rot_pct * delta
 		GameManager.apply_rot_damage(rot_dmg)
 		if GameManager.current_hp <= 0.0:
-			_clear_combat_effects()
-			_player_attack_timer = 0.0
-			_enemy_attack_timer = 0.0
-			_set_state(State.RESTING)
+			_handle_player_death()
 			return
+
+	_process_auto_potions(delta, true)
+
+	if GameManager.is_mine_location():
+		_mine_ambient_timer += delta
+		if _mine_ambient_timer >= 5.5:
+			_mine_ambient_timer = 0.0
+			var find_msg: String = GameManager.roll_mine_ambient_find()
+			if not find_msg.is_empty():
+				mine_find_triggered.emit(find_msg)
 
 	if overcharge_active:
 		_overcharge_timer += delta
@@ -727,6 +768,7 @@ func _process_resting(delta: float) -> void:
 	var regen_mult: float = 2.0 if GameManager.has_dark_skill("arcane_barrier") else 1.0
 	var regen_amount: float = max_hp * REGEN_RATE_PER_SEC * regen_mult * delta
 	GameManager.heal(regen_amount)
+	_process_auto_potions(delta, false)
 	attack_progress_updated.emit(0.0, 0.0)
 
 	if GameManager.current_hp >= max_hp:
@@ -756,6 +798,7 @@ func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -
 		return
 
 	var is_ranged: bool = GameManager.is_using_ranged_weapon()
+	var is_staff: bool = GameManager.is_using_mage_staff()
 	var raw_damage: float = 0.0
 
 	if is_ranged:
@@ -765,6 +808,13 @@ func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -
 		raw_damage = GameManager.get_player_damage(has_ammo) * power_scale
 		if has_ammo:
 			GameManager.add_mastery_xp("ranged", 1.0)
+	elif is_staff:
+		var tome_emoji: String = GameManager.equipped_ammo.icon_emoji if GameManager.equipped_ammo != null else "✨"
+		var has_tome: bool = GameManager.consume_one_ammo()
+		ranged_shot_fired.emit(tome_emoji, has_tome)
+		raw_damage = GameManager.get_player_damage(has_tome) * power_scale
+		if has_tome:
+			GameManager.add_mastery_xp("magic", 1.0)
 	else:
 		raw_damage = GameManager.get_player_damage(true) * power_scale
 		GameManager.add_mastery_xp("melee", 1.0)
@@ -838,12 +888,9 @@ func _perform_enemy_attack() -> void:
 			return
 
 	if GameManager.current_hp <= 0.0:
-		_clear_combat_effects()
-		_player_attack_timer = 0.0
-		_enemy_attack_timer = 0.0
-		_set_state(State.RESTING)
+		_handle_player_death()
 	else:
-		GameManager.try_auto_use_potion()
+		GameManager.try_auto_use_all_potions(true)
 
 
 func _handle_enemy_defeated() -> void:
@@ -858,6 +905,8 @@ func _handle_enemy_defeated() -> void:
 
 	_clear_combat_effects()
 	GameManager.record_kill()
+	if GameManager.is_mine_location():
+		GameManager.record_mine_kill()
 	GameManager.add_gold(gold_earned)
 	GameManager.add_xp(xp_earned)
 	GameManager.record_afk_rewards(xp_earned, gold_earned)
@@ -916,6 +965,12 @@ func _spawn_enemy() -> void:
 		enemy_hp = enemy_max_hp
 		enemy_attack_damage *= pow(1.55, kills_f)
 		enemy_defense *= (1.0 + kills_f * 0.45)
+	elif GameManager.is_mine_location() and GameManager.mine_depth > 0:
+		var depth_scale: float = 1.0 + float(GameManager.mine_depth) * 0.08
+		enemy_max_hp = round(enemy_max_hp * depth_scale)
+		enemy_hp = enemy_max_hp
+		enemy_attack_damage *= depth_scale
+		enemy_defense *= depth_scale
 
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
@@ -954,6 +1009,7 @@ func _on_location_changed(_location: LocationData) -> void:
 	_clear_combat_effects()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
+	_mine_ambient_timer = 0.0
 	enemy_troll_armor_shred = 0
 	troll_shred_updated.emit(0)
 	if not is_seeking_battle:
@@ -971,6 +1027,8 @@ func _on_game_reset() -> void:
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
 	_spawn_timer = 0.0
+	_mine_ambient_timer = 0.0
+	_auto_potion_timer = 0.0
 	_reset_spirit_timers()
 	current_enemy = null
 	enemy_hp = 0.0

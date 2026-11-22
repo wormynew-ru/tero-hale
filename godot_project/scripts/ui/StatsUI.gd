@@ -47,6 +47,7 @@ func _ready() -> void:
 	)
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_state_updated())
 	GameManager.pets_changed.connect(_on_state_updated)
+	GameManager.dark_forge_changed.connect(_on_state_updated)
 
 	str_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("strength"))
 	agi_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("agility"))
@@ -115,9 +116,17 @@ func _refresh() -> void:
 		]
 	elif GameManager.is_using_ranged_weapon():
 		style_info = "Дальний бой (снарядов: %d)" % GameManager.equipped_ammo_count
+	elif GameManager.is_using_mage_staff():
+		var tome_str: String = "♾️" if (GameManager.equipped_ammo != null and GameManager.equipped_ammo.is_dark_forged) else str(GameManager.equipped_ammo_count)
+		style_info = "Маг-посох (книг: %s)" % tome_str
+
+	var total_int: int = GameManager.get_total_intellect()
+	var spell_power_bonus: int = roundi(GameManager.get_equipped_spell_power_bonus() * 100.0 + float(total_int) * 1.5)
+	var mana_red_pct: int = roundi(GameManager.get_equipped_mana_cost_reduction() * 100.0)
+	var dur_bonus_pct: int = roundi((GameManager.get_effect_duration_multiplier() - 1.0) * 100.0)
 
 	computed_stats_label.text = (
-		"⚔️ Урон: %s (DPS: %s, %s)  |  ⚡ Атака: %.2fс  |  🎯 Крит: %.0f%% (x%.2f)  |  💨 Уклон: %.1f%%  |  🛡️ Броня: %s  |  💧 Мана: %s (+%.1f/с)  |  💰 Золото x%.2f  |  ✨ XP x%.2f  |  💀 Сл.%d  |  Побед: %d"
+		"⚔️ Урон: %s (DPS: %s, %s)  |  ⚡ Атака: %.2fс  |  🎯 Крит: %.0f%% (x%.2f)  |  💨 Уклон: %.1f%%  |  🛡️ Броня: %s  |  🧠 Инта: %d (✨+%d%%, -%d%% МП, +%d%% длит.)  |  💧 Мана: %s (+%.1f/с)  |  💰 Золото x%.2f  |  ✨ XP x%.2f  |  💀 Сл.%d  |  Побед: %d"
 		% [
 			NumberFormatter.format_number(dmg),
 			NumberFormatter.format_number(dps),
@@ -127,6 +136,10 @@ func _refresh() -> void:
 			GameManager.get_crit_multiplier(),
 			GameManager.get_dodge_chance() * 100.0,
 			NumberFormatter.format_number(armor),
+			total_int,
+			spell_power_bonus,
+			mana_red_pct,
+			dur_bonus_pct,
 			NumberFormatter.format_number(GameManager.get_max_mana()),
 			GameManager.get_mana_regen_per_sec(),
 			GameManager.get_gold_multiplier(),

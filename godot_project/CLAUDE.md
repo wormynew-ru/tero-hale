@@ -152,7 +152,7 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
   - Победа над `curse_warden` даёт `+1 curse_reroll_tokens` (реролл проклятия любого тира в `DifficultyUI`) и усиливает следующего босса в ране: `HP *= 1.85^kills`, `DMG *= 1.55^kills`, `DEF *= 1 + 0.45 * kills`.
 - **Книга заклинаний (20 заклинаний, максимум 3 активных слота)**:
   - Всего 20 `AbilityData` (`14` общих + `6` эксклюзивов `blood_archmage`); активны в бою одновременно до 3 слотов (`equipped_ability_ids`).
-  - Типы эффектов: прямой/мульти/пробивающий/добивающий урон, лечение, временные баффы (`active_buffs`), периодический урон (`dot`) и бёрст-перегрузка `soul_overload` (`overcharge_burn`: тик `t` сжигает `2^(t-1)` HP и `2^(t-1) + max(0, t-2)` маны, давая мана-опыт магии и взрывной урон `1.75^(t-1)`).
+  - Типы эффектов: прямой/мульти/пробивающий/добивающий урон, лечение, временные баффы (`active_buffs`), периодический урон (`dot`) и бёрст-перегрузка `soul_overload` (`overcharge_burn`: `12` тиков/с, до `12` тиков за `1.0с`; тик `t` сжигает `2^(t-1)` HP и `2^(t-1) + max(0, t-2)` маны, давая мана-опыт магии и взрывной урон `1.75^(t-1)`).
 - **Зелья маны, баффов, Карта деревни и Убежище (Сад + Зельеварение с Сл.10+, v0.15.0)**:
   - **Зелья маны и баффов**: `ItemData` поддерживает `mana_amount` и временные баффы (`buff_id`, `buff_duration`, `buff_damage_pct`, `buff_attack_speed_pct`, `buff_armor_pct`, `buff_dodge_bonus`, `buff_crit_chance_bonus`, `buff_crit_mult_bonus`, `buff_spell_power_pct`, `buff_mana_regen_pct`, `buff_lifesteal_pct`).
   - **Карта деревни (`VillageMapUI.tscn`)**: 4 невидимые кнопки поверх `village_map.jpg` (Домик → `Sanctuary`, «МАГАЗИН» → выбор `Лавка` / `Кузня`, Щенок → `Путники`, Горы → Бой), при сохранении прямого доступа ко всем разделам из `HeroMenuUI`.
@@ -160,6 +160,32 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
   - **Постоянство между ранами**: `ItemType.SEED`, `ItemType.HARVEST`, `garden_plots`, `brewing_slots` и `alchemist_next_mistake_safe` **НЕ сбрасываются** в `start_new_run()`.
   - **Редкий дроп и Алый лепесток**: шанс дропа семян от `0.05%` (`moon_mint_seed`). `scarlet_petal` растёт только от побед над финальным боссом `eternal_titan` (`required_final_boss_kills = 2000`).
   - **Многоступенчатая варка и спас-флаг Алхимика**: `Вода → Шаг 1 → Шаг 2 → Шаг 3`. Неверный ингредиент даёт **100% взрыв** котла, но при активном классе `alchemist` булевый переключатель `alchemist_next_mistake_safe` гарантирует (без случайности), что **каждое 2-е неверное зелье не взрывается** и остаётся на том же этапе, а также даёт `x2` шанс дропа семян и `x2` скорость варки.
+
+- **Магическое снаряжение: Посохи, Книги-снаряды, Мантии и Инта (v0.17.0)**:
+  - **Инта (`get_total_intellect()`)**: от посохов, мантий, книг и вечной Тёмной заточки слота (`+3` Инты за `🌑+1` оружия, `+2` Инты за `🌑+1` брони).
+    - `+4.0` Max Mana за `1` Инту.
+    - `+0.45/с` регена маны за `1` Инту.
+    - `+1.5%` силы заклинаний за `1` Инту.
+    - Магические посохи (`WeaponStyle.STAFF`) бьют разрядами: `dmg = BASE_DAMAGE + total_strength * 0.8 + total_intellect * 2.2` (+ урон оружия) и дают `magic` XP за выстрел. При нехватке книг-снарядов урон падает до `0.45x`.
+  - **Книги-снаряды (`AmmoKind.TOME`)**:
+    - **Тип 1** (`tome_intellect_flow`, `tome_archon_mind`): дают `bonus_intellect` и снижение манакоста (`bonus_mana_cost_red`).
+    - **Тип 2** (`tome_spell_amplify`, `tome_primordial_grimoire`): дают усиление заклинаний (`bonus_spell_power_pct`) и продление длительности баффов/DoT (`bonus_effect_duration_pct` через `get_effect_duration_multiplier()`).
+    - **Вечный фолиант Вечности (`tome_eternal_codex`)**: имеет `is_dark_forged = true`, **не тратится** при выстрелах и объединяет бонусы обоих типов.
+- **🔥 Тёмная кузня (`DarkForgeUI.tscn/.gd`, v0.17.0)**:
+  - **Постоянная Тёмная заточка слотов (`dark_weapon_enchant_level`, `dark_armor_enchant_level`)**: никогда не сбрасывается при запуске Нового рана.
+    - Цена: `4 + lvl * 2` `🌑 Очков Тьмы`.
+    - Шанс успеха: `+0 → +1 = 25%`, **`+1 → +2 = 20%`**, далее `-1%` за уровень до **минимума `15%`** (`maxf(15.0, 20.0 - float(lvl - 1))`).
+  - **Ковка вечного снаряжения и книг**: рецепты за `🌑 Очки Тьмы`, `⛏️ Руду Бездны` и `📜 Древние листы`. Предметы с `is_dark_forged = true` и материалы `ItemType.MATERIAL` **не сбрасываются** в `start_new_run()`.
+- **⛏️ Древняя Шахта (`abandoned_mine.tres`, `is_one_attempt_mine = true`, v0.17.0)**:
+  - Локация с автобоем на **1 заход за ран** (Ур. 3+, Сл. 1+). При победах в Шахте растёт глубина `mine_depth` (враги усиливаются на `+8%` за каждое убийство).
+  - Каждые `~5.5с` в активном бою в Шахте срабатывает случайная находка (`roll_mine_ambient_find()` -> `mine_find_triggered`), а враги дополнительно роняют `⛏️ Руду Бездны` (`abyss_ore`), `📜 Древние листы` (`ancient_page`), золото, книги и зелья маны.
+  - При смерти игрока в Шахте (`fail_mine_run()`) локация блокируется до конца рана (`mine_locked_this_run = true`), бой останавливается и герой возвращается в стартовую локацию. Сбрасывается при `start_new_run()`.
+- **Настраиваемое авто-использование зелий (HP, MP, Бафф по истечению, v0.17.0)**:
+  - `InventoryUI` управляет 3 независимыми правилами:
+    - **Авто-HP**: тумблер, пресеты порога (`20/35/50/70/85%`) и условие (`"combat"` — только в бою / `"always"` — всегда).
+    - **Авто-MP**: тумблер, пресеты порога (`15/30/50/70%`) и условие (`"combat"` / `"always"`).
+    - **Авто-бафф по истечению**: тумблер, условие (`"on_expire_combat"` / `"on_expire_always"`) и фильтр `auto_buff_whitelist` по 7 бафф-зельям `BUFF_POTION_CATALOG`.
+  - В `CombatSystem` каждые `0.25с` (и после ударов врага) вызывается `GameManager.try_auto_use_all_potions(is_fighting)`.
 
 ---
 
@@ -190,6 +216,9 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - `brewing_changed()` — налив воды, шаги многоступенчатой варки, взрыв котла, спас-флаг Алхимика или сбор зелья.
 - `afk_mode_changed(is_afk: bool)` — переключение карманного OLED AFK-режима.
 - `afk_stats_updated(elapsed_seconds: float, kills: int, gold_earned: float, xp_earned: float)` — обновление сводки AFK-сессии.
+- `dark_forge_changed()` — ковка или Тёмная заточка в Тёмной кузне.
+- `mine_state_changed()` — изменение глубины или блокировки Шахты в текущем ране.
+- `mine_run_failed(depth_reached: int)` — смерть в Шахте и закрытие доступа до конца рана.
 - `game_reset()` — полный сброс прогресса игрока.
 
 ### `CombatSystem`
@@ -201,7 +230,7 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - `enemy_mana_changed(current_mana: float, max_mana: float)` — изменение маны врага.
 - `attack_progress_updated(player_progress: float, enemy_progress: float)` — прогресс ромбов перезарядки `[0.0..1.0]`.
 - `player_attack_landed(damage: float, is_crit: bool)` — игрок нанёс удар.
-- `ranged_shot_fired(ammo_emoji: String, has_ammo: bool)` — выстрел из лука/арбалета (или предупреждение об отсутствии снарядов).
+- `ranged_shot_fired(ammo_emoji: String, has_ammo: bool)` — выстрел из лука/арбалета/посоха (или предупреждение об отсутствии снарядов/книг).
 - `spirit_action_performed(spirit_name: String, emoji: String, value: float, is_heal: bool)` — атака или лечение одного из 4 духов природы Спирита.
 - `pet_action_performed(pet_emoji: String, text_value: String, color: Color)` — срабатывание эффекта путника (стан, молния, лечение, горение, эхо-золото).
 - `enemy_stun_changed(remaining_seconds: float)` — изменение длительности оглушения врага (например, от 🎆 Фейерверка).
@@ -212,3 +241,4 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - `overcharge_tick_fired(tick_num: int, hp_burn: float, mana_burn: float, damage: float)` — тик бёрст-перегрузки (`Выжигание души`).
 - `overcharge_state_changed(is_active: bool, slot_index: int, tick_num: int)` — переключение состояния активного канала перегрузки.
 - `dot_tick_landed(emoji: String, title: String, damage: float)` — тик периодического урона, шипов или отражения.
+- `mine_find_triggered(message: String)` — случайная находка руды, древнего листа, книги или золота в процессе боя в Шахте.

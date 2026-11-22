@@ -203,6 +203,13 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 16
 text = "⚒️ Кузня (заточка экипировки)"
 
+[node name="GoDarkForgeButton" type="Button" parent="ShopChoiceOverlay/CenterBox/ChoiceCard/ChoiceVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🔥 Тёмная кузня (вечное за 🌑)"
+
 [node name="CancelChoiceButton" type="Button" parent="ShopChoiceOverlay/CenterBox/ChoiceCard/ChoiceVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 44)

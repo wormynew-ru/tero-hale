@@ -8,6 +8,7 @@ extends Resource
 @export var required_level: int = 1
 @export var required_difficulty: int = 1
 @export var always_open_once_unlocked: bool = false
+@export var is_one_attempt_mine: bool = false
 @export var enemies: Array[EnemyData] = []
 @export var background_color: Color = Color(0.12, 0.2, 0.14, 1.0)
 

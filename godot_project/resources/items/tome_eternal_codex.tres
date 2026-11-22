@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "tome_eternal_codex"
+item_name = "Вечный фолиант Вечности"
+icon_emoji = "📖"
+description = "Создан в Тёмной кузне из Древних листов. Бесконечная книга-снаряд: даёт Инту, снижение манакоста, усиление чар и продление эффектов, не тратится и НЕ сбрасывается между ранами!"
+item_type = 3
+bonus_strength = 0
+bonus_agility = 0
+bonus_endurance = 0
+bonus_intellect = 22
+weapon_style = 0
+required_ammo = 0
+ammo_kind = 3
+bonus_damage = 24.0
+bonus_crit_chance = 0.08
+armor_penetration = 14.0
+shop_pack_amount = 1
+bonus_mana_cost_red = 0.20
+bonus_spell_power_pct = 0.40
+bonus_effect_duration_pct = 0.40
+is_dark_forged = true
+heal_amount = 0.0
+buy_price = 4000
+sell_value = 1500
+icon_color = Color(1, 0.82, 0.42, 1)

@@ -85,6 +85,7 @@ func _ready() -> void:
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _refresh_hud())
 	GameManager.pets_changed.connect(_refresh_companion_slot)
 	GameManager.location_changed.connect(_on_location_changed)
+	GameManager.mine_run_failed.connect(_on_mine_run_failed)
 	GameManager.afk_mode_changed.connect(_on_afk_mode_changed)
 	GameManager.game_reset.connect(_refresh_all)
 
@@ -127,6 +128,7 @@ func bind_combat_system(combat: CombatSystem) -> void:
 	_combat_system.dot_tick_landed.connect(_on_dot_tick_landed)
 	_combat_system.enemy_stun_changed.connect(_on_enemy_stun_changed)
 	_combat_system.pet_action_performed.connect(_on_pet_action_performed)
+	_combat_system.mine_find_triggered.connect(_on_mine_find_triggered)
 
 	_on_battle_search_changed(_combat_system.is_seeking_battle)
 	_on_combat_state_changed(int(_combat_system.current_state))
@@ -204,6 +206,9 @@ func _refresh_hud() -> void:
 
 	if GameManager.is_using_ranged_weapon():
 		backpack_button.text = "🏹 %d  🎒" % GameManager.equipped_ammo_count
+	elif GameManager.is_using_mage_staff():
+		var tome_cnt: String = "♾️" if (GameManager.equipped_ammo != null and GameManager.equipped_ammo.is_dark_forged) else str(GameManager.equipped_ammo_count)
+		backpack_button.text = "📚 %s  🎒" % tome_cnt
 	else:
 		backpack_button.text = "РЮКЗАК  🎒"
 
@@ -681,6 +686,8 @@ func _on_location_changed(location: LocationData) -> void:
 			backdrop_tint.color = Color(0.0, 0.0, 0.0, 0.0)
 		"dark_forest":
 			backdrop_tint.color = Color(0.03, 0.12, 0.08, 0.36)
+		"abandoned_mine":
+			backdrop_tint.color = Color(0.08, 0.14, 0.22, 0.56)
 		"ancient_ruins":
 			backdrop_tint.color = Color(0.12, 0.07, 0.16, 0.44)
 		"swamp_marshes":
@@ -701,6 +708,23 @@ func _on_location_changed(location: LocationData) -> void:
 			backdrop_tint.color = Color(0.24, 0.04, 0.28, 0.58)
 		_:
 			backdrop_tint.color = Color(location.background_color.r, location.background_color.g, location.background_color.b, 0.35)
+
+
+func _on_mine_find_triggered(msg: String) -> void:
+	if msg.is_empty() or GameManager.is_afk_mode:
+		return
+	_spawn_floating_text(player_avatar_stage, msg, Color(0.55, 0.92, 1.0, 1.0), true)
+
+
+func _on_mine_run_failed(depth_reached: int) -> void:
+	if GameManager.is_afk_mode:
+		return
+	_spawn_floating_text(
+		player_avatar_stage,
+		"💀 Шахта обрушилась на гл.%d! Новый заход — в новом ране." % depth_reached,
+		Color(1.0, 0.42, 0.46, 1.0),
+		true
+	)
 
 
 func _on_afk_mode_changed(is_afk: bool) -> void:

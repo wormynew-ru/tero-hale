@@ -9,14 +9,28 @@ extends ScrollContainer
 @onready var unequip_ammo_button: Button = %UnequipAmmoButton
 @onready var pet_slot_label: Label = %PetSlotLabel
 @onready var unequip_pet_slot_button: Button = %UnequipPetSlotButton
-@onready var auto_potion_toggle: CheckButton = %AutoPotionToggle
+
 @onready var quick_potion_button: Button = %QuickPotionButton
 @onready var quick_mana_potion_button: Button = %QuickManaPotionButton
+
+@onready var auto_potion_toggle: CheckButton = %AutoPotionToggle
+@onready var auto_hp_threshold_button: Button = %AutoHpThresholdButton
+@onready var auto_hp_condition_button: Button = %AutoHpConditionButton
+
+@onready var auto_mana_toggle: CheckButton = %AutoManaToggle
+@onready var auto_mana_threshold_button: Button = %AutoManaThresholdButton
+@onready var auto_mana_condition_button: Button = %AutoManaConditionButton
+
+@onready var auto_buff_toggle: CheckButton = %AutoBuffToggle
+@onready var auto_buff_condition_button: Button = %AutoBuffConditionButton
+@onready var buff_whitelist_flow: HFlowContainer = %BuffWhitelistFlow
+
 @onready var feedback_label: Label = %FeedbackLabel
 @onready var inventory_list: VBoxContainer = %InventoryList
 
 
 var _inv_rows: Array[Dictionary] = []
+var _buff_filter_buttons: Dictionary = {}
 var _last_inv_sig: String = ""
 var _dirty_inv: bool = true
 var _dirty_ctrl: bool = true
@@ -26,6 +40,7 @@ func _ready() -> void:
 	GameManager.inventory_changed.connect(_on_inventory_updated)
 	GameManager.stats_changed.connect(_on_controls_updated)
 	GameManager.enchant_changed.connect(_on_inventory_updated)
+	GameManager.dark_forge_changed.connect(_on_inventory_updated)
 	GameManager.difficulty_changed.connect(_on_inventory_updated)
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_inventory_updated())
 	GameManager.pets_changed.connect(_on_inventory_updated)
@@ -43,16 +58,42 @@ func _ready() -> void:
 	)
 	unequip_ammo_button.pressed.connect(func() -> void:
 		GameManager.unequip_slot(ItemData.ItemType.AMMO)
-		feedback_label.text = "Снаряды убраны в рюкзак."
+		feedback_label.text = "Снаряды / Книги убраны в рюкзак."
 	)
 	unequip_pet_slot_button.pressed.connect(func() -> void:
 		GameManager.unequip_pet()
 		feedback_label.text = "Путник убран из слота."
 	)
+
 	auto_potion_toggle.toggled.connect(func(pressed: bool) -> void:
-		GameManager.set_auto_potion(pressed)
-		feedback_label.text = "Авто-зелье (<35% HP) включено." if pressed else "Авто-зелье отключено."
+		GameManager.set_auto_hp_settings(pressed, GameManager.auto_hp_threshold_pct, GameManager.auto_hp_condition)
+		feedback_label.text = "Авто-HP (<%d%%) включено." % GameManager.auto_hp_threshold_pct if pressed else "Авто-HP отключено."
 	)
+	auto_hp_threshold_button.pressed.connect(_cycle_hp_threshold)
+	auto_hp_condition_button.pressed.connect(func() -> void:
+		var next_cond: String = "always" if GameManager.auto_hp_condition == "combat" else "combat"
+		GameManager.set_auto_hp_settings(GameManager.auto_potion_enabled, GameManager.auto_hp_threshold_pct, next_cond)
+	)
+
+	auto_mana_toggle.toggled.connect(func(pressed: bool) -> void:
+		GameManager.set_auto_mana_settings(pressed, GameManager.auto_mana_threshold_pct, GameManager.auto_mana_condition)
+		feedback_label.text = "Авто-MP (<%d%%) включено." % GameManager.auto_mana_threshold_pct if pressed else "Авто-MP отключено."
+	)
+	auto_mana_threshold_button.pressed.connect(_cycle_mana_threshold)
+	auto_mana_condition_button.pressed.connect(func() -> void:
+		var next_cond: String = "always" if GameManager.auto_mana_condition == "combat" else "combat"
+		GameManager.set_auto_mana_settings(GameManager.auto_mana_enabled, GameManager.auto_mana_threshold_pct, next_cond)
+	)
+
+	auto_buff_toggle.toggled.connect(func(pressed: bool) -> void:
+		GameManager.set_auto_buff_settings(pressed, GameManager.auto_buff_condition)
+		feedback_label.text = "Авто-бафф по истечению включён." if pressed else "Авто-бафф отключён."
+	)
+	auto_buff_condition_button.pressed.connect(func() -> void:
+		var next_cond: String = "on_expire_always" if GameManager.auto_buff_condition == "on_expire_combat" else "on_expire_combat"
+		GameManager.set_auto_buff_settings(GameManager.auto_buff_enabled, next_cond)
+	)
+
 	quick_potion_button.pressed.connect(func() -> void:
 		feedback_label.text = GameManager.use_best_healing_potion()
 	)
@@ -62,6 +103,7 @@ func _ready() -> void:
 	HoldAutoClicker.attach(quick_potion_button, 50.0)
 	HoldAutoClicker.attach(quick_mana_potion_button, 50.0)
 
+	_build_buff_whitelist_buttons()
 	_rebuild_inventory(true)
 	_refresh_controls()
 
@@ -106,9 +148,65 @@ func _on_mana_changed(_current_mana: float, _max_mana: float) -> void:
 	_on_controls_updated()
 
 
+func _cycle_hp_threshold() -> void:
+	var presets: Array[int] = GameManager.HP_THRESHOLD_PRESETS
+	var cur: int = GameManager.auto_hp_threshold_pct
+	var idx: int = presets.find(cur)
+	var next_val: int = presets[(idx + 1) % presets.size()] if idx >= 0 else presets[0]
+	GameManager.set_auto_hp_settings(GameManager.auto_potion_enabled, next_val, GameManager.auto_hp_condition)
+
+
+func _cycle_mana_threshold() -> void:
+	var presets: Array[int] = GameManager.MANA_THRESHOLD_PRESETS
+	var cur: int = GameManager.auto_mana_threshold_pct
+	var idx: int = presets.find(cur)
+	var next_val: int = presets[(idx + 1) % presets.size()] if idx >= 0 else presets[0]
+	GameManager.set_auto_mana_settings(GameManager.auto_mana_enabled, next_val, GameManager.auto_mana_condition)
+
+
+func _build_buff_whitelist_buttons() -> void:
+	for child: Node in buff_whitelist_flow.get_children():
+		child.queue_free()
+	_buff_filter_buttons.clear()
+
+	for entry: Dictionary in GameManager.BUFF_POTION_CATALOG:
+		var bid: String = str(entry.get("id", ""))
+		var lbl: String = str(entry.get("label", bid))
+		var btn: Button = Button.new()
+		btn.custom_minimum_size = Vector2(0.0, 34.0)
+		btn.add_theme_font_size_override("font_size", 12)
+		btn.toggle_mode = true
+		btn.text = lbl
+		btn.pressed.connect(func() -> void:
+			GameManager.toggle_buff_potion_whitelist(bid)
+		)
+		buff_whitelist_flow.add_child(btn)
+		_buff_filter_buttons[bid] = btn
+
+
 func _refresh_controls() -> void:
 	_dirty_ctrl = false
 	auto_potion_toggle.set_pressed_no_signal(GameManager.auto_potion_enabled)
+	auto_potion_toggle.text = "🧪 Авто-HP (<%d%%)" % GameManager.auto_hp_threshold_pct
+	auto_hp_threshold_button.text = "Порог: <%d%%" % GameManager.auto_hp_threshold_pct
+	auto_hp_condition_button.text = "🌐 Всегда" if GameManager.auto_hp_condition == "always" else "⚔️ Только в бою"
+
+	auto_mana_toggle.set_pressed_no_signal(GameManager.auto_mana_enabled)
+	auto_mana_toggle.text = "💧 Авто-MP (<%d%%)" % GameManager.auto_mana_threshold_pct
+	auto_mana_threshold_button.text = "Порог: <%d%%" % GameManager.auto_mana_threshold_pct
+	auto_mana_condition_button.text = "🌐 Всегда" if GameManager.auto_mana_condition == "always" else "⚔️ Только в бою"
+
+	auto_buff_toggle.set_pressed_no_signal(GameManager.auto_buff_enabled)
+	auto_buff_condition_button.text = "🌐 Истечение: Всегда" if GameManager.auto_buff_condition == "on_expire_always" else "⚔️ Истечение: В бою"
+
+	for bid_var: Variant in _buff_filter_buttons.keys():
+		var bid: String = str(bid_var)
+		var btn: Button = _buff_filter_buttons[bid_var] as Button
+		if btn != null:
+			var allowed: bool = GameManager.is_buff_potion_whitelisted(bid)
+			btn.set_pressed_no_signal(allowed)
+			btn.modulate = Color(0.55, 0.98, 0.72, 1.0) if allowed else Color(0.62, 0.64, 0.7, 0.7)
+
 	var potions: int = GameManager.get_total_potion_count()
 	quick_potion_button.text = "🧪 Выпить HP (%d)" % potions
 	quick_potion_button.disabled = potions <= 0 or GameManager.current_hp >= GameManager.get_max_hp()
@@ -135,53 +233,66 @@ func _rebuild_inventory(force: bool = false) -> void:
 	spirit_equip_notice.visible = equip_disabled
 
 	var w_ench: int = GameManager.weapon_enchant_level
+	var w_dark: int = GameManager.dark_weapon_enchant_level
+	var w_dark_tag: String = " | 🌑+%d" % w_dark if w_dark > 0 else ""
 	if equip_disabled:
 		weapon_slot_label.text = "⚔️ Оружие: [Заблокировано классом Спирит]"
 		unequip_weapon_button.disabled = true
 	elif GameManager.equipped_weapon != null:
 		var wb: Dictionary = GameManager.get_equipped_stat_bonuses(ItemData.ItemType.WEAPON)
-		weapon_slot_label.text = "⚔️ Оружие [+%d]: %s (+%d Сил, +%d Лов, +%d Вын)" % [
+		var w_int_txt: String = ", +%d Инт" % int(wb["intellect"]) if int(wb["intellect"]) > 0 else ""
+		weapon_slot_label.text = "⚔️ Оружие [+%d%s]: %s (+%d Сил, +%d Лов, +%d Вын%s)" % [
 			w_ench,
+			w_dark_tag,
 			GameManager.equipped_weapon.get_display_name(),
 			int(wb["strength"]),
 			int(wb["agility"]),
 			int(wb["endurance"]),
+			w_int_txt,
 		]
 		unequip_weapon_button.disabled = false
 	else:
-		weapon_slot_label.text = "⚔️ Оружие [+%d]: [Пусто]" % w_ench
+		weapon_slot_label.text = "⚔️ Оружие [+%d%s]: [Пусто]" % [w_ench, w_dark_tag]
 		unequip_weapon_button.disabled = true
 
 	var a_ench: int = GameManager.armor_enchant_level
+	var a_dark: int = GameManager.dark_armor_enchant_level
+	var a_dark_tag: String = " | 🌑+%d" % a_dark if a_dark > 0 else ""
 	if equip_disabled:
 		armor_slot_label.text = "🛡️ Броня: [Заблокировано классом Спирит]"
 		unequip_armor_button.disabled = true
 	elif GameManager.equipped_armor != null:
 		var ab: Dictionary = GameManager.get_equipped_stat_bonuses(ItemData.ItemType.ARMOR)
-		armor_slot_label.text = "🛡️ Броня [+%d]: %s (+%d Сил, +%d Лов, +%d Вын)" % [
+		var a_int_txt: String = ", +%d Инт" % int(ab["intellect"]) if int(ab["intellect"]) > 0 else ""
+		armor_slot_label.text = "🛡️ Броня [+%d%s]: %s (+%d Сил, +%d Лов, +%d Вын%s)" % [
 			a_ench,
+			a_dark_tag,
 			GameManager.equipped_armor.get_display_name(),
 			int(ab["strength"]),
 			int(ab["agility"]),
 			int(ab["endurance"]),
+			a_int_txt,
 		]
 		unequip_armor_button.disabled = false
 	else:
-		armor_slot_label.text = "🛡️ Броня [+%d]: [Пусто]" % a_ench
+		armor_slot_label.text = "🛡️ Броня [+%d%s]: [Пусто]" % [a_ench, a_dark_tag]
 		unequip_armor_button.disabled = true
 
 	if equip_disabled:
-		ammo_slot_label.text = "🏹 Снаряды: [Заблокировано классом Спирит]"
+		ammo_slot_label.text = "🏹 Снаряды / Книги: [Заблокировано классом Спирит]"
 		unequip_ammo_button.disabled = true
-	elif GameManager.equipped_ammo != null and GameManager.equipped_ammo_count > 0:
-		ammo_slot_label.text = "🏹 Снаряды: %s x%d (%s)" % [
+	elif GameManager.equipped_ammo != null and (GameManager.equipped_ammo_count > 0 or GameManager.equipped_ammo.is_dark_forged):
+		var slot_prefix: String = "📚 Книга мага:" if GameManager.equipped_ammo.ammo_kind == ItemData.AmmoKind.TOME else "🏹 Снаряды:"
+		var cnt_label: String = "♾️" if GameManager.equipped_ammo.is_dark_forged else "x%d" % GameManager.equipped_ammo_count
+		ammo_slot_label.text = "%s %s %s (%s)" % [
+			slot_prefix,
 			GameManager.equipped_ammo.get_display_name(),
-			GameManager.equipped_ammo_count,
+			cnt_label,
 			GameManager.equipped_ammo.get_summary_text(),
 		]
 		unequip_ammo_button.disabled = false
 	else:
-		ammo_slot_label.text = "🏹 Снаряды: [Пусто]"
+		ammo_slot_label.text = "🏹 Снаряды / Книги: [Пусто]"
 		unequip_ammo_button.disabled = true
 
 	var active_pet: PetData = GameManager.get_equipped_pet()
@@ -206,7 +317,7 @@ func _rebuild_inventory(force: bool = false) -> void:
 
 	if GameManager.inventory.is_empty():
 		var empty_label: Label = Label.new()
-		empty_label.text = "Рюкзак пуст. Побеждайте врагов или загляните в 🏪 Лавку."
+		empty_label.text = "Рюкзак пуст. Побеждайте врагов, загляните в 🏪 Лавку или спуститесь в ⛏️ Шахту."
 		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		empty_label.modulate = Color(0.65, 0.7, 0.78, 1.0)
 		inventory_list.add_child(empty_label)
@@ -235,12 +346,15 @@ func _rebuild_inventory(force: bool = false) -> void:
 		row.add_child(info_label)
 
 		var action_btn: Button = Button.new()
-		action_btn.custom_minimum_size = Vector2(114.0, 44.0)
+		action_btn.custom_minimum_size = Vector2(124.0, 44.0)
 		if item.item_type == ItemData.ItemType.CONSUMABLE:
 			action_btn.text = "Выпить"
 		elif item.item_type == ItemData.ItemType.AMMO:
-			action_btn.text = "В колчан"
+			action_btn.text = "В руку (книга)" if item.ammo_kind == ItemData.AmmoKind.TOME else "В колчан"
 			action_btn.disabled = equip_disabled
+		elif item.item_type == ItemData.ItemType.MATERIAL:
+			action_btn.text = "Для Кузни"
+			action_btn.disabled = true
 		elif item.item_type == ItemData.ItemType.SEED:
 			var seed_crop: CropData = GameManager.get_crop_by_id(item.seed_crop_id)
 			var is_light_seed: bool = seed_crop != null and seed_crop.is_light_crop()
@@ -333,8 +447,7 @@ func _update_inventory_rows_in_place() -> void:
 		var info_label: Label = row_data["info_label"] as Label
 		var sell_btn: Button = row_data["sell_btn"] as Button
 		var slot_prefix: String = "[Слот %d] " % (index + 1) if index < 6 else ""
-		info_label.text = "%s%s x%d — %s" % [slot_prefix, item.item_name, count, item.get_summary_text()]
+		info_label.text = "%s%s x%d — %s" % [slot_prefix, item.get_display_name(), count, item.get_summary_text()]
 		var sell_val: float = GameManager.get_item_sell_value(item)
 		sell_btn.text = "💰 +%s" % NumberFormatter.format_number(sell_val)
 		row_idx += 1
-

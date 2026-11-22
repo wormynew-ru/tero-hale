@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="EnemyData" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="EnemyData" load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
 [ext_resource type="Resource" path="res://resources/items/iron_sword.tres" id="3_iron"]
 [ext_resource type="Resource" path="res://resources/items/chainmail_armor.tres" id="4_chainmail"]
 [ext_resource type="Resource" path="res://resources/items/medium_healing_potion.tres" id="5_med_potion"]
+[ext_resource type="Resource" path="res://resources/items/apprentice_staff.tres" id="6_staff"]
+[ext_resource type="Resource" path="res://resources/items/mage_robe.tres" id="7_robe"]
+[ext_resource type="Resource" path="res://resources/items/tome_intellect_flow.tres" id="8_tome"]
 
 [resource]
 script = ExtResource("1_enemy")
@@ -19,6 +22,6 @@ defense = 5.0
 xp_reward = 140
 gold_reward = 88
 spawn_weight = 0.35
-drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_iron"), ExtResource("4_chainmail"), ExtResource("5_med_potion")])
-drop_chances = Array[float]([0.22, 0.22, 0.45])
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_iron"), ExtResource("4_chainmail"), ExtResource("5_med_potion"), ExtResource("6_staff"), ExtResource("7_robe"), ExtResource("8_tome")])
+drop_chances = Array[float]([0.22, 0.22, 0.45, 0.16, 0.16, 0.20])
 sprite_color = Color(0.62, 0.34, 0.85, 1)

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "eternal_abyss_blade"
+item_name = "Вечный клинок Бездны"
+icon_emoji = "🗡️"
+description = "Выкован в Тёмной кузне. НЕ сбрасывается при начале нового рана!"
+item_type = 0
+bonus_strength = 48
+bonus_agility = 20
+bonus_endurance = 18
+bonus_intellect = 0
+weapon_style = 0
+required_ammo = 0
+ammo_kind = 0
+bonus_damage = 150.0
+bonus_crit_chance = 0.10
+armor_penetration = 25.0
+shop_pack_amount = 1
+is_dark_forged = true
+heal_amount = 0.0
+buy_price = 3500
+sell_value = 1500
+icon_color = Color(0.76, 0.34, 0.96, 1)

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "tome_archon_mind"
+item_name = "Кодекс Архонта"
+icon_emoji = "📓"
+description = "Усиленная книга-снаряд (Тип 1): даёт много Инты и ощутимо снижает манакост чар."
+item_type = 3
+bonus_strength = 0
+bonus_agility = 0
+bonus_endurance = 0
+bonus_intellect = 16
+weapon_style = 0
+required_ammo = 0
+ammo_kind = 3
+bonus_damage = 14.0
+bonus_crit_chance = 0.04
+armor_penetration = 5.0
+shop_pack_amount = 50
+bonus_mana_cost_red = 0.22
+bonus_spell_power_pct = 0.0
+bonus_effect_duration_pct = 0.0
+is_dark_forged = false
+heal_amount = 0.0
+buy_price = 240
+sell_value = 8
+icon_color = Color(0.45, 0.56, 0.98, 1)
