@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "sky_chamomile_harvest"
+item_name = "Небесная ромашка"
+icon_emoji = "🌼"
+description = "Базовое светлое растение. Подходит для дрессировки путников (любимый пряник Хроно-совы) и подкормки духов."
+item_type = 5
+buy_price = 60
+sell_value = 16
+icon_color = Color(0.98, 0.88, 0.42, 1)
+seed_crop_id = "sky_chamomile"
+garden_category = "light"

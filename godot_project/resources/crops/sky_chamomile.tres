@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "sky_chamomile"
+crop_name = "Небесная ромашка"
+icon_emoji = "🌼"
+rarity_label = "Светлое (3.0%)"
+garden_type = "light"
+description = "Ароматный цветок Светлого сада. Важный компонент узоров приманки путников и лакомство для магических питомцев."
+seed_item_path = "res://resources/items/sky_chamomile_seed.tres"
+harvest_item_path = "res://resources/items/sky_chamomile_harvest.tres"
+base_drop_chance = 0.03
+boss_drop_chance = 0.03
+final_boss_only = false
+min_enemy_xp = 0.0
+grow_seconds = 35.0
+required_final_boss_kills = 0
+is_spirit_training_crop = false
+harvest_min = 1
+harvest_max = 3
+accent_color = Color(0.98, 0.88, 0.42, 1)

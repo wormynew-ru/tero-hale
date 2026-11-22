@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "spirit_primordial"
+crop_name = "Первоцвет духов"
+icon_emoji = "🌟"
+rarity_label = "Ультра-редкое (0.03% с Вечного титана)"
+garden_type = "dark"
+description = "Ультра-редкое семя (0.03% ТОЛЬКО с последнего босса Вечного титана). Растёт целый час (3600с), но если скормить духам базовые растения Светлого сада (по 2 шт. каждого) — вырастает моментально!"
+seed_item_path = "res://resources/items/spirit_primordial_seed.tres"
+harvest_item_path = "res://resources/items/spirit_primordial_harvest.tres"
+base_drop_chance = 0.0
+boss_drop_chance = 0.0003
+final_boss_only = true
+min_enemy_xp = 0.0
+grow_seconds = 3600.0
+required_final_boss_kills = 0
+is_spirit_training_crop = true
+instant_grow_feed_items = {
+"honey_berry_harvest": 2,
+"light_clover_harvest": 2,
+"sky_chamomile_harvest": 2,
+"spark_chili_harvest": 2
+}
+harvest_min = 1
+harvest_max = 2
+accent_color = Color(0.55, 0.96, 0.98, 1)

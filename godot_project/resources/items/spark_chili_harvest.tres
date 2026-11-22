@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "spark_chili_harvest"
+item_name = "Искристый перчик"
+icon_emoji = "🌶️"
+description = "Базовое светлое растение. Подходит для дрессировки путников (любимый пряник Фейерверка и Огненного лисёнка) и подкормки духов."
+item_type = 5
+buy_price = 75
+sell_value = 20
+icon_color = Color(0.98, 0.52, 0.24, 1)
+seed_crop_id = "spark_chili"
+garden_category = "light"

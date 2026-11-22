@@ -63,7 +63,7 @@ func _process(_delta: float) -> void:
 func _refresh() -> void:
 	var hc: HeroClassData = GameManager.get_current_class()
 	var pet: PetData = GameManager.get_equipped_pet()
-	var pet_text: String = "  |  🐾 Путник: %s %s" % [pet.icon_emoji, pet.pet_name] if pet != null else "  |  🐾 Путник: не выбран"
+	var pet_text: String = "  |  🐾 Путник: %s %s (Ур.%d)" % [pet.icon_emoji, pet.pet_name, GameManager.get_pet_training_level(pet.id)] if pet != null else "  |  🐾 Путник: не выбран"
 	if hc != null:
 		class_summary_label.text = "%s Класс: %s — %s%s" % [hc.icon_emoji, hc.title, hc.passive_summary, pet_text]
 	else:
@@ -81,7 +81,12 @@ func _refresh() -> void:
 	if GameManager.has_hero_class("reflector"):
 		style_info = "🪞 Отражение 20% + 5% HP/с + 0.1% гниение"
 	elif GameManager.is_equipment_disabled():
-		style_info = "Духи природы"
+		style_info = "Духи (🔥%d/🌪️%d/🌿%d/🪨%d)" % [
+			GameManager.get_spirit_training_level("fire"),
+			GameManager.get_spirit_training_level("wind"),
+			GameManager.get_spirit_training_level("forest"),
+			GameManager.get_spirit_training_level("earth"),
+		]
 	elif GameManager.is_using_ranged_weapon():
 		style_info = "Дальний бой (снарядов: %d)" % GameManager.equipped_ammo_count
 

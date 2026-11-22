@@ -132,7 +132,9 @@ test('tokenizeLine highlights HeroClassData, DarkSkillNodeData, PetData, and Num
 
 test('all res:// paths in GameManager.gd, .tscn, and .tres files resolve on disk', () => {
   const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  const gmPaths = [...gmContent.matchAll(/"(res:\/\/[^"]+)"/g)].map((m) => m[1]);
+  const gmPaths = [...gmContent.matchAll(/"(res:\/\/[^"]+)"/g)]
+    .map((m) => m[1])
+    .filter((p) => !p.includes('%'));
   assert.ok(gmPaths.length >= 60, 'Expected GameManager.gd to register locations, items, skills, classes');
   for (const resPath of gmPaths) {
     assert.ok(fs.existsSync(resolveResPath(resPath)), `Missing GameManager resource on disk: ${resPath}`);
@@ -348,10 +350,10 @@ test('all 34 regular skills cost 1 SP with empowered bonuses, XP curve is steepe
 
 test('mana potions, buff potions, village map hotspots, Diff-10 Sanctuary garden/brewing, scarlet petal (2000 boss kills), and deterministic Alchemist safety flag are implemented', () => {
   const itemFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/items'), '.tres');
-  assert.equal(itemFiles.length, 53, 'Expected 53 item resources (including mana/buff/brewed potions, 5 seeds, 5 harvests)');
+  assert.equal(itemFiles.length, 63, 'Expected 63 item resources (including 4 light seeds/harvests and spirit primordial seed/harvest)');
 
   const cropFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/crops'), '.tres');
-  assert.equal(cropFiles.length, 5, 'Expected 5 Sanctuary crop resources');
+  assert.equal(cropFiles.length, 10, 'Expected 10 Sanctuary crop resources (4 light + 6 dark)');
 
   const moonMintTxt = fs.readFileSync(path.join(GODOT_ROOT, 'resources/crops/moon_mint.tres'), 'utf-8');
   assert.ok(/base_drop_chance\s*=\s*0\.0005/.test(moonMintTxt), 'moon_mint must drop with 0.05% (0.0005) base chance');
@@ -439,6 +441,69 @@ test('Shop excludes high-tier melee/armor (drop-only) while keeping starter gear
     assert.ok(shopBlock.includes(item), `Kept item ${item} must remain in shop`);
   }
 });
+
+test('Light Garden pet luring, withering duplicates, pet treat training, 0.03% Spirit Primordial seed with instant grow, and Spirit training are wired cleanly', () => {
+  const lightCrops = ['light_clover.tres', 'honey_berry.tres', 'sky_chamomile.tres', 'spark_chili.tres'];
+  for (const file of lightCrops) {
+    const txt = fs.readFileSync(path.join(GODOT_ROOT, 'resources/crops', file), 'utf-8');
+    assert.ok(/garden_type\s*=\s*"light"/.test(txt), `${file} must have garden_type = "light"`);
+  }
+
+  const primordialTxt = fs.readFileSync(path.join(GODOT_ROOT, 'resources/crops/spirit_primordial.tres'), 'utf-8');
+  assert.ok(/final_boss_only\s*=\s*true/.test(primordialTxt), 'spirit_primordial must drop only from final boss');
+  assert.ok(/boss_drop_chance\s*=\s*0\.0003/.test(primordialTxt), 'spirit_primordial must have 0.03% (0.0003) drop chance');
+  assert.ok(/grow_seconds\s*=\s*3600\.0/.test(primordialTxt), 'spirit_primordial must grow slowly by default (3600s)');
+  assert.ok(/is_spirit_training_crop\s*=\s*true/.test(primordialTxt), 'spirit_primordial must be flagged as spirit training crop');
+  assert.ok(/instant_grow_feed_items\s*=/.test(primordialTxt), 'spirit_primordial must configure instant_grow_feed_items');
+
+  const petFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/pets'), '.tres');
+  const petIds: string[] = [];
+  for (const pFile of petFiles) {
+    const pTxt = fs.readFileSync(pFile, 'utf-8');
+    const idMatch = /^id\s*=\s*"([^"]+)"/m.exec(pTxt);
+    assert.ok(idMatch, `Missing id in ${pFile}`);
+    petIds.push(idMatch[1]);
+    assert.ok(/^favorite_treat_id\s*=\s*"[^"]+"/m.test(pTxt), `${pFile} must define favorite_treat_id`);
+    assert.ok(/^secondary_treat_id\s*=\s*"[^"]+"/m.test(pTxt), `${pFile} must define secondary_treat_id`);
+    assert.ok(/^lure_hint\s*=\s*"[^"]+"/m.test(pTxt), `${pFile} must define lure_hint`);
+  }
+
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const recipeBlockMatch = /const PET_LURE_RECIPES: Array\[Dictionary\] = \[([\s\S]*?)\r?\n\]/.exec(gmContent);
+  assert.ok(recipeBlockMatch, 'GameManager must define PET_LURE_RECIPES');
+  const recipeBlock = recipeBlockMatch[1];
+  const patternSet = new Set<string>();
+  for (const pid of petIds) {
+    assert.ok(recipeBlock.includes(`"pet_id": "${pid}"`), `PET_LURE_RECIPES must include ${pid}`);
+  }
+  for (const patMatch of recipeBlock.matchAll(/"pattern":\s*\[([^\]]+)\]/g)) {
+    const norm = patMatch[1].replace(/\s+/g, '');
+    assert.ok(!patternSet.has(norm), `Duplicate pet lure pattern in PET_LURE_RECIPES: ${norm}`);
+    patternSet.add(norm);
+  }
+  assert.equal(patternSet.size, petIds.length, 'Every pet must have a unique 3-crop lure pattern');
+
+  assert.ok(gmContent.includes('func lure_pet_from_light_garden()'), 'GameManager must implement lure_pet_from_light_garden');
+  assert.ok(gmContent.includes('func train_pet_with_treat('), 'GameManager must implement train_pet_with_treat');
+  assert.ok(gmContent.includes('func feed_growing_crop_for_instant_growth('), 'GameManager must implement feed_growing_crop_for_instant_growth');
+  assert.ok(gmContent.includes('func train_spirit('), 'GameManager must implement train_spirit');
+  assert.ok(gmContent.includes('func buy_pet(_pet_id: String)'), 'Gold buy_pet must be disabled in favor of Light Garden luring');
+
+  const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  assert.ok(combatContent.includes('get_spirit_power_multiplier'), 'CombatSystem must apply Spirit power multiplier');
+  assert.ok(combatContent.includes('get_spirit_speed_multiplier'), 'CombatSystem must apply Spirit speed multiplier');
+  assert.ok(combatContent.includes('get_pet_effect_value'), 'CombatSystem must use trained pet effect values');
+
+  const sanctuaryGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SanctuaryUI.gd'), 'utf-8');
+  assert.ok(sanctuaryGd.includes('_last_light_sig'), 'SanctuaryUI must cache Light Garden signature');
+  assert.ok(sanctuaryGd.includes('_last_dark_sig'), 'SanctuaryUI must cache Dark Garden signature');
+  assert.ok(sanctuaryGd.includes('is_visible_in_tree()'), 'SanctuaryUI must skip rebuilds when hidden');
+
+  const petUiGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/PetUI.gd'), 'utf-8');
+  assert.ok(!petUiGd.includes('get_pet_buy_price') && !petUiGd.includes('buy_pet('), 'PetUI must not allow gold pet purchases');
+  assert.ok(petUiGd.includes('train_pet_with_treat'), 'PetUI must support feeding treats directly to trained pets');
+});
+
 
 
 

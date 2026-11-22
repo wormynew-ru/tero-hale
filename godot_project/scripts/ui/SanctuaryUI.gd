@@ -3,28 +3,65 @@ extends ScrollContainer
 @onready var sanctuary_status_label: Label = %SanctuaryStatusLabel
 @onready var alchemist_flag_label: Label = %AlchemistFlagLabel
 @onready var feedback_label: Label = %FeedbackLabel
+@onready var light_garden_plots_box: VBoxContainer = %LightGardenPlotsBox
+@onready var lure_preview_label: Label = %LurePreviewLabel
+@onready var lure_pet_button: Button = %LurePetButton
+@onready var spirit_training_status_label: Label = %SpiritTrainingStatusLabel
+@onready var spirit_training_box: VBoxContainer = %SpiritTrainingBox
 @onready var garden_plots_box: VBoxContainer = %GardenPlotsBox
 @onready var brew_cauldrons_box: VBoxContainer = %BrewCauldronsBox
 @onready var recipe_guide_label: RichTextLabel = %RecipeGuideLabel
 
+var _last_light_sig: String = ""
+var _last_dark_sig: String = ""
+var _last_spirit_sig: String = ""
+var _last_brew_sig: String = ""
+
+var _light_plot_widgets: Array[Dictionary] = []
+var _dark_plot_widgets: Array[Dictionary] = []
+var _brew_widgets: Array[Dictionary] = []
+
 
 func _ready() -> void:
-	GameManager.garden_changed.connect(_rebuild_sanctuary)
-	GameManager.brewing_changed.connect(_rebuild_sanctuary)
-	GameManager.inventory_changed.connect(_rebuild_sanctuary)
-	GameManager.difficulty_changed.connect(_rebuild_sanctuary)
-	GameManager.skills_changed.connect(_rebuild_sanctuary)
-	GameManager.dark_skills_changed.connect(_rebuild_sanctuary)
-	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _rebuild_sanctuary())
-	GameManager.game_reset.connect(_rebuild_sanctuary)
+	GameManager.garden_changed.connect(_on_state_updated)
+	GameManager.brewing_changed.connect(_on_state_updated)
+	GameManager.inventory_changed.connect(_on_state_updated)
+	GameManager.difficulty_changed.connect(_on_state_updated)
+	GameManager.skills_changed.connect(_on_state_updated)
+	GameManager.dark_skills_changed.connect(_on_state_updated)
+	GameManager.pets_changed.connect(_on_state_updated)
+	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_state_updated())
+	GameManager.game_reset.connect(_on_reset)
+	visibility_changed.connect(_on_visibility_changed)
 
-	_rebuild_sanctuary()
+	lure_pet_button.pressed.connect(func() -> void:
+		var res: Dictionary = GameManager.lure_pet_from_light_garden()
+		feedback_label.text = str(res.get("message", ""))
+	)
+
+	_rebuild_sanctuary(true)
 
 
-func _rebuild_sanctuary() -> void:
+func _on_reset() -> void:
+	feedback_label.text = ""
+	_rebuild_sanctuary(true)
+
+
+func _on_visibility_changed() -> void:
+	if is_visible_in_tree():
+		_rebuild_sanctuary(false)
+
+
+func _on_state_updated() -> void:
+	if not is_visible_in_tree():
+		return
+	_rebuild_sanctuary(false)
+
+
+func _rebuild_sanctuary(force: bool = false) -> void:
 	var unlocked: bool = GameManager.is_alchemy_unlocked()
 	if unlocked:
-		sanctuary_status_label.text = "🏡 Убежище открыто (Сл. %d+) · Скорость Сада: x%.2f · Скорость Варки: x%.2f · Дроп семян: x%.2f" % [
+		sanctuary_status_label.text = "🏡 Убежище открыто (☀️ Светлый сад: Сл.1+ • 🌑 Тёмный сад и Котлы: Сл.%d+) · Сад: x%.2f · Варка: x%.2f · Дроп семян: x%.2f" % [
 			GameManager.ALCHEMY_UNLOCK_DIFFICULTY,
 			GameManager.get_garden_growth_speed_mult(),
 			GameManager.get_brewing_speed_mult(),
@@ -32,42 +69,302 @@ func _rebuild_sanctuary() -> void:
 		]
 		sanctuary_status_label.modulate = Color(0.55, 0.96, 0.72, 1.0)
 	else:
-		sanctuary_status_label.text = "🔒 Убежище заблокировано — победите Вечного титана и откройте %d-ю сложность (сейчас макс. Сл.%d)." % [
+		sanctuary_status_label.text = "☀️ Светлый сад открыт! 🌑 Тёмный сад и ⚗️ Зельеварение откроются после %d-й сложности (сейчас макс. Сл.%d)." % [
 			GameManager.ALCHEMY_UNLOCK_DIFFICULTY,
 			GameManager.max_unlocked_difficulty,
 		]
-		sanctuary_status_label.modulate = Color(0.98, 0.65, 0.38, 1.0)
+		sanctuary_status_label.modulate = Color(0.98, 0.78, 0.42, 1.0)
 
 	if GameManager.has_hero_class("alchemist"):
 		var flag_text: String = "✅ СЛЕДУЮЩАЯ ОШИБКА НЕ ВЗОРВЁТСЯ (флаг активен)" if GameManager.alchemist_next_mistake_safe else "⚡ Следующая ошибка взорвёт котёл (следующая за ней — спасётся)"
 		alchemist_flag_label.text = "⚗️ Алхимик: семена x2, варка x2, каждое 2-е неверное зелье не взрывается → %s" % flag_text
 		alchemist_flag_label.modulate = Color(0.45, 0.98, 0.78, 1.0) if GameManager.alchemist_next_mistake_safe else Color(0.95, 0.85, 0.45, 1.0)
 	else:
-		alchemist_flag_label.text = "ℹ️ Посадки, варящиеся зелья и семена НЕ пропадают при новом ране. У Алхимика (Сл.50+) каждое 2-е неверное зелье сохраняется на своём этапе."
+		alchemist_flag_label.text = "ℹ️ Посадки обоих садов, варящиеся зелья, семена, приручённые путники и уровни духов НЕ пропадают при новом ране."
 		alchemist_flag_label.modulate = Color(0.76, 0.86, 0.96, 1.0)
 
-	_rebuild_garden_plots(unlocked)
-	_rebuild_brew_cauldrons(unlocked)
-	_refresh_recipe_guide()
+	_sync_light_garden_plots(force)
+	_refresh_lure_bar()
+	_sync_spirit_training(force)
+	_sync_dark_garden_plots(unlocked, force)
+	_sync_brew_cauldrons(unlocked, force)
+	if force or recipe_guide_label.text.is_empty():
+		_refresh_recipe_guide()
 
 
-func _collect_inventory_items_of_type(target_type: ItemData.ItemType) -> Array[Dictionary]:
+func _collect_seeds(is_light: bool) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for entry: Dictionary in GameManager.inventory:
 		var item: ItemData = entry["item"] as ItemData
 		var cnt: int = int(entry["count"])
-		if item != null and cnt > 0 and item.item_type == target_type:
+		if item == null or cnt <= 0 or item.item_type != ItemData.ItemType.SEED:
+			continue
+		var crop: CropData = GameManager.get_crop_by_id(item.seed_crop_id)
+		var crop_is_light: bool = crop != null and crop.is_light_crop()
+		if crop_is_light == is_light:
 			result.append({"item": item, "count": cnt})
 	return result
 
 
-func _rebuild_garden_plots(unlocked: bool) -> void:
-	for child: Node in garden_plots_box.get_children():
+func _collect_dark_brewing_harvests() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for entry: Dictionary in GameManager.inventory:
+		var item: ItemData = entry["item"] as ItemData
+		var cnt: int = int(entry["count"])
+		if item == null or cnt <= 0 or item.item_type != ItemData.ItemType.HARVEST:
+			continue
+		if item.garden_category == "light" or item.id == "spirit_primordial_harvest":
+			continue
+		result.append({"item": item, "count": cnt})
+	return result
+
+
+func _compute_light_sig(seeds_owned: Array[Dictionary]) -> String:
+	var parts: Array[String] = []
+	for i: int in range(GameManager.get_light_garden_plot_count()):
+		var plot: Dictionary = GameManager.light_garden_plots[i] if i < GameManager.light_garden_plots.size() else {}
+		parts.append("%d:%s:%s" % [i, str(plot.get("status", "empty")), str(plot.get("crop_id", ""))])
+	for s_entry: Dictionary in seeds_owned:
+		var it: ItemData = s_entry["item"] as ItemData
+		parts.append("%s=%d" % [it.id, int(s_entry["count"])])
+	return "|".join(parts)
+
+
+func _sync_light_garden_plots(force: bool) -> void:
+	var light_seeds: Array[Dictionary] = _collect_seeds(true)
+	var sig: String = _compute_light_sig(light_seeds)
+	if not force and sig == _last_light_sig:
+		_update_light_garden_timers()
+		return
+	_last_light_sig = sig
+
+	for child: Node in light_garden_plots_box.get_children():
+		child.queue_free()
+	_light_plot_widgets.clear()
+
+	var total_plots: int = GameManager.get_light_garden_plot_count()
+	for i: int in range(total_plots):
+		var plot_idx: int = i
+		var plot: Dictionary = GameManager.light_garden_plots[i] if i < GameManager.light_garden_plots.size() else {}
+		var status: String = str(plot.get("status", "empty"))
+
+		var card: PanelContainer = PanelContainer.new()
+		var card_box: VBoxContainer = VBoxContainer.new()
+		card_box.add_theme_constant_override("separation", 6)
+		card.add_child(card_box)
+
+		var widget_entry: Dictionary = {"status": status, "index": i}
+
+		if status == "empty":
+			var title_lbl: Label = Label.new()
+			title_lbl.text = "🌼 Светлая грядка #%d — Свободна" % (i + 1)
+			card_box.add_child(title_lbl)
+
+			if light_seeds.is_empty():
+				var hint_lbl: Label = Label.new()
+				hint_lbl.text = "Нет семян Светлого сада. Они падают с любых врагов (2.5%–4.5% шанс)."
+				hint_lbl.modulate = Color(0.72, 0.78, 0.86, 1.0)
+				hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				card_box.add_child(hint_lbl)
+			else:
+				var btn_flow: HFlowContainer = HFlowContainer.new()
+				btn_flow.add_theme_constant_override("h_separation", 8)
+				btn_flow.add_theme_constant_override("v_separation", 8)
+				for s_entry: Dictionary in light_seeds:
+					var seed_item: ItemData = s_entry["item"] as ItemData
+					var cnt: int = int(s_entry["count"])
+					var plant_btn: Button = Button.new()
+					plant_btn.custom_minimum_size = Vector2(180.0, 44.0)
+					plant_btn.text = "🌱 %s %s (x%d)" % [seed_item.icon_emoji, seed_item.item_name, cnt]
+					plant_btn.pressed.connect(func() -> void:
+						var res: Dictionary = GameManager.plant_light_seed_on_plot(plot_idx, seed_item)
+						feedback_label.text = str(res.get("message", ""))
+					)
+					btn_flow.add_child(plant_btn)
+				card_box.add_child(btn_flow)
+
+		elif status == "growing":
+			var header_lbl: Label = Label.new()
+			var bar: ProgressBar = ProgressBar.new()
+			bar.custom_minimum_size = Vector2(0.0, 18.0)
+			bar.show_percentage = true
+			card_box.add_child(header_lbl)
+			card_box.add_child(bar)
+			widget_entry["label"] = header_lbl
+			widget_entry["bar"] = bar
+
+		elif status == "ready":
+			var crop: CropData = GameManager.get_crop_by_id(str(plot.get("crop_id", "")))
+			var ready_row: HBoxContainer = HBoxContainer.new()
+			ready_row.add_theme_constant_override("separation", 10)
+			var ready_lbl: Label = Label.new()
+			ready_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			ready_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			ready_lbl.text = "✨ %s Светлая грядка #%d: %s готова! (для приманки или собрать %d–%d шт.)" % [
+				crop.icon_emoji if crop != null else "🌼",
+				i + 1,
+				crop.crop_name if crop != null else "Растение",
+				crop.harvest_min if crop != null else 1,
+				crop.harvest_max if crop != null else 2,
+			]
+			ready_lbl.modulate = Color(0.98, 0.90, 0.45, 1.0)
+			ready_row.add_child(ready_lbl)
+
+			var harvest_btn: Button = Button.new()
+			harvest_btn.custom_minimum_size = Vector2(170.0, 44.0)
+			harvest_btn.text = "🧺 Собрать"
+			harvest_btn.pressed.connect(func() -> void:
+				var res: Dictionary = GameManager.harvest_light_garden_plot(plot_idx)
+				feedback_label.text = str(res.get("message", ""))
+			)
+			ready_row.add_child(harvest_btn)
+			card_box.add_child(ready_row)
+
+		_light_plot_widgets.append(widget_entry)
+		light_garden_plots_box.add_child(card)
+
+	_update_light_garden_timers()
+
+
+func _update_light_garden_timers() -> void:
+	for entry: Dictionary in _light_plot_widgets:
+		if str(entry.get("status", "")) != "growing":
+			continue
+		var idx: int = int(entry["index"])
+		if idx >= GameManager.light_garden_plots.size():
+			continue
+		var plot: Dictionary = GameManager.light_garden_plots[idx]
+		var crop: CropData = GameManager.get_crop_by_id(str(plot.get("crop_id", "")))
+		var lbl: Label = entry.get("label") as Label
+		var bar: ProgressBar = entry.get("bar") as ProgressBar
+		if lbl == null or bar == null:
+			continue
+		if crop != null:
+			var elapsed: float = float(plot.get("elapsed", 0.0))
+			var total_sec: float = maxf(1.0, crop.grow_seconds)
+			var rem_sec: float = maxf(0.0, (total_sec - elapsed) / maxf(0.1, GameManager.get_garden_growth_speed_mult()))
+			lbl.text = "%s Светлая грядка #%d: %s — Осталось %.0fс" % [crop.icon_emoji, idx + 1, crop.crop_name, ceil(rem_sec)]
+			bar.max_value = total_sec
+			bar.value = minf(elapsed, total_sec)
+		else:
+			lbl.text = "🌱 Светлая грядка #%d: Растёт..." % (idx + 1)
+
+
+func _refresh_lure_bar() -> void:
+	var slot_tokens: Array[String] = []
+	for i: int in range(GameManager.BASE_LIGHT_GARDEN_PLOTS):
+		var plot: Dictionary = GameManager.light_garden_plots[i] if i < GameManager.light_garden_plots.size() else {}
+		var st: String = str(plot.get("status", "empty"))
+		var crop: CropData = GameManager.get_crop_by_id(str(plot.get("crop_id", "")))
+		if st == "empty" or crop == null:
+			slot_tokens.append("[Пусто]")
+		elif st == "growing":
+			slot_tokens.append("[%s⏳]" % crop.icon_emoji)
+		else:
+			slot_tokens.append("[%s %s]" % [crop.icon_emoji, crop.crop_name])
+
+	var can_lure: bool = GameManager.can_lure_pet_from_light_garden()
+	lure_pet_button.disabled = not can_lure
+	lure_preview_label.text = "Высадка приманки: %s\n%s" % [
+		" + ".join(slot_tokens),
+		"✅ Все 3 грядки готовы — можно приманивать путника!" if can_lure else "Дождитесь созревания всех 3 грядок для приманки (при ошибке или повторке растения завянут).",
+	]
+
+
+func _sync_spirit_training(force: bool) -> void:
+	var fruit_item: ItemData = load("res://resources/items/spirit_primordial_harvest.tres") as ItemData
+	var fruit_cnt: int = GameManager.get_item_count_in_inventory(fruit_item) if fruit_item != null else 0
+	var is_spirit: bool = GameManager.has_hero_class("spirit")
+	var lvls: Array[String] = []
+	for sk: String in GameManager.SPIRIT_KEYS:
+		lvls.append("%s=%d" % [sk, GameManager.get_spirit_training_level(sk)])
+	var sig: String = "%s|%d|%s" % ["1" if is_spirit else "0", fruit_cnt, ",".join(lvls)]
+	if not force and sig == _last_spirit_sig:
+		return
+	_last_spirit_sig = sig
+
+	if not is_spirit:
+		spirit_training_status_label.text = "🔒 Дрессировка духов открыта только при активном классе 🌿 Спирит (Сл.50+). Плодов первоцвета в рюкзаке: %d." % fruit_cnt
+		spirit_training_status_label.modulate = Color(0.84, 0.78, 0.52, 1.0)
+	else:
+		spirit_training_status_label.text = "🌟 Класс 🌿 Спирит активен! Плодов первоцвета духов в рюкзаке: %d (стоимость дрессировки: 1 плод → +15%% силы и +3%% скорости духа)." % fruit_cnt
+		spirit_training_status_label.modulate = Color(0.45, 0.98, 0.85, 1.0)
+
+	for child: Node in spirit_training_box.get_children():
 		child.queue_free()
 
-	var seeds_owned: Array[Dictionary] = _collect_inventory_items_of_type(ItemData.ItemType.SEED)
-	var total_plots: int = GameManager.get_garden_plot_count()
+	var defs: Array[Dictionary] = [
+		{"key": "fire", "title": "🔥 Дух Огня", "desc": "Магический удар каждые 1.4с"},
+		{"key": "wind", "title": "🌪️ Дух Ветра", "desc": "Быстрый вихрь каждые 0.95с"},
+		{"key": "forest", "title": "🌿 Дух Леса", "desc": "Лечение HP и мана каждые 2.5с"},
+		{"key": "earth", "title": "🪨 Дух Земли", "desc": "Тяжёлый удар каждые 2.0с"},
+	]
 
+	for d: Dictionary in defs:
+		var skey: String = str(d["key"])
+		var lvl: int = GameManager.get_spirit_training_level(skey)
+		var card: PanelContainer = PanelContainer.new()
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+
+		var lbl: Label = Label.new()
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.text = "%s [Ур.%d] — %s (+%d%% сила, +%d%% скорость)" % [
+			str(d["title"]),
+			lvl,
+			str(d["desc"]),
+			lvl * 15,
+			lvl * 3,
+		]
+		row.add_child(lbl)
+
+		var btn: Button = Button.new()
+		btn.custom_minimum_size = Vector2(190.0, 44.0)
+		btn.disabled = (not is_spirit) or (fruit_cnt <= 0)
+		btn.text = "🌟 Дрессировать (1 плод)" if is_spirit else "🔒 Нужен Спирит"
+		btn.pressed.connect(func() -> void:
+			var res: Dictionary = GameManager.train_spirit(skey)
+			feedback_label.text = str(res.get("message", ""))
+		)
+		row.add_child(btn)
+		card.add_child(row)
+		spirit_training_box.add_child(card)
+
+
+func _compute_dark_sig(unlocked: bool, seeds_owned: Array[Dictionary]) -> String:
+	var parts: Array[String] = ["U:%s" % ("1" if unlocked else "0")]
+	for i: int in range(GameManager.get_garden_plot_count()):
+		var plot: Dictionary = GameManager.garden_plots[i] if i < GameManager.garden_plots.size() else {}
+		var acc: bool = unlocked and GameManager.is_garden_plot_accessible(i)
+		var can_feed: bool = GameManager.can_instant_grow_plot(i)
+		parts.append("%d:%s:%s:%s:%d:%s" % [
+			i,
+			"1" if acc else "0",
+			str(plot.get("status", "empty")),
+			str(plot.get("crop_id", "")),
+			int(plot.get("boss_kills", 0)),
+			"1" if can_feed else "0",
+		])
+	for s_entry: Dictionary in seeds_owned:
+		var it: ItemData = s_entry["item"] as ItemData
+		parts.append("%s=%d" % [it.id, int(s_entry["count"])])
+	return "|".join(parts)
+
+
+func _sync_dark_garden_plots(unlocked: bool, force: bool) -> void:
+	var dark_seeds: Array[Dictionary] = _collect_seeds(false)
+	var sig: String = _compute_dark_sig(unlocked, dark_seeds)
+	if not force and sig == _last_dark_sig:
+		_update_dark_garden_timers()
+		return
+	_last_dark_sig = sig
+
+	for child: Node in garden_plots_box.get_children():
+		child.queue_free()
+	_dark_plot_widgets.clear()
+
+	var total_plots: int = GameManager.get_garden_plot_count()
 	for i: int in range(total_plots):
 		var plot_idx: int = i
 		var plot: Dictionary = GameManager.garden_plots[i] if i < GameManager.garden_plots.size() else {}
@@ -81,21 +378,23 @@ func _rebuild_garden_plots(unlocked: bool) -> void:
 
 		if not accessible and status == "empty":
 			var lock_lbl: Label = Label.new()
-			lock_lbl.text = "🔒 Грядка #%d — требуется талант «Зелёные грядки» или Сл.%d" % [i + 1, GameManager.ALCHEMY_UNLOCK_DIFFICULTY]
+			lock_lbl.text = "🔒 Тёмная грядка #%d — требуется талант «Зелёные грядки» или Сл.%d" % [i + 1, GameManager.ALCHEMY_UNLOCK_DIFFICULTY]
 			lock_lbl.modulate = Color(0.65, 0.70, 0.78, 1.0)
 			lock_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			card_box.add_child(lock_lbl)
 			garden_plots_box.add_child(card)
 			continue
 
+		var widget_entry: Dictionary = {"status": status, "index": i}
+
 		if status == "empty":
 			var title_lbl: Label = Label.new()
-			title_lbl.text = "🟫 Грядка #%d — Свободна (выберите семя для посадки)" % (i + 1)
+			title_lbl.text = "🌑 Тёмная грядка #%d — Свободна (выберите редкое семя)" % (i + 1)
 			card_box.add_child(title_lbl)
 
-			if seeds_owned.is_empty():
+			if dark_seeds.is_empty():
 				var hint_lbl: Label = Label.new()
-				hint_lbl.text = "В рюкзаке нет семян. Они крайне редко выпадают с монстров (от 0.05% до 0.005%)."
+				hint_lbl.text = "В рюкзаке нет семян Тёмного сада. Травы для зелий падают редко (0.005%–0.05%), а 🌟 Первоцвет духов — с 0.03% с Вечного титана."
 				hint_lbl.modulate = Color(0.68, 0.74, 0.82, 1.0)
 				hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 				card_box.add_child(hint_lbl)
@@ -103,13 +402,13 @@ func _rebuild_garden_plots(unlocked: bool) -> void:
 				var btn_flow: HFlowContainer = HFlowContainer.new()
 				btn_flow.add_theme_constant_override("h_separation", 8)
 				btn_flow.add_theme_constant_override("v_separation", 8)
-				for s_entry: Dictionary in seeds_owned:
+				for s_entry: Dictionary in dark_seeds:
 					var seed_item: ItemData = s_entry["item"] as ItemData
 					var cnt: int = int(s_entry["count"])
 					var plant_btn: Button = Button.new()
-					plant_btn.custom_minimum_size = Vector2(180.0, 44.0)
+					plant_btn.custom_minimum_size = Vector2(185.0, 44.0)
 					plant_btn.disabled = not unlocked
-					plant_btn.text = "🌱 %s %s (x%d)" % [seed_item.icon_emoji, seed_item.item_name, cnt]
+					plant_btn.text = "🌑 %s %s (x%d)" % [seed_item.icon_emoji, seed_item.item_name, cnt]
 					plant_btn.pressed.connect(func() -> void:
 						var res: Dictionary = GameManager.plant_seed_on_plot(plot_idx, seed_item)
 						feedback_label.text = str(res.get("message", ""))
@@ -123,31 +422,31 @@ func _rebuild_garden_plots(unlocked: bool) -> void:
 			var bar: ProgressBar = ProgressBar.new()
 			bar.custom_minimum_size = Vector2(0.0, 18.0)
 			bar.show_percentage = true
-
-			if crop != null and crop.is_boss_kill_crop():
-				var boss_kills: int = int(plot.get("boss_kills", 0))
-				var req_kills: int = maxi(1, crop.required_final_boss_kills)
-				header_lbl.text = "%s Грядка #%d: %s — Убито Вечных титанов: %d / %d" % [
-					crop.icon_emoji,
-					i + 1,
-					crop.crop_name,
-					boss_kills,
-					req_kills,
-				]
-				header_lbl.modulate = Color(1.0, 0.45, 0.56, 1.0)
-				bar.max_value = float(req_kills)
-				bar.value = float(mini(boss_kills, req_kills))
-			elif crop != null:
-				var elapsed: float = float(plot.get("elapsed", 0.0))
-				var total_sec: float = maxf(1.0, crop.grow_seconds)
-				var rem_sec: float = maxf(0.0, (total_sec - elapsed) / maxf(0.1, GameManager.get_garden_growth_speed_mult()))
-				header_lbl.text = "%s Грядка #%d: %s — Осталось %.0fс" % [crop.icon_emoji, i + 1, crop.crop_name, ceil(rem_sec)]
-				bar.max_value = total_sec
-				bar.value = minf(elapsed, total_sec)
-			else:
-				header_lbl.text = "🌱 Грядка #%d: Растёт..." % (i + 1)
 			card_box.add_child(header_lbl)
 			card_box.add_child(bar)
+			widget_entry["label"] = header_lbl
+			widget_entry["bar"] = bar
+
+			if crop != null and crop.has_instant_grow_feed():
+				var feed_row: HBoxContainer = HBoxContainer.new()
+				feed_row.add_theme_constant_override("separation", 10)
+				var req_lbl: Label = Label.new()
+				req_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				req_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				req_lbl.add_theme_font_size_override("font_size", 12)
+				req_lbl.text = "Для моментального созревания скормите духам базовые растения Светлого сада: 🍀 Клевер x2, 🍓 Ягода x2, 🌼 Ромашка x2, 🌶️ Перчик x2"
+				feed_row.add_child(req_lbl)
+
+				var feed_btn: Button = Button.new()
+				feed_btn.custom_minimum_size = Vector2(220.0, 44.0)
+				feed_btn.disabled = not GameManager.can_instant_grow_plot(plot_idx)
+				feed_btn.text = "🌿 Скормить духам (Момент. рост!)"
+				feed_btn.pressed.connect(func() -> void:
+					var res: Dictionary = GameManager.feed_growing_crop_for_instant_growth(plot_idx)
+					feedback_label.text = str(res.get("message", ""))
+				)
+				feed_row.add_child(feed_btn)
+				card_box.add_child(feed_row)
 
 		elif status == "ready":
 			var crop: CropData = GameManager.get_crop_by_id(str(plot.get("crop_id", "")))
@@ -155,7 +454,7 @@ func _rebuild_garden_plots(unlocked: bool) -> void:
 			ready_row.add_theme_constant_override("separation", 10)
 			var ready_lbl: Label = Label.new()
 			ready_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			ready_lbl.text = "✨ %s Грядка #%d: %s созрел! (%d-%d шт.)" % [
+			ready_lbl.text = "✨ %s Тёмная грядка #%d: %s созрел! (%d–%d шт.)" % [
 				crop.icon_emoji if crop != null else "🌿",
 				i + 1,
 				crop.crop_name if crop != null else "Урожай",
@@ -176,16 +475,81 @@ func _rebuild_garden_plots(unlocked: bool) -> void:
 			ready_row.add_child(harvest_btn)
 			card_box.add_child(ready_row)
 
+		_dark_plot_widgets.append(widget_entry)
 		garden_plots_box.add_child(card)
 
+	_update_dark_garden_timers()
 
-func _rebuild_brew_cauldrons(unlocked: bool) -> void:
+
+func _update_dark_garden_timers() -> void:
+	for entry: Dictionary in _dark_plot_widgets:
+		if str(entry.get("status", "")) != "growing":
+			continue
+		var idx: int = int(entry["index"])
+		if idx >= GameManager.garden_plots.size():
+			continue
+		var plot: Dictionary = GameManager.garden_plots[idx]
+		var crop: CropData = GameManager.get_crop_by_id(str(plot.get("crop_id", "")))
+		var lbl: Label = entry.get("label") as Label
+		var bar: ProgressBar = entry.get("bar") as ProgressBar
+		if lbl == null or bar == null:
+			continue
+		if crop != null and crop.is_boss_kill_crop():
+			var boss_kills: int = int(plot.get("boss_kills", 0))
+			var req_kills: int = maxi(1, crop.required_final_boss_kills)
+			lbl.text = "%s Тёмная грядка #%d: %s — Убито Вечных титанов: %d / %d" % [
+				crop.icon_emoji,
+				idx + 1,
+				crop.crop_name,
+				boss_kills,
+				req_kills,
+			]
+			lbl.modulate = Color(1.0, 0.45, 0.56, 1.0)
+			bar.max_value = float(req_kills)
+			bar.value = float(mini(boss_kills, req_kills))
+		elif crop != null:
+			var elapsed: float = float(plot.get("elapsed", 0.0))
+			var total_sec: float = maxf(1.0, crop.grow_seconds)
+			var rem_sec: float = maxf(0.0, (total_sec - elapsed) / maxf(0.1, GameManager.get_garden_growth_speed_mult()))
+			lbl.text = "%s Тёмная грядка #%d: %s — Осталось %.0fс" % [crop.icon_emoji, idx + 1, crop.crop_name, ceil(rem_sec)]
+			bar.max_value = total_sec
+			bar.value = minf(elapsed, total_sec)
+		else:
+			lbl.text = "🌑 Тёмная грядка #%d: Растёт..." % (idx + 1)
+
+
+func _compute_brew_sig(unlocked: bool, harvests_owned: Array[Dictionary]) -> String:
+	var parts: Array[String] = ["U:%s" % ("1" if unlocked else "0")]
+	for i: int in range(GameManager.get_brewing_slot_count()):
+		var cauldron: Dictionary = GameManager.brewing_slots[i] if i < GameManager.brewing_slots.size() else {}
+		var acc: bool = unlocked and GameManager.is_brewing_slot_accessible(i)
+		parts.append("%d:%s:%s:%s:%d:%s" % [
+			i,
+			"1" if acc else "0",
+			str(cauldron.get("state", "empty")),
+			str(cauldron.get("brew_id", "")),
+			int(cauldron.get("stage", 0)),
+			"1" if bool(cauldron.get("can_collect", false)) else "0",
+		])
+	for h_entry: Dictionary in harvests_owned:
+		var it: ItemData = h_entry["item"] as ItemData
+		parts.append("%s=%d" % [it.id, int(h_entry["count"])])
+	return "|".join(parts)
+
+
+func _sync_brew_cauldrons(unlocked: bool, force: bool) -> void:
+	var harvests_owned: Array[Dictionary] = _collect_dark_brewing_harvests()
+	var sig: String = _compute_brew_sig(unlocked, harvests_owned)
+	if not force and sig == _last_brew_sig:
+		_update_brew_timers()
+		return
+	_last_brew_sig = sig
+
 	for child: Node in brew_cauldrons_box.get_children():
 		child.queue_free()
+	_brew_widgets.clear()
 
-	var harvests_owned: Array[Dictionary] = _collect_inventory_items_of_type(ItemData.ItemType.HARVEST)
 	var total_cauldrons: int = GameManager.get_brewing_slot_count()
-
 	for i: int in range(total_cauldrons):
 		var slot_idx: int = i
 		var cauldron: Dictionary = GameManager.brewing_slots[i] if i < GameManager.brewing_slots.size() else {}
@@ -205,6 +569,8 @@ func _rebuild_brew_cauldrons(unlocked: bool) -> void:
 			card_box.add_child(lock_lbl)
 			brew_cauldrons_box.add_child(card)
 			continue
+
+		var widget_entry: Dictionary = {"state": state, "index": i}
 
 		if state == "empty" or state == "exploded":
 			var top_row: HBoxContainer = HBoxContainer.new()
@@ -231,26 +597,16 @@ func _rebuild_brew_cauldrons(unlocked: bool) -> void:
 			card_box.add_child(top_row)
 
 		elif state == "brewing":
-			var elapsed: float = float(cauldron.get("elapsed", 0.0))
-			var dur: float = maxf(0.1, float(cauldron.get("duration", 10.0)))
-			var rem_sec: float = maxf(0.0, (dur - elapsed) / maxf(0.1, GameManager.get_brewing_speed_mult()))
 			var brew_lbl: Label = Label.new()
-			brew_lbl.text = "🔥 Котёл #%d [Шаг %d]: Варится %s %s — %.1fс" % [
-				i + 1,
-				int(cauldron.get("pending_stage", 1)),
-				str(cauldron.get("pending_emoji", "⚗️")),
-				str(cauldron.get("pending_title", "")),
-				rem_sec,
-			]
 			brew_lbl.modulate = Color(0.98, 0.82, 0.38, 1.0)
 			card_box.add_child(brew_lbl)
 
 			var bar: ProgressBar = ProgressBar.new()
 			bar.custom_minimum_size = Vector2(0.0, 18.0)
-			bar.max_value = dur
-			bar.value = minf(elapsed, dur)
 			bar.show_percentage = true
 			card_box.add_child(bar)
+			widget_entry["label"] = brew_lbl
+			widget_entry["bar"] = bar
 
 		elif state == "ready":
 			var stage: int = int(cauldron.get("stage", 0))
@@ -292,7 +648,7 @@ func _rebuild_brew_cauldrons(unlocked: bool) -> void:
 
 			if stage < 3:
 				var ing_title: Label = Label.new()
-				ing_title.text = "Добавить ингредиент на Шаг %d (⚠️ неверный ингредиент взрывает котёл с шансом 100%%):" % (stage + 1)
+				ing_title.text = "Добавить тёмную траву на Шаг %d (⚠️ неверный ингредиент взрывает котёл с шансом 100%%):" % (stage + 1)
 				ing_title.add_theme_font_size_override("font_size", 12)
 				ing_title.modulate = Color(0.84, 0.88, 0.94, 1.0)
 				ing_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -300,7 +656,7 @@ func _rebuild_brew_cauldrons(unlocked: bool) -> void:
 
 				if harvests_owned.is_empty():
 					var no_ing: Label = Label.new()
-					no_ing.text = "Нет урожая в рюкзаке — соберите урожай с грядок Сада."
+					no_ing.text = "Нет трав Тёмного сада — соберите урожай с тёмных грядок."
 					no_ing.modulate = Color(0.68, 0.74, 0.82, 1.0)
 					card_box.add_child(no_ing)
 				else:
@@ -320,23 +676,55 @@ func _rebuild_brew_cauldrons(unlocked: bool) -> void:
 						ing_flow.add_child(add_btn)
 					card_box.add_child(ing_flow)
 
+		_brew_widgets.append(widget_entry)
 		brew_cauldrons_box.add_child(card)
+
+	_update_brew_timers()
+
+
+func _update_brew_timers() -> void:
+	for entry: Dictionary in _brew_widgets:
+		if str(entry.get("state", "")) != "brewing":
+			continue
+		var idx: int = int(entry["index"])
+		if idx >= GameManager.brewing_slots.size():
+			continue
+		var cauldron: Dictionary = GameManager.brewing_slots[idx]
+		var lbl: Label = entry.get("label") as Label
+		var bar: ProgressBar = entry.get("bar") as ProgressBar
+		if lbl == null or bar == null:
+			continue
+		var elapsed: float = float(cauldron.get("elapsed", 0.0))
+		var dur: float = maxf(0.1, float(cauldron.get("duration", 10.0)))
+		var rem_sec: float = maxf(0.0, (dur - elapsed) / maxf(0.1, GameManager.get_brewing_speed_mult()))
+		lbl.text = "🔥 Котёл #%d [Шаг %d]: Варится %s %s — %.1fс" % [
+			idx + 1,
+			int(cauldron.get("pending_stage", 1)),
+			str(cauldron.get("pending_emoji", "⚗️")),
+			str(cauldron.get("pending_title", "")),
+			rem_sec,
+		]
+		bar.max_value = dur
+		bar.value = minf(elapsed, dur)
 
 
 func _refresh_recipe_guide() -> void:
 	recipe_guide_label.text = (
-		"[b][color=#34d399]🌱 Редкие семена (падают с монстров):[/color][/b]\n"
-		+ "• 🌿 [b]Лунная мята[/b] — 0.05% шанс, растёт 120с (1–2 листа).\n"
-		+ "• 🥕 [b]Солнечный корень[/b] — 0.03% шанс (враги ≥15 XP), растёт 240с (1–2 корня).\n"
-		+ "• 🪷 [b]Лазурный лотос[/b] — 0.02% шанс (враги ≥40 XP), растёт 420с (1–2 цветка).\n"
-		+ "• 🍄 [b]Звёздный трюфель[/b] — 0.012% шанс (враги ≥120 XP), растёт 600с (1–2 шт.).\n"
-		+ "• 🌺 [b]Алый лепесток[/b] — 0.005% с мобов (0.025% с боссов): [color=#fb7185]растёт ТОЛЬКО за 2000 убийств Вечного титана после посадки![/color]\n\n"
-		+ "[b][color=#38bdf8]⚗️ Многоступенчатые рецепты (как в Minecraft):[/color][/b]\n"
-		+ "• [b]Ветка Восстановления[/b]: Вода → [i]🌿 Мята[/i] (10с) →\n"
-		+ "   1) + [i]🌿 Мята[/i] (15с) = 🌙 [b]Лунный эликсир[/b] (+3500 HP, +900 MP) → + [i]🍄 Трюфель[/i] (20с) = 🥛 [b]Роса бессмертия[/b] (+12K HP, +100% Брони, +15% Вампиризм)\n"
-		+ "   2) + [i]🪷 Лотос[/i] (15с) = 🔮 [b]Нектар арканы x2[/b] (+1100 MP) → + [i]🍄 Трюфель[/i] (20с) = 📜 [b]Мудрость арканы x2[/b]\n"
-		+ "• [b]Ветка Ярости[/b]: Вода → [i]🥕 Корень[/i] (10с) →\n"
-		+ "   1) + [i]🥕 Корень[/i] (15с) = 🩸 [b]Зелье ярости x2[/b] → + [i]🍄 Трюфель[/i] (20с) = 🔥 [b]Отвар крови титана[/b] (+75% Урон, +35% Скор., +25% Крит на 90с)\n"
-		+ "   2) + [i]🪷 Лотос[/i] (15с) = 🌪️ [b]Зелье вихря x2[/b] → + [i]🍄 Трюфель[/i] (20с) = 🛡️ [b]Железная кожа x3[/b]\n"
-		+ "• [b]🌺 Вершина алхимии[/b]: [i]🌙 Лунный эликсир[/i] ИЛИ [i]🩸 Зелье ярости[/i] + [i]🌺 Алый лепесток[/i] (20с) = 🌺 [b]Эликсир Алого Лепестка[/b] (+50K HP, +5K MP, +200% Урон, +150% Чары на 120с)."
+		"[b][color=#facc15]☀️ Светлый сад (Сл.1+) — Приманка и Дрессировка путников:[/color][/b]\n"
+		+ "• Простые семена падают с любых врагов: 🍀 [b]Солнечный клевер[/b] (4.5%, 20с), 🍓 [b]Медовая ягода[/b] (3.5%, 30с), 🌼 [b]Небесная ромашка[/b] (3.0%, 35с), 🌶️ [b]Искристый перчик[/b] (2.5%, 40с).\n"
+		+ "• Путников [b]нельзя купить за золото[/b] — только выманить высадкой на 3 грядки Светлого сада! Если узор ведёт к уже приручённому путнику (повторке) или никому не подходит — [color=#fb7185]ничего не происходит, а растения завянут[/color]:\n"
+		+ "   — 🎆 [b]Фейерверк[/b]: 🌶️ Перчик + 🌼 Ромашка + 🌶️ Перчик\n"
+		+ "   — 🧚 [b]Лесной светлячок[/b]: 🍀 Клевер + 🌼 Ромашка + 🍀 Клевер\n"
+		+ "   — 🪙 [b]Мимик-копилка[/b]: 🍓 Ягода + 🍀 Клевер + 🍓 Ягода\n"
+		+ "   — 🦊 [b]Огненный лисёнок[/b]: 🌶️ Перчик + 🍓 Ягода + 🌶️ Перчик\n"
+		+ "   — 🦉 [b]Хроно-сова[/b]: 🌼 Ромашка + 🌼 Ромашка + 🍀 Клевер\n"
+		+ "   — 🦅 [b]Грозовой сокол[/b]: 🌼 Ромашка + 🌶️ Перчик + 🍓 Ягода\n"
+		+ "• Собранный урожай Светлого сада идёт на [b]🍪 пряники[/b] для дрессировки путников в разделе «Путники» (у каждого свой любимый пряник с повышенным % успеха).\n\n"
+		+ "[b][color=#c084fc]🌑 Тёмный сад (Сл.10+) — Супер-зелья и 🌟 Духи:[/color][/b]\n"
+		+ "• 🌿 [b]Лунная мята[/b] (0.05%, 45с), 🥕 [b]Солнечный корень[/b] (0.03%, 90с), 🪷 [b]Лазурный лотос[/b] (0.02%, 150с), 🍄 [b]Звёздный трюфель[/b] (0.012%, 240с), 🌺 [b]Алый лепесток[/b] (0.005%/0.025%, растёт за 2000 побед над Вечным титаном).\n"
+		+ "• 🌟 [b]Первоцвет духов[/b] — ультра-редкое семя с шансом [color=#22d3ee]0.03% ТОЛЬКО с Вечного титана[/color]. Растёт целый час ([b]3600с[/b]), [color=#34d399]НО если скормить духам 🍀x2 + 🍓x2 + 🌼x2 + 🌶️x2 — созревает МОМЕНТАЛЬНО![/color] Плод дрессирует духов Спирита.\n\n"
+		+ "[b][color=#38bdf8]⚗️ Многоступенчатые рецепты котла:[/color][/b]\n"
+		+ "• [b]Ветка Восстановления[/b]: Вода → [i]🌿 Мята[/i] → (+ [i]🌿 Мята[/i] = 🌙 [b]Лунный эликсир[/b] → + [i]🍄 Трюфель[/i] = 🥛 [b]Роса бессмертия[/b]) / (+ [i]🪷 Лотос[/i] = 🔮 [b]Нектар арканы x2[/b] → + [i]🍄 Трюфель[/i] = 📜 [b]Мудрость арканы x2[/b])\n"
+		+ "• [b]Ветка Ярости[/b]: Вода → [i]🥕 Корень[/i] → (+ [i]🥕 Корень[/i] = 🩸 [b]Зелье ярости x2[/b] → + [i]🍄 Трюфель[/i] = 🔥 [b]Отвар крови титана[/b]) / (+ [i]🪷 Лотос[/i] = 🌪️ [b]Зелье вихря x2[/b] → + [i]🍄 Трюфель[/i] = 🛡️ [b]Железная кожа x3[/b])\n"
+		+ "• [b]🌺 Вершина алхимии[/b]: [i]🌙 Лунный эликсир[/i] ИЛИ [i]🩸 Зелье ярости[/i] + [i]🌺 Алый лепесток[/i] = 🌺 [b]Эликсир Алого Лепестка[/b]."
 	)

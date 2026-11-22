@@ -14,4 +14,7 @@ effect_value = 0.008
 effect_secondary = 0.15
 buy_price = 750.0
 required_difficulty = 1
+favorite_treat_id = "spark_chili_harvest"
+secondary_treat_id = "honey_berry_harvest"
+lure_hint = "🌶️ Искристый перчик + 🍓 Медовая ягода + 🌶️ Искристый перчик"
 accent_color = Color(0.98, 0.48, 0.22, 1)

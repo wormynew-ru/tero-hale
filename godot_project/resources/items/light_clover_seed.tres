@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "light_clover_seed"
+item_name = "Семя солнечного клевера"
+icon_emoji = "🌱"
+description = "Простое семя Светлого сада (4.5% дроп с врагов). Вырастите в Светлом саду (20с) для приманки или пряников путников."
+item_type = 4
+buy_price = 30
+sell_value = 8
+icon_color = Color(0.42, 0.95, 0.48, 1)
+seed_crop_id = "light_clover"
+garden_category = "light"

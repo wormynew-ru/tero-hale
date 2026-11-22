@@ -51,5 +51,8 @@ extends Resource
 @export var equipped_pet_id: String = ""
 
 @export var garden_plots: Array[Dictionary] = []
+@export var light_garden_plots: Array[Dictionary] = []
 @export var brewing_slots: Array[Dictionary] = []
 @export var alchemist_next_mistake_safe: bool = false
+@export var pet_training_levels: Dictionary = {}
+@export var spirit_training_levels: Dictionary = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}

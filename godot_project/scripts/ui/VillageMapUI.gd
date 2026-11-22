@@ -59,8 +59,8 @@ func reset_overlay() -> void:
 
 func _refresh_hint() -> void:
 	if GameManager.is_alchemy_unlocked():
-		house_hotspot.tooltip_text = "🏡 Убежище: Сад и Зельеварение (Открыто!)"
-		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (🏡 Убежище — Сад и Зелья), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)."
+		house_hotspot.tooltip_text = "🏡 Убежище: Светлый и Тёмный сады, Зелья и Духи (Открыто!)"
+		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (🏡 Убежище — Сады, Зелья и Духи), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)."
 	else:
-		house_hotspot.tooltip_text = "🔒 Убежище (открывается после Сл. %d)" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
-		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (🔒 Убежище откроется на Сл.%d), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)." % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
+		house_hotspot.tooltip_text = "☀️ Светлый сад открыт! (🌑 Тёмный сад и котлы с Сл. %d)" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
+		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (☀️ Светлый сад для приманки путников; 🌑 Тёмный сад с Сл.%d), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)." % GameManager.ALCHEMY_UNLOCK_DIFFICULTY

@@ -14,4 +14,7 @@ effect_value = 5.0
 effect_secondary = 0.0
 buy_price = 350.0
 required_difficulty = 1
+favorite_treat_id = "spark_chili_harvest"
+secondary_treat_id = "sky_chamomile_harvest"
+lure_hint = "🌶️ Искристый перчик + 🌼 Небесная ромашка + 🌶️ Искристый перчик"
 accent_color = Color(1, 0.68, 0.25, 1)

@@ -622,14 +622,14 @@ func _process_pet_combat(delta: float) -> void:
 
 	match pet.effect_type:
 		"aura_regen":
-			var heal_amt: float = GameManager.get_max_hp() * pet.effect_value * delta
+			var heal_amt: float = GameManager.get_max_hp() * GameManager.get_pet_effect_value("aura_regen") * delta
 			if GameManager.current_hp < GameManager.get_max_hp():
 				GameManager.heal(heal_amt)
 		"enemy_burn":
 			_pet_pulse_timer += delta
 			while _pet_pulse_timer >= 1.0 and current_enemy != null and current_state == State.FIGHTING:
 				_pet_pulse_timer -= 1.0
-				var burn_dmg: float = maxf(1.0, enemy_max_hp * pet.effect_value)
+				var burn_dmg: float = maxf(1.0, enemy_max_hp * GameManager.get_pet_effect_value("enemy_burn"))
 				enemy_hp = maxf(0.0, enemy_hp - burn_dmg)
 				enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 				dot_tick_landed.emit(pet.icon_emoji, pet.pet_name, burn_dmg)
@@ -640,7 +640,8 @@ func _process_pet_combat(delta: float) -> void:
 			_pet_lightning_timer += delta
 			while _pet_lightning_timer >= 4.0 and current_enemy != null and current_state == State.FIGHTING:
 				_pet_lightning_timer -= 4.0
-				var bolt_dmg: float = maxf(1.0, GameManager.get_max_hp() * 0.08 + GameManager.get_player_damage() * 1.6)
+				var bolt_mult: float = GameManager.get_pet_training_multiplier(pet.id)
+				var bolt_dmg: float = maxf(1.0, (GameManager.get_max_hp() * 0.08 + GameManager.get_player_damage() * 1.6) * bolt_mult)
 				enemy_hp = maxf(0.0, enemy_hp - bolt_dmg)
 				enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 				dot_tick_landed.emit(pet.icon_emoji, "Молния", bolt_dmg)
@@ -651,39 +652,43 @@ func _process_pet_combat(delta: float) -> void:
 
 func _process_spirit_companions(delta: float) -> void:
 	var communion_bonus: float = GameManager.get_dark_bonus("spirit_communion")
-	var power_mult: float = 1.0 + communion_bonus
-	var tick_delta: float = delta * (1.0 + communion_bonus * 0.5)
+	var base_power_mult: float = 1.0 + communion_bonus
+	var base_tick_delta: float = delta * (1.0 + communion_bonus * 0.5)
 
-	_spirit_fire_timer += tick_delta
-	_spirit_wind_timer += tick_delta
-	_spirit_forest_timer += tick_delta
-	_spirit_earth_timer += tick_delta
+	_spirit_fire_timer += base_tick_delta * GameManager.get_spirit_speed_multiplier("fire")
+	_spirit_wind_timer += base_tick_delta * GameManager.get_spirit_speed_multiplier("wind")
+	_spirit_forest_timer += base_tick_delta * GameManager.get_spirit_speed_multiplier("forest")
+	_spirit_earth_timer += base_tick_delta * GameManager.get_spirit_speed_multiplier("earth")
 
 	if _spirit_fire_timer >= SPIRIT_FIRE_INTERVAL:
 		_spirit_fire_timer -= SPIRIT_FIRE_INTERVAL
-		var fire_raw: float = (14.0 + float(GameManager.get_total_strength()) * 1.4) * GameManager.get_mastery_bonus_multiplier("magic") * power_mult
+		var fire_pow: float = base_power_mult * GameManager.get_spirit_power_multiplier("fire")
+		var fire_raw: float = (14.0 + float(GameManager.get_total_strength()) * 1.4) * GameManager.get_mastery_bonus_multiplier("magic") * fire_pow
 		_deal_spirit_damage("Дух Огня", "🔥", fire_raw, 0.5, "magic")
 		if current_state != State.FIGHTING or current_enemy == null:
 			return
 
 	if _spirit_wind_timer >= SPIRIT_WIND_INTERVAL:
 		_spirit_wind_timer -= SPIRIT_WIND_INTERVAL
-		var wind_raw: float = (10.0 + float(GameManager.get_total_agility()) * 1.3) * GameManager.get_mastery_bonus_multiplier("ranged") * power_mult
+		var wind_pow: float = base_power_mult * GameManager.get_spirit_power_multiplier("wind")
+		var wind_raw: float = (10.0 + float(GameManager.get_total_agility()) * 1.3) * GameManager.get_mastery_bonus_multiplier("ranged") * wind_pow
 		_deal_spirit_damage("Дух Ветра", "🌪️", wind_raw, 0.65, "ranged")
 		if current_state != State.FIGHTING or current_enemy == null:
 			return
 
 	if _spirit_forest_timer >= SPIRIT_FOREST_INTERVAL:
 		_spirit_forest_timer -= SPIRIT_FOREST_INTERVAL
+		var forest_pow: float = base_power_mult * GameManager.get_spirit_power_multiplier("forest")
 		var blood_tax_mult: float = maxf(0.25, 1.0 - GameManager.get_curse_value("blood_tax"))
-		var heal_amt: float = (GameManager.get_max_hp() * 0.04 + float(GameManager.get_total_endurance()) * 0.8) * power_mult * blood_tax_mult
+		var heal_amt: float = (GameManager.get_max_hp() * 0.04 + float(GameManager.get_total_endurance()) * 0.8) * forest_pow * blood_tax_mult
 		var actual_heal: float = GameManager.heal(heal_amt)
-		GameManager.restore_mana(6.0 * power_mult)
+		GameManager.restore_mana(6.0 * forest_pow)
 		spirit_action_performed.emit("Дух Леса", "🌿", actual_heal if actual_heal > 0.0 else heal_amt, true)
 
 	if _spirit_earth_timer >= SPIRIT_EARTH_INTERVAL:
 		_spirit_earth_timer -= SPIRIT_EARTH_INTERVAL
-		var earth_raw: float = (12.0 + float(GameManager.get_total_endurance()) * 1.5) * GameManager.get_mastery_bonus_multiplier("melee") * power_mult
+		var earth_pow: float = base_power_mult * GameManager.get_spirit_power_multiplier("earth")
+		var earth_raw: float = (12.0 + float(GameManager.get_total_endurance()) * 1.5) * GameManager.get_mastery_bonus_multiplier("melee") * earth_pow
 		_deal_spirit_damage("Дух Земли", "🪨", earth_raw, 1.0, "melee")
 
 
@@ -926,9 +931,9 @@ func _spawn_enemy() -> void:
 	var pet: PetData = GameManager.get_equipped_pet()
 	if pet != null and pet.effect_type == "start_stun" and not _pet_stun_used_this_fight:
 		_pet_stun_used_this_fight = true
-		_enemy_stun_timer = maxf(0.5, pet.effect_value)
+		_enemy_stun_timer = maxf(0.5, GameManager.get_pet_effect_value("start_stun"))
 		enemy_stun_changed.emit(_enemy_stun_timer)
-		pet_action_performed.emit(pet.icon_emoji, "🎆 Оглушён на %.0fс!" % _enemy_stun_timer, Color(1.0, 0.78, 0.25, 1.0))
+		pet_action_performed.emit(pet.icon_emoji, "🎆 Оглушён на %.1fс!" % _enemy_stun_timer, Color(1.0, 0.78, 0.25, 1.0))
 	else:
 		enemy_stun_changed.emit(0.0)
 

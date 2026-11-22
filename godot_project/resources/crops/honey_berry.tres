@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "honey_berry"
+crop_name = "Медовая ягода"
+icon_emoji = "🍓"
+rarity_label = "Светлое (3.5%)"
+garden_type = "light"
+description = "Сладкая ягода Светлого сада. Приманивает питомцев и служит отличным пряником при дрессировке."
+seed_item_path = "res://resources/items/honey_berry_seed.tres"
+harvest_item_path = "res://resources/items/honey_berry_harvest.tres"
+base_drop_chance = 0.035
+boss_drop_chance = 0.035
+final_boss_only = false
+min_enemy_xp = 0.0
+grow_seconds = 30.0
+required_final_boss_kills = 0
+is_spirit_training_crop = false
+harvest_min = 1
+harvest_max = 3
+accent_color = Color(0.98, 0.45, 0.56, 1)

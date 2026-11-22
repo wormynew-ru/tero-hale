@@ -40,11 +40,14 @@ const ALCHEMY_UNLOCK_DIFFICULTY: int = 10
 const CLASSES_UNLOCK_DIFFICULTY: int = 50
 const CRUCIBLE_UNLOCK_DIFFICULTY: int = 100
 const BASE_GARDEN_PLOTS: int = 4
+const BASE_LIGHT_GARDEN_PLOTS: int = 3
 const BASE_BREWING_SLOTS: int = 2
 const MAX_ACTIVE_ABILITY_SLOTS: int = 3
+const MAX_PET_TRAINING_LEVEL: int = 10
 const DEFAULT_EQUIPPED_ABILITIES: Array[String] = ["fireball", "nature_mend", "arcane_surge"]
 const FINAL_BOSS_ID: String = "eternal_titan"
 const CURSE_WARDEN_ID: String = "curse_warden"
+const SPIRIT_KEYS: Array[String] = ["fire", "wind", "forest", "earth"]
 
 const CROP_PATHS: Array[String] = [
 	"res://resources/crops/moon_mint.tres",
@@ -52,6 +55,38 @@ const CROP_PATHS: Array[String] = [
 	"res://resources/crops/azure_lotus.tres",
 	"res://resources/crops/star_truffle.tres",
 	"res://resources/crops/scarlet_petal.tres",
+	"res://resources/crops/light_clover.tres",
+	"res://resources/crops/honey_berry.tres",
+	"res://resources/crops/sky_chamomile.tres",
+	"res://resources/crops/spark_chili.tres",
+	"res://resources/crops/spirit_primordial.tres",
+]
+
+const PET_LURE_RECIPES: Array[Dictionary] = [
+	{
+		"pet_id": "firework_spark",
+		"pattern": ["spark_chili", "sky_chamomile", "spark_chili"],
+	},
+	{
+		"pet_id": "healing_wisp",
+		"pattern": ["light_clover", "sky_chamomile", "light_clover"],
+	},
+	{
+		"pet_id": "abyss_mimic",
+		"pattern": ["honey_berry", "light_clover", "honey_berry"],
+	},
+	{
+		"pet_id": "ember_fox",
+		"pattern": ["spark_chili", "honey_berry", "spark_chili"],
+	},
+	{
+		"pet_id": "chrono_owl",
+		"pattern": ["sky_chamomile", "sky_chamomile", "light_clover"],
+	},
+	{
+		"pet_id": "thunder_griffin",
+		"pattern": ["sky_chamomile", "spark_chili", "honey_berry"],
+	},
 ]
 
 const BREW_STEP_TRANSITIONS: Dictionary = {
@@ -481,8 +516,11 @@ var afk_xp_earned: float = 0.0
 var crops: Array[CropData] = []
 var _crops_by_id: Dictionary = {}
 var garden_plots: Array[Dictionary] = []
+var light_garden_plots: Array[Dictionary] = []
 var brewing_slots: Array[Dictionary] = []
 var alchemist_next_mistake_safe: bool = false
+var pet_training_levels: Dictionary = {}
+var spirit_training_levels: Dictionary = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}
 
 var _autosave_timer: float = 0.0
 var _afk_ui_sync_timer: float = 0.0
@@ -685,8 +723,11 @@ func _init_full_reset_state() -> void:
 	auto_potion_enabled = false
 	enemies_defeated = 0
 	garden_plots.clear()
+	light_garden_plots.clear()
 	brewing_slots.clear()
 	alchemist_next_mistake_safe = false
+	pet_training_levels.clear()
+	spirit_training_levels = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}
 	equipped_ability_ids = DEFAULT_EQUIPPED_ABILITIES.duplicate()
 	_sync_equipped_abilities()
 	for i: int in range(MAX_ACTIVE_ABILITY_SLOTS):
@@ -885,17 +926,32 @@ func has_pet_owned(pet_id: String) -> bool:
 	return owned_pet_ids.has(pet_id)
 
 
+func get_pet_training_level(pet_id: String) -> int:
+	return clampi(int(pet_training_levels.get(pet_id, 0)), 0, MAX_PET_TRAINING_LEVEL)
+
+
+func get_pet_training_multiplier(pet_id: String) -> float:
+	var lvl: int = get_pet_training_level(pet_id)
+	return 1.0 + float(lvl) * 0.12
+
+
 func get_pet_effect_value(effect_type: String) -> float:
 	var pet: PetData = get_equipped_pet()
 	if pet != null and pet.effect_type == effect_type:
-		return pet.effect_value
+		var raw: float = pet.effect_value * get_pet_training_multiplier(pet.id)
+		if effect_type == "crit_lightning":
+			return clampf(raw, 0.0, 0.90)
+		return raw
 	return 0.0
 
 
 func get_pet_secondary_value(effect_type: String) -> float:
 	var pet: PetData = get_equipped_pet()
 	if pet != null and pet.effect_type == effect_type:
-		return pet.effect_secondary
+		var raw: float = pet.effect_secondary * get_pet_training_multiplier(pet.id)
+		if effect_type == "gold_echo" or effect_type == "cooldown_haste":
+			return clampf(raw, 0.0, 0.95)
+		return raw
 	return 0.0
 
 
@@ -906,34 +962,79 @@ func get_pet_buy_price(pet: PetData) -> float:
 	return maxf(1.0, round(pet.buy_price * mult))
 
 
-func buy_pet(pet_id: String) -> Dictionary:
+func buy_pet(_pet_id: String) -> Dictionary:
+	return {
+		"success": false,
+		"message": "Путников нельзя купить за золото — приманите их узором растений в ☀️ Светлом саду!",
+	}
+
+
+func get_pet_treat_success_chance(pet_id: String, treat_item: ItemData) -> float:
+	var pet: PetData = get_pet_by_id(pet_id)
+	if pet == null or treat_item == null or treat_item.item_type != ItemData.ItemType.HARVEST:
+		return 0.0
+	if treat_item.garden_category != "light":
+		return 0.0
+	var lvl: int = get_pet_training_level(pet_id)
+	if lvl >= MAX_PET_TRAINING_LEVEL:
+		return 0.0
+	if treat_item.id == pet.favorite_treat_id:
+		return maxf(0.15, 0.55 - float(lvl) * 0.04)
+	if treat_item.id == pet.secondary_treat_id:
+		return maxf(0.08, 0.30 - float(lvl) * 0.025)
+	return maxf(0.05, 0.12 - float(lvl) * 0.01)
+
+
+func train_pet_with_treat(pet_id: String, treat_item: ItemData) -> Dictionary:
 	var pet: PetData = get_pet_by_id(pet_id)
 	if pet == null:
-		return {"success": false, "message": "Путник не найден."}
-	if has_pet_owned(pet_id):
-		return {"success": false, "message": "Этот путник уже приручён."}
-	if max_unlocked_difficulty < pet.required_difficulty:
-		return {"success": false, "message": "Нужна сложность %d." % pet.required_difficulty}
+		return {"success": false, "leveled_up": false, "message": "Путник не найден."}
+	if not has_pet_owned(pet_id):
+		return {"success": false, "leveled_up": false, "message": "Сначала приманите этого путника в Светлом саду."}
+	var cur_lvl: int = get_pet_training_level(pet_id)
+	if cur_lvl >= MAX_PET_TRAINING_LEVEL:
+		return {"success": false, "leveled_up": false, "message": "%s %s уже достиг максимального уровня дрессировки (%d/%d)!" % [pet.icon_emoji, pet.pet_name, cur_lvl, MAX_PET_TRAINING_LEVEL]}
+	if treat_item == null or treat_item.item_type != ItemData.ItemType.HARVEST or treat_item.garden_category != "light":
+		return {"success": false, "leveled_up": false, "message": "Для дрессировки подходят только растения Светлого сада."}
 
-	var price: float = get_pet_buy_price(pet)
-	if gold < price:
+	var chance: float = get_pet_treat_success_chance(pet_id, treat_item)
+	if not remove_item(treat_item, 1):
+		return {"success": false, "leveled_up": false, "message": "Недостаточно «%s» в рюкзаке." % treat_item.item_name}
+
+	var treat_tag: String = "★ любимый пряник" if treat_item.id == pet.favorite_treat_id else ("👍 хороший пряник" if treat_item.id == pet.secondary_treat_id else "🍪 пряник")
+	if randf() <= chance:
+		var new_lvl: int = cur_lvl + 1
+		pet_training_levels[pet_id] = new_lvl
+		pets_changed.emit()
+		stats_changed.emit()
+		save_game()
 		return {
-			"success": false,
-			"message": "Нужно %s золота (у вас %s)." % [
-				NumberFormatter.format_number(price),
-				NumberFormatter.format_number(gold),
+			"success": true,
+			"leveled_up": true,
+			"message": "🎉 %s %s с радостью съел %s (%s, шанс %d%%) и поднял дрессировку до Ур.%d (+%d%% эффекта)!" % [
+				pet.icon_emoji,
+				pet.pet_name,
+				treat_item.get_display_name(),
+				treat_tag,
+				roundi(chance * 100.0),
+				new_lvl,
+				new_lvl * 12,
 			],
 		}
 
-	gold -= price
-	owned_pet_ids.append(pet_id)
-	equipped_pet_id = pet_id
 	pets_changed.emit()
-	stats_changed.emit()
 	save_game()
 	return {
-		"success": true,
-		"message": "%s Путник «%s» приручён и занял слот!" % [pet.icon_emoji, pet.pet_name],
+		"success": false,
+		"leveled_up": false,
+		"message": "😋 %s %s скушал %s (%s, шанс %d%%), но уровень остался Ур.%d. Попробуйте ещё!" % [
+			pet.icon_emoji,
+			pet.pet_name,
+			treat_item.get_display_name(),
+			treat_tag,
+			roundi(chance * 100.0),
+			cur_lvl,
+		],
 	}
 
 
@@ -2440,9 +2541,14 @@ func use_or_equip_item(item: ItemData) -> String:
 					suffix,
 				]
 		ItemData.ItemType.SEED:
-			var plant_res: Dictionary = plant_seed_in_first_empty_plot(item)
+			var seed_crop: CropData = get_crop_by_id(item.seed_crop_id)
+			var plant_res: Dictionary = plant_light_seed_in_first_empty_plot(item) if (seed_crop != null and seed_crop.is_light_crop()) else plant_seed_in_first_empty_plot(item)
 			return str(plant_res.get("message", ""))
 		ItemData.ItemType.HARVEST:
+			if item.garden_category == "light":
+				return "Светлое растение %s используется для дрессировки путников (пряник) или подкормки духов (Убежище)." % item.get_display_name()
+			if item.id == "spirit_primordial_harvest":
+				return "Сакральный плод %s используется для дрессировки духов класса Спирит в Убежище." % item.get_display_name()
 			return "Урожай %s используется в котле зельеварения Убежища (или продаётся в лавке)." % item.get_display_name()
 		ItemData.ItemType.WEAPON:
 			if is_equipment_disabled():
@@ -2531,7 +2637,7 @@ func unequip_slot(slot_type: ItemData.ItemType) -> void:
 	save_game()
 
 
-# --- Sanctuary: Garden & Multi-Step Brewing (Diff 10+) ---
+# --- Sanctuary: Light Garden (Diff 1+), Dark Garden & Brewing (Diff 10+), Spirit Training ---
 
 func is_alchemy_unlocked() -> bool:
 	return max_unlocked_difficulty >= ALCHEMY_UNLOCK_DIFFICULTY
@@ -2546,6 +2652,10 @@ func get_crop_by_id(crop_id: String) -> CropData:
 func get_garden_plot_count() -> int:
 	var extra: int = 1 if is_skill_unlocked("herbal_mastery") else 0
 	return maxi(BASE_GARDEN_PLOTS + extra, garden_plots.size())
+
+
+func get_light_garden_plot_count() -> int:
+	return maxi(BASE_LIGHT_GARDEN_PLOTS, light_garden_plots.size())
 
 
 func is_garden_plot_accessible(plot_index: int) -> bool:
@@ -2580,6 +2690,14 @@ func _make_empty_garden_plot() -> Dictionary:
 	}
 
 
+func _make_empty_light_garden_plot() -> Dictionary:
+	return {
+		"crop_id": "",
+		"status": "empty",
+		"elapsed": 0.0,
+	}
+
+
 func _make_empty_brewing_slot() -> Dictionary:
 	return {
 		"state": "empty",
@@ -2606,9 +2724,16 @@ func _ensure_sanctuary_slots() -> void:
 	var target_plots: int = BASE_GARDEN_PLOTS + (1 if is_skill_unlocked("herbal_mastery") else 0)
 	while garden_plots.size() < target_plots:
 		garden_plots.append(_make_empty_garden_plot())
+	while light_garden_plots.size() < BASE_LIGHT_GARDEN_PLOTS:
+		light_garden_plots.append(_make_empty_light_garden_plot())
+	if light_garden_plots.size() > BASE_LIGHT_GARDEN_PLOTS:
+		light_garden_plots.resize(BASE_LIGHT_GARDEN_PLOTS)
 	var target_cauldrons: int = BASE_BREWING_SLOTS + (1 if is_skill_unlocked("master_brewer") else 0)
 	while brewing_slots.size() < target_cauldrons:
 		brewing_slots.append(_make_empty_brewing_slot())
+	for sk: String in SPIRIT_KEYS:
+		if not spirit_training_levels.has(sk):
+			spirit_training_levels[sk] = 0
 
 
 func get_garden_growth_speed_mult() -> float:
@@ -2654,6 +2779,22 @@ func _process_sanctuary(delta: float) -> void:
 		else:
 			plot["elapsed"] = next_elapsed
 
+	for i: int in range(light_garden_plots.size()):
+		var lplot: Dictionary = light_garden_plots[i]
+		if str(lplot.get("status", "empty")) != "growing":
+			continue
+		var lcrop: CropData = get_crop_by_id(str(lplot.get("crop_id", "")))
+		if lcrop == null:
+			continue
+		any_active_timer = true
+		var next_l_elapsed: float = float(lplot.get("elapsed", 0.0)) + delta * garden_mult
+		if next_l_elapsed >= lcrop.grow_seconds:
+			lplot["elapsed"] = lcrop.grow_seconds
+			lplot["status"] = "ready"
+			garden_dirty = true
+		else:
+			lplot["elapsed"] = next_l_elapsed
+
 	for i: int in range(brewing_slots.size()):
 		var cauldron: Dictionary = brewing_slots[i]
 		if str(cauldron.get("state", "empty")) != "brewing":
@@ -2694,13 +2835,16 @@ func _process_sanctuary(delta: float) -> void:
 func roll_rare_seed_drops(enemy: EnemyData) -> void:
 	if enemy == null or crops.is_empty():
 		return
-	var is_boss_enemy: bool = (enemy.id == FINAL_BOSS_ID or enemy.id == CURSE_WARDEN_ID)
+	var is_final_boss: bool = (enemy.id == FINAL_BOSS_ID)
+	var is_boss_enemy: bool = (is_final_boss or enemy.id == CURSE_WARDEN_ID)
 	var mult: float = get_seed_drop_multiplier()
 	for crop: CropData in crops:
 		if crop == null or enemy.xp_reward < crop.min_enemy_xp:
 			continue
+		if crop.final_boss_only and not is_final_boss:
+			continue
 		var raw_chance: float = crop.boss_drop_chance if (is_boss_enemy and crop.boss_drop_chance > 0.0) else crop.base_drop_chance
-		var effective_chance: float = raw_chance * mult
+		var effective_chance: float = raw_chance if crop.final_boss_only else (raw_chance * mult)
 		if effective_chance > 0.0 and randf() <= effective_chance:
 			var seed_item: ItemData = load(crop.seed_item_path) as ItemData
 			if seed_item != null:
@@ -2731,18 +2875,20 @@ func on_final_boss_killed_for_garden() -> void:
 
 func plant_seed_on_plot(plot_index: int, seed_item: ItemData) -> Dictionary:
 	if not is_alchemy_unlocked():
-		return {"success": false, "message": "Сад откроется после победы на 10-й сложности."}
+		return {"success": false, "message": "Тёмный сад откроется после победы на 10-й сложности."}
 	if seed_item == null or seed_item.item_type != ItemData.ItemType.SEED:
 		return {"success": false, "message": "Выберите подходящие семена."}
 	_ensure_sanctuary_slots()
 	if plot_index < 0 or plot_index >= garden_plots.size() or not is_garden_plot_accessible(plot_index):
-		return {"success": false, "message": "Эта грядка ещё не открыта."}
+		return {"success": false, "message": "Эта грядка Тёмного сада ещё не открыта."}
 	var plot: Dictionary = garden_plots[plot_index]
 	if str(plot.get("status", "empty")) != "empty":
 		return {"success": false, "message": "На этой грядке уже растёт культура."}
 	var crop: CropData = get_crop_by_id(seed_item.seed_crop_id)
 	if crop == null:
 		return {"success": false, "message": "Неизвестная культура для этих семян."}
+	if crop.is_light_crop():
+		return {"success": false, "message": "Это семя Светлого сада — высаживайте его на грядках ☀️ Светлого сада!"}
 	if not remove_item(seed_item, 1):
 		return {"success": false, "message": "Недостаточно семян в рюкзаке."}
 
@@ -2756,23 +2902,23 @@ func plant_seed_on_plot(plot_index: int, seed_item: ItemData) -> Dictionary:
 	save_game()
 	return {
 		"success": true,
-		"message": "%s Посажено на грядку #%d: %s!" % [crop.icon_emoji, plot_index + 1, crop.crop_name],
+		"message": "%s Посажено в Тёмном саду (грядка #%d): %s!" % [crop.icon_emoji, plot_index + 1, crop.crop_name],
 	}
 
 
 func plant_seed_in_first_empty_plot(seed_item: ItemData) -> Dictionary:
 	if not is_alchemy_unlocked():
-		return {"success": false, "message": "Сад откроется после победы на 10-й сложности."}
+		return {"success": false, "message": "Тёмный сад откроется после победы на 10-й сложности."}
 	_ensure_sanctuary_slots()
 	for i: int in range(garden_plots.size()):
 		if is_garden_plot_accessible(i) and str(garden_plots[i].get("status", "empty")) == "empty":
 			return plant_seed_on_plot(i, seed_item)
-	return {"success": false, "message": "Все доступные грядки заняты!"}
+	return {"success": false, "message": "Все доступные грядки Тёмного сада заняты!"}
 
 
 func harvest_garden_plot(plot_index: int) -> Dictionary:
 	if not is_alchemy_unlocked():
-		return {"success": false, "message": "Сад открывается после 10-й сложности."}
+		return {"success": false, "message": "Тёмный сад открывается после 10-й сложности."}
 	if plot_index < 0 or plot_index >= garden_plots.size():
 		return {"success": false, "message": "Грядка не найдена."}
 	var plot: Dictionary = garden_plots[plot_index]
@@ -2794,11 +2940,250 @@ func harvest_garden_plot(plot_index: int) -> Dictionary:
 	save_game()
 	return {
 		"success": true,
-		"message": "%s Собрано с грядки #%d: %s x%d!" % [
+		"message": "%s Собрано с Тёмного сада (грядка #%d): %s x%d!" % [
 			crop.icon_emoji,
 			plot_index + 1,
 			harvest_item.item_name if harvest_item != null else crop.crop_name,
 			yield_amt,
+		],
+	}
+
+
+func can_instant_grow_plot(plot_index: int) -> bool:
+	if plot_index < 0 or plot_index >= garden_plots.size():
+		return false
+	var plot: Dictionary = garden_plots[plot_index]
+	if str(plot.get("status", "empty")) != "growing":
+		return false
+	var crop: CropData = get_crop_by_id(str(plot.get("crop_id", "")))
+	if crop == null or not crop.has_instant_grow_feed():
+		return false
+	for item_id_var: Variant in crop.instant_grow_feed_items.keys():
+		var req_id: String = str(item_id_var)
+		var req_cnt: int = int(crop.instant_grow_feed_items[item_id_var])
+		var req_item: ItemData = load("res://resources/items/%s.tres" % req_id) as ItemData
+		if req_item == null or get_item_count_in_inventory(req_item) < req_cnt:
+			return false
+	return true
+
+
+func feed_growing_crop_for_instant_growth(plot_index: int) -> Dictionary:
+	if plot_index < 0 or plot_index >= garden_plots.size():
+		return {"success": false, "message": "Грядка не найдена."}
+	var plot: Dictionary = garden_plots[plot_index]
+	if str(plot.get("status", "empty")) != "growing":
+		return {"success": false, "message": "Культура уже созрела или грядка пуста."}
+	var crop: CropData = get_crop_by_id(str(plot.get("crop_id", "")))
+	if crop == null or not crop.has_instant_grow_feed():
+		return {"success": false, "message": "Эту культуру нельзя ускорить подкормкой духов."}
+
+	var to_consume: Array[Dictionary] = []
+	for item_id_var: Variant in crop.instant_grow_feed_items.keys():
+		var req_id: String = str(item_id_var)
+		var req_cnt: int = int(crop.instant_grow_feed_items[item_id_var])
+		var req_item: ItemData = load("res://resources/items/%s.tres" % req_id) as ItemData
+		if req_item == null:
+			return {"success": false, "message": "Не найден ресурс растения %s." % req_id}
+		var owned_cnt: int = get_item_count_in_inventory(req_item)
+		if owned_cnt < req_cnt:
+			return {"success": false, "message": "Нужно %s %s x%d (у вас %d)." % [req_item.icon_emoji, req_item.item_name, req_cnt, owned_cnt]}
+		to_consume.append({"item": req_item, "count": req_cnt})
+
+	for entry: Dictionary in to_consume:
+		remove_item(entry["item"] as ItemData, int(entry["count"]))
+
+	plot["elapsed"] = crop.grow_seconds
+	plot["status"] = "ready"
+	garden_changed.emit()
+	save_game()
+	return {
+		"success": true,
+		"message": "🌟 Духи вкусили базовые растения Светлого сада — %s %s на грядке #%d созрел МОМЕНТАЛЬНО!" % [
+			crop.icon_emoji,
+			crop.crop_name,
+			plot_index + 1,
+		],
+	}
+
+
+func plant_light_seed_on_plot(plot_index: int, seed_item: ItemData) -> Dictionary:
+	if seed_item == null or seed_item.item_type != ItemData.ItemType.SEED:
+		return {"success": false, "message": "Выберите подходящие семена Светлого сада."}
+	_ensure_sanctuary_slots()
+	if plot_index < 0 or plot_index >= light_garden_plots.size():
+		return {"success": false, "message": "Грядка Светлого сада не найдена."}
+	var plot: Dictionary = light_garden_plots[plot_index]
+	if str(plot.get("status", "empty")) != "empty":
+		return {"success": false, "message": "На этой грядке Светлого сада уже растёт растение."}
+	var crop: CropData = get_crop_by_id(seed_item.seed_crop_id)
+	if crop == null or not crop.is_light_crop():
+		return {"success": false, "message": "Сюда можно сажать только простые растения ☀️ Светлого сада!"}
+	if not remove_item(seed_item, 1):
+		return {"success": false, "message": "Недостаточно семян в рюкзаке."}
+
+	light_garden_plots[plot_index] = {
+		"crop_id": crop.id,
+		"status": "growing",
+		"elapsed": 0.0,
+	}
+	garden_changed.emit()
+	save_game()
+	return {
+		"success": true,
+		"message": "%s Посажено в Светлый сад (слот #%d): %s!" % [crop.icon_emoji, plot_index + 1, crop.crop_name],
+	}
+
+
+func plant_light_seed_in_first_empty_plot(seed_item: ItemData) -> Dictionary:
+	_ensure_sanctuary_slots()
+	for i: int in range(light_garden_plots.size()):
+		if str(light_garden_plots[i].get("status", "empty")) == "empty":
+			return plant_light_seed_on_plot(i, seed_item)
+	return {"success": false, "message": "Все 3 грядки Светлого сада заняты!"}
+
+
+func harvest_light_garden_plot(plot_index: int) -> Dictionary:
+	_ensure_sanctuary_slots()
+	if plot_index < 0 or plot_index >= light_garden_plots.size():
+		return {"success": false, "message": "Грядка Светлого сада не найдена."}
+	var plot: Dictionary = light_garden_plots[plot_index]
+	if str(plot.get("status", "empty")) != "ready":
+		return {"success": false, "message": "Растение ещё не выросло."}
+	var crop: CropData = get_crop_by_id(str(plot.get("crop_id", "")))
+	if crop == null:
+		light_garden_plots[plot_index] = _make_empty_light_garden_plot()
+		garden_changed.emit()
+		return {"success": false, "message": "Растение испорчено."}
+
+	var yield_amt: int = randi_range(crop.harvest_min, maxi(crop.harvest_min, crop.harvest_max))
+	var harvest_item: ItemData = load(crop.harvest_item_path) as ItemData
+	if harvest_item != null:
+		add_item(harvest_item, yield_amt, true)
+
+	light_garden_plots[plot_index] = _make_empty_light_garden_plot()
+	garden_changed.emit()
+	save_game()
+	return {
+		"success": true,
+		"message": "%s Собрано из Светлого сада (#%d): %s x%d (для пряников и подкормки духов)!" % [
+			crop.icon_emoji,
+			plot_index + 1,
+			harvest_item.item_name if harvest_item != null else crop.crop_name,
+			yield_amt,
+		],
+	}
+
+
+func can_lure_pet_from_light_garden() -> bool:
+	_ensure_sanctuary_slots()
+	if light_garden_plots.size() < BASE_LIGHT_GARDEN_PLOTS:
+		return false
+	for i: int in range(BASE_LIGHT_GARDEN_PLOTS):
+		if str(light_garden_plots[i].get("status", "empty")) != "ready":
+			return false
+	return true
+
+
+func lure_pet_from_light_garden() -> Dictionary:
+	_ensure_sanctuary_slots()
+	if not can_lure_pet_from_light_garden():
+		return {"success": false, "withered": false, "duplicate": false, "message": "Чтобы приманить путника, должны созреть все 3 грядки Светлого сада!"}
+
+	var planted_pattern: Array[String] = []
+	for i: int in range(BASE_LIGHT_GARDEN_PLOTS):
+		planted_pattern.append(str(light_garden_plots[i].get("crop_id", "")))
+
+	var matched_pet_id: String = ""
+	for recipe: Dictionary in PET_LURE_RECIPES:
+		var pat: Array = recipe.get("pattern", []) as Array
+		if pat.size() == BASE_LIGHT_GARDEN_PLOTS and str(pat[0]) == planted_pattern[0] and str(pat[1]) == planted_pattern[1] and str(pat[2]) == planted_pattern[2]:
+			matched_pet_id = str(recipe.get("pet_id", ""))
+			break
+
+	# Consume / wither all 3 Light Garden plots regardless of outcome
+	for i: int in range(BASE_LIGHT_GARDEN_PLOTS):
+		light_garden_plots[i] = _make_empty_light_garden_plot()
+
+	if matched_pet_id.is_empty():
+		garden_changed.emit()
+		save_game()
+		return {
+			"success": false,
+			"withered": true,
+			"duplicate": false,
+			"message": "🥀 На эту высадку никто не откликнулся — ничего не произошло, растения на 3 грядках завяли.",
+		}
+
+	var pet: PetData = get_pet_by_id(matched_pet_id)
+	if has_pet_owned(matched_pet_id):
+		garden_changed.emit()
+		save_game()
+		var pet_title: String = "%s %s" % [pet.icon_emoji, pet.pet_name] if pet != null else matched_pet_id
+		return {
+			"success": false,
+			"withered": true,
+			"duplicate": true,
+			"message": "🥀 На аромат заглянул %s, но этот путник уже приручён (повторка) — ничего не произошло, растения на 3 грядках завяли." % pet_title,
+		}
+
+	owned_pet_ids.append(matched_pet_id)
+	if equipped_pet_id.is_empty():
+		equipped_pet_id = matched_pet_id
+	pets_changed.emit()
+	garden_changed.emit()
+	stats_changed.emit()
+	save_game()
+	return {
+		"success": true,
+		"withered": false,
+		"duplicate": false,
+		"message": "🐾 Чудо Светлого сада! На высадку прибежал и приручился %s %s!" % [
+			pet.icon_emoji if pet != null else "🐾",
+			pet.pet_name if pet != null else matched_pet_id,
+		],
+	}
+
+
+func get_spirit_training_level(spirit_key: String) -> int:
+	return maxi(0, int(spirit_training_levels.get(spirit_key, 0)))
+
+
+func get_spirit_power_multiplier(spirit_key: String) -> float:
+	return 1.0 + float(get_spirit_training_level(spirit_key)) * 0.15
+
+
+func get_spirit_speed_multiplier(spirit_key: String) -> float:
+	return 1.0 + float(get_spirit_training_level(spirit_key)) * 0.03
+
+
+func train_spirit(spirit_key: String) -> Dictionary:
+	if not SPIRIT_KEYS.has(spirit_key):
+		return {"success": false, "message": "Неизвестный дух природы."}
+	if not has_hero_class("spirit"):
+		return {"success": false, "message": "Дрессировка духов доступна только классу 🌿 Спирит (Сл.50+)."}
+	var fruit_item: ItemData = load("res://resources/items/spirit_primordial_harvest.tres") as ItemData
+	if fruit_item == null or not remove_item(fruit_item, 1):
+		return {"success": false, "message": "Нужен 🌟 Плод первоцвета духов (семя падает с 0.03% шансом ТОЛЬКО с Вечного титана)."}
+
+	var next_lvl: int = get_spirit_training_level(spirit_key) + 1
+	spirit_training_levels[spirit_key] = next_lvl
+	stats_changed.emit()
+	garden_changed.emit()
+	save_game()
+
+	var spirit_titles: Dictionary = {
+		"fire": "🔥 Дух Огня",
+		"wind": "🌪️ Дух Ветра",
+		"forest": "🌿 Дух Леса",
+		"earth": "🪨 Дух Земли",
+	}
+	return {
+		"success": true,
+		"message": "🌟 %s надрессирован до Ур.%d (+%d%% сила, +%d%% скорость)!" % [
+			str(spirit_titles.get(spirit_key, spirit_key)),
+			next_lvl,
+			next_lvl * 15,
+			next_lvl * 3,
 		],
 	}
 
@@ -2842,7 +3227,9 @@ func add_brewing_ingredient(slot_index: int, ingredient_item: ItemData) -> Dicti
 	if not is_alchemy_unlocked():
 		return {"success": false, "exploded": false, "saved_by_alchemist": false, "message": "Зельеварение открывается после 10-й сложности."}
 	if ingredient_item == null or ingredient_item.item_type != ItemData.ItemType.HARVEST:
-		return {"success": false, "exploded": false, "saved_by_alchemist": false, "message": "В котёл можно добавлять только урожай из Сада."}
+		return {"success": false, "exploded": false, "saved_by_alchemist": false, "message": "В котёл можно добавлять только урожай из Тёмного сада."}
+	if ingredient_item.garden_category == "light" or ingredient_item.id == "spirit_primordial_harvest":
+		return {"success": false, "exploded": false, "saved_by_alchemist": false, "message": "Растения Светлого сада и плоды духов не варятся в котле — используйте их для путников и духов!"}
 	_ensure_sanctuary_slots()
 	if slot_index < 0 or slot_index >= brewing_slots.size() or not is_brewing_slot_accessible(slot_index):
 		return {"success": false, "exploded": false, "saved_by_alchemist": false, "message": "Котёл не открыт."}
@@ -2997,8 +3384,11 @@ func save_game() -> void:
 	save_data.owned_pet_ids = owned_pet_ids.duplicate()
 	save_data.equipped_pet_id = equipped_pet_id
 	save_data.garden_plots = garden_plots.duplicate(true)
+	save_data.light_garden_plots = light_garden_plots.duplicate(true)
 	save_data.brewing_slots = brewing_slots.duplicate(true)
 	save_data.alchemist_next_mistake_safe = alchemist_next_mistake_safe
+	save_data.pet_training_levels = pet_training_levels.duplicate(true)
+	save_data.spirit_training_levels = spirit_training_levels.duplicate(true)
 
 	for entry: Dictionary in inventory:
 		var item: ItemData = entry["item"] as ItemData
@@ -3125,10 +3515,24 @@ func load_game() -> bool:
 	garden_plots.clear()
 	for gp: Dictionary in save_data.garden_plots:
 		garden_plots.append(gp.duplicate(true))
+	light_garden_plots.clear()
+	for lgp: Dictionary in save_data.light_garden_plots:
+		light_garden_plots.append(lgp.duplicate(true))
 	brewing_slots.clear()
 	for bs: Dictionary in save_data.brewing_slots:
 		brewing_slots.append(bs.duplicate(true))
 	alchemist_next_mistake_safe = save_data.alchemist_next_mistake_safe
+	pet_training_levels.clear()
+	if save_data.pet_training_levels is Dictionary:
+		for pk: Variant in save_data.pet_training_levels.keys():
+			var pid: String = str(pk)
+			if _pets_by_id.has(pid):
+				pet_training_levels[pid] = clampi(int(save_data.pet_training_levels[pk]), 0, MAX_PET_TRAINING_LEVEL)
+	spirit_training_levels = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}
+	if save_data.spirit_training_levels is Dictionary:
+		for sk: String in SPIRIT_KEYS:
+			if save_data.spirit_training_levels.has(sk):
+				spirit_training_levels[sk] = maxi(0, int(save_data.spirit_training_levels[sk]))
 	_ensure_sanctuary_slots()
 
 	current_hp = clampf(save_data.current_hp, 0.0, get_max_hp())

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "light_clover"
+crop_name = "Солнечный клевер"
+icon_emoji = "🍀"
+rarity_label = "Светлое (4.5%)"
+garden_type = "light"
+description = "Простое светлое растение. Используется для приманки и дрессировки путников, а также для ускорения первоцвета духов."
+seed_item_path = "res://resources/items/light_clover_seed.tres"
+harvest_item_path = "res://resources/items/light_clover_harvest.tres"
+base_drop_chance = 0.045
+boss_drop_chance = 0.045
+final_boss_only = false
+min_enemy_xp = 0.0
+grow_seconds = 20.0
+required_final_boss_kills = 0
+is_spirit_training_crop = false
+harvest_min = 2
+harvest_max = 3
+accent_color = Color(0.42, 0.95, 0.48, 1)

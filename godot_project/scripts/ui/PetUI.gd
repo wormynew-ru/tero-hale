@@ -10,6 +10,7 @@ extends ScrollContainer
 func _ready() -> void:
 	GameManager.pets_changed.connect(_refresh)
 	GameManager.stats_changed.connect(_refresh)
+	GameManager.inventory_changed.connect(_refresh)
 	GameManager.difficulty_changed.connect(_refresh)
 	GameManager.game_reset.connect(_on_reset)
 	unequip_pet_button.pressed.connect(func() -> void:
@@ -24,30 +25,54 @@ func _on_reset() -> void:
 	_refresh()
 
 
+func _collect_light_treats() -> Array[Dictionary]:
+	var treats: Array[Dictionary] = []
+	for entry: Dictionary in GameManager.inventory:
+		var item: ItemData = entry["item"] as ItemData
+		var cnt: int = int(entry["count"])
+		if item != null and cnt > 0 and item.item_type == ItemData.ItemType.HARVEST and item.garden_category == "light":
+			treats.append({"item": item, "count": cnt})
+	return treats
+
+
+func _get_item_display(item_id: String) -> String:
+	if item_id.is_empty():
+		return "—"
+	var item: ItemData = load("res://resources/items/%s.tres" % item_id) as ItemData
+	if item != null:
+		return "%s %s" % [item.icon_emoji, item.item_name]
+	return item_id
+
+
 func _refresh() -> void:
 	if pet_list_vbox == null:
 		return
 
 	var active_pet: PetData = GameManager.get_equipped_pet()
-	pet_status_label.text = "🐾 Приручено путников: %d / %d. Путник не имеет HP и не может погибнуть — он помогает в бою в отдельном слоте." % [
+	pet_status_label.text = "🐾 Приручено путников: %d / %d. Путников нельзя купить за золото — только приманить высадкой в ☀️ Светлом саду (повторки вянут) и дрессировать пряниками!" % [
 		GameManager.owned_pet_ids.size(),
 		GameManager.all_pets.size(),
 	]
 
 	if active_pet != null:
-		active_pet_label.text = "🌟 Активный слот Путника: %s %s (%s) — %s" % [
+		var active_lvl: int = GameManager.get_pet_training_level(active_pet.id)
+		active_pet_label.text = "🌟 Активный слот Путника: %s %s [Дресс. Ур.%d, +%d%%] (%s) — %s" % [
 			active_pet.icon_emoji,
 			active_pet.pet_name,
+			active_lvl,
+			active_lvl * 12,
 			active_pet.subtitle,
 			active_pet.description,
 		]
 		unequip_pet_button.disabled = false
 	else:
-		active_pet_label.text = "🐾 Активный слот Путника: [Пусто — выберите спутника ниже]"
+		active_pet_label.text = "🐾 Активный слот Путника: [Пусто — приманите в Светлом саду и выберите ниже]"
 		unequip_pet_button.disabled = true
 
 	for child: Node in pet_list_vbox.get_children():
 		child.queue_free()
+
+	var light_treats: Array[Dictionary] = _collect_light_treats()
 
 	for pet: PetData in GameManager.all_pets:
 		if pet == null:
@@ -55,7 +80,7 @@ func _refresh() -> void:
 
 		var owned: bool = GameManager.has_pet_owned(pet.id)
 		var equipped: bool = GameManager.equipped_pet_id == pet.id
-		var diff_ok: bool = GameManager.max_unlocked_difficulty >= pet.required_difficulty
+		var train_lvl: int = GameManager.get_pet_training_level(pet.id)
 
 		var card: PanelContainer = PanelContainer.new()
 		var style: StyleBoxFlat = StyleBoxFlat.new()
@@ -83,6 +108,9 @@ func _refresh() -> void:
 			style.border_color = Color(0.32, 0.36, 0.44, 1.0)
 		card.add_theme_stylebox_override("panel", style)
 
+		var card_vbox: VBoxContainer = VBoxContainer.new()
+		card_vbox.add_theme_constant_override("separation", 8)
+
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
 
@@ -92,7 +120,8 @@ func _refresh() -> void:
 
 		var title_lbl: Label = Label.new()
 		title_lbl.add_theme_font_size_override("font_size", 16)
-		title_lbl.text = "%s %s (%s) • Бессмертный путник" % [pet.icon_emoji, pet.pet_name, pet.subtitle]
+		var lvl_badge: String = " • Дресс. Ур.%d/%d (+%d%%)" % [train_lvl, GameManager.MAX_PET_TRAINING_LEVEL, train_lvl * 12] if owned else " • Не приручён"
+		title_lbl.text = "%s %s (%s)%s" % [pet.icon_emoji, pet.pet_name, pet.subtitle, lvl_badge]
 		title_lbl.add_theme_color_override("font_color", pet.accent_color.lightened(0.25))
 		info_vbox.add_child(title_lbl)
 
@@ -102,6 +131,20 @@ func _refresh() -> void:
 		desc_lbl.add_theme_color_override("font_color", Color(0.8, 0.86, 0.94, 1.0))
 		desc_lbl.text = pet.description
 		info_vbox.add_child(desc_lbl)
+
+		var pref_lbl: Label = Label.new()
+		pref_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		pref_lbl.add_theme_font_size_override("font_size", 12)
+		if owned:
+			pref_lbl.add_theme_color_override("font_color", Color(0.98, 0.86, 0.45, 1.0))
+			pref_lbl.text = "🍪 Пряники: ★ Любимый — %s  |  👍 Хороший — %s" % [
+				_get_item_display(pet.favorite_treat_id),
+				_get_item_display(pet.secondary_treat_id),
+			]
+		else:
+			pref_lbl.add_theme_color_override("font_color", Color(0.68, 0.92, 0.72, 1.0))
+			pref_lbl.text = "☀️ Приманка в Светлом саду (грядки 1 + 2 + 3): %s" % pet.lure_hint
+		info_vbox.add_child(pref_lbl)
 
 		row.add_child(info_vbox)
 
@@ -120,19 +163,45 @@ func _refresh() -> void:
 				if GameManager.equip_pet(target_id):
 					pet_feedback_label.text = "Путник «%s» теперь сопровождает героя!" % target_name
 			)
-		elif not diff_ok:
-			action_btn.text = "🔒 Сл. %d" % pet.required_difficulty
-			action_btn.disabled = true
 		else:
-			var price: float = GameManager.get_pet_buy_price(pet)
-			action_btn.text = "Приручить (%s з.)" % NumberFormatter.format_number(price)
-			action_btn.disabled = GameManager.gold < price
-			var target_id: String = pet.id
-			action_btn.pressed.connect(func() -> void:
-				var res: Dictionary = GameManager.buy_pet(target_id)
-				pet_feedback_label.text = str(res.get("message", ""))
-			)
+			action_btn.text = "☀️ Приманить в Саду"
+			action_btn.disabled = true
 
 		row.add_child(action_btn)
-		card.add_child(row)
+		card_vbox.add_child(row)
+
+		if owned and train_lvl < GameManager.MAX_PET_TRAINING_LEVEL:
+			if light_treats.is_empty():
+				var no_treat_lbl: Label = Label.new()
+				no_treat_lbl.add_theme_font_size_override("font_size", 12)
+				no_treat_lbl.add_theme_color_override("font_color", Color(0.65, 0.72, 0.80, 1.0))
+				no_treat_lbl.text = "Нет пряников в рюкзаке — вырастите и соберите растения в ☀️ Светлом саду."
+				card_vbox.add_child(no_treat_lbl)
+			else:
+				var treat_flow: HFlowContainer = HFlowContainer.new()
+				treat_flow.add_theme_constant_override("h_separation", 8)
+				treat_flow.add_theme_constant_override("v_separation", 8)
+				for t_entry: Dictionary in light_treats:
+					var treat_item: ItemData = t_entry["item"] as ItemData
+					var cnt: int = int(t_entry["count"])
+					var chance_pct: int = roundi(GameManager.get_pet_treat_success_chance(pet.id, treat_item) * 100.0)
+					var tag: String = "★" if treat_item.id == pet.favorite_treat_id else ("👍" if treat_item.id == pet.secondary_treat_id else "🍪")
+					var feed_btn: Button = Button.new()
+					feed_btn.custom_minimum_size = Vector2(210.0, 44.0)
+					feed_btn.text = "%s %s %s (x%d · %d%%)" % [tag, treat_item.icon_emoji, treat_item.item_name, cnt, chance_pct]
+					var pid: String = pet.id
+					feed_btn.pressed.connect(func() -> void:
+						var res: Dictionary = GameManager.train_pet_with_treat(pid, treat_item)
+						pet_feedback_label.text = str(res.get("message", ""))
+					)
+					treat_flow.add_child(feed_btn)
+				card_vbox.add_child(treat_flow)
+		elif owned and train_lvl >= GameManager.MAX_PET_TRAINING_LEVEL:
+			var max_lbl: Label = Label.new()
+			max_lbl.add_theme_font_size_override("font_size", 12)
+			max_lbl.add_theme_color_override("font_color", Color(0.45, 0.96, 0.72, 1.0))
+			max_lbl.text = "🏆 Достигнут максимальный уровень дрессировки (%d/%d)!" % [train_lvl, GameManager.MAX_PET_TRAINING_LEVEL]
+			card_vbox.add_child(max_lbl)
+
+		card.add_child(card_vbox)
 		pet_list_vbox.add_child(card)

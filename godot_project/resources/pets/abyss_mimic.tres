@@ -14,4 +14,7 @@ effect_value = 0.45
 effect_secondary = 0.25
 buy_price = 600.0
 required_difficulty = 1
+favorite_treat_id = "honey_berry_harvest"
+secondary_treat_id = "light_clover_harvest"
+lure_hint = "🍓 Медовая ягода + 🍀 Солнечный клевер + 🍓 Медовая ягода"
 accent_color = Color(0.98, 0.84, 0.28, 1)

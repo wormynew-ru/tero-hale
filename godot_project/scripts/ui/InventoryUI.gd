@@ -185,11 +185,24 @@ func _rebuild_inventory() -> void:
 			action_btn.text = "В колчан"
 			action_btn.disabled = equip_disabled
 		elif item.item_type == ItemData.ItemType.SEED:
-			action_btn.text = "Посадить" if GameManager.is_alchemy_unlocked() else "🔒 Сл.10"
-			action_btn.disabled = not GameManager.is_alchemy_unlocked()
+			var seed_crop: CropData = GameManager.get_crop_by_id(item.seed_crop_id)
+			var is_light_seed: bool = seed_crop != null and seed_crop.is_light_crop()
+			if is_light_seed:
+				action_btn.text = "☀️ Посадить"
+				action_btn.disabled = false
+			else:
+				action_btn.text = "🌑 Посадить" if GameManager.is_alchemy_unlocked() else "🔒 Сл.%d" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
+				action_btn.disabled = not GameManager.is_alchemy_unlocked()
 		elif item.item_type == ItemData.ItemType.HARVEST:
-			action_btn.text = "В котёл"
-			action_btn.disabled = not GameManager.is_alchemy_unlocked()
+			if item.garden_category == "light":
+				action_btn.text = "🍪 Пряник"
+				action_btn.disabled = false
+			elif item.id == "spirit_primordial_harvest":
+				action_btn.text = "🌿 К духам"
+				action_btn.disabled = false
+			else:
+				action_btn.text = "В котёл"
+				action_btn.disabled = not GameManager.is_alchemy_unlocked()
 		else:
 			action_btn.text = "Надеть"
 			action_btn.disabled = equip_disabled

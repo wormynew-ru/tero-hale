@@ -98,9 +98,9 @@ func _refresh_resources() -> void:
 		open_pets_button.text = "🐾 Путники (%d)" % GameManager.all_pets.size()
 
 	if GameManager.is_alchemy_unlocked():
-		open_sanctuary_button.text = "🏡 Убежище (Сад и Зелья)"
+		open_sanctuary_button.text = "🏡 Убежище (Сады и Зелья)"
 	else:
-		open_sanctuary_button.text = "🔒 Убежище (Сл.%d)" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
+		open_sanctuary_button.text = "☀️ Светлый сад (Тёмн.: Сл.%d)" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
 
 
 func open_hub() -> void:

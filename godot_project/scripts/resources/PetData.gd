@@ -11,4 +11,7 @@ extends Resource
 @export var effect_secondary: float = 0.0
 @export var buy_price: float = 250.0
 @export var required_difficulty: int = 1
+@export var favorite_treat_id: String = ""
+@export var secondary_treat_id: String = ""
+@export var lure_hint: String = ""
 @export var accent_color: Color = Color(0.95, 0.72, 0.35, 1.0)

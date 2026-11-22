@@ -14,4 +14,7 @@ effect_value = 0.35
 effect_secondary = 0.15
 buy_price = 900.0
 required_difficulty = 1
+favorite_treat_id = "sky_chamomile_harvest"
+secondary_treat_id = "light_clover_harvest"
+lure_hint = "🌼 Небесная ромашка + 🌼 Небесная ромашка + 🍀 Солнечный клевер"
 accent_color = Color(0.62, 0.72, 1, 1)

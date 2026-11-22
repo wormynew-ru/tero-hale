@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "spark_chili"
+crop_name = "Искристый перчик"
+icon_emoji = "🌶️"
+rarity_label = "Светлое (2.5%)"
+garden_type = "light"
+description = "Бодрящий огненный плод Светлого сада. Привлекает боевых путников и ускоряет духов природы."
+seed_item_path = "res://resources/items/spark_chili_seed.tres"
+harvest_item_path = "res://resources/items/spark_chili_harvest.tres"
+base_drop_chance = 0.025
+boss_drop_chance = 0.025
+final_boss_only = false
+min_enemy_xp = 0.0
+grow_seconds = 40.0
+required_final_boss_kills = 0
+is_spirit_training_crop = false
+harvest_min = 1
+harvest_max = 2
+accent_color = Color(0.98, 0.52, 0.24, 1)

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "spirit_primordial_seed"
+item_name = "Семя первоцвета духов"
+icon_emoji = "✨"
+description = "Ультра-редкое семя (0.03% ТОЛЬКО с Вечного титана). Высаживается в Тёмном саду и растёт 3600с, либо мгновенно созревает, если скормить базовые растения духов."
+item_type = 4
+buy_price = 5000
+sell_value = 500
+icon_color = Color(0.55, 0.96, 0.98, 1)
+seed_crop_id = "spirit_primordial"
+garden_category = "dark"

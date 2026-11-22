@@ -64,6 +64,7 @@ enum AmmoKind {
 
 @export_group("Garden & Alchemy")
 @export var seed_crop_id: String = ""
+@export var garden_category: String = "dark"
 
 
 func is_ranged_weapon() -> bool:
@@ -94,9 +95,9 @@ func get_style_tag() -> String:
 			AmmoKind.BOLT:
 				return "🔩 Болты"
 	if item_type == ItemType.SEED:
-		return "🌱 Семя для Сада"
+		return "☀️ Семя Светлого сада" if garden_category == "light" else "🌑 Семя Тёмного сада"
 	if item_type == ItemType.HARVEST:
-		return "🌿 Урожай (Зельеварение / Продажа)"
+		return "☀️ Светлое растение (Приманка/Дрессировка)" if garden_category == "light" else "🌑 Тёмный урожай (Зельеварение/Духи)"
 	return ""
 
 
