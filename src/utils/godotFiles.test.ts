@@ -504,6 +504,34 @@ test('Light Garden pet luring, withering duplicates, pet treat training, 0.03% S
   assert.ok(petUiGd.includes('train_pet_with_treat'), 'PetUI must support feeding treats directly to trained pets');
 });
 
+test('all GameManager.<member> references across GDScript files exist on GameManager.gd', () => {
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const gmMembers = new Set<string>();
+  for (const m of gmContent.matchAll(/^(?:@export[^\n]*\s+)?(?:var|const|signal|enum)\s+([a-zA-Z0-9_]+)/gm)) {
+    gmMembers.add(m[1]);
+  }
+  for (const m of gmContent.matchAll(/^func\s+([a-zA-Z0-9_]+)\s*\(/gm)) {
+    gmMembers.add(m[1]);
+  }
+
+  const allGd = collectFilesRecursive(path.join(GODOT_ROOT, 'scripts'), '.gd');
+  for (const gdFile of allGd) {
+    const content = fs.readFileSync(gdFile, 'utf-8');
+    const lines = content.split(/\r?\n/);
+    for (let idx = 0; idx < lines.length; idx++) {
+      const codePart = lines[idx].split('#')[0];
+      for (const m of codePart.matchAll(/\bGameManager\.([a-zA-Z0-9_]+)/g)) {
+        const member = m[1];
+        assert.ok(
+          gmMembers.has(member),
+          `Invalid GameManager member "${member}" accessed at ${path.relative(GODOT_ROOT, gdFile)}:${idx + 1}`,
+        );
+      }
+    }
+  }
+});
+
+
 
 
 

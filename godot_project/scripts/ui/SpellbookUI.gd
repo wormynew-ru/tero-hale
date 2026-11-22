@@ -61,7 +61,7 @@ func _on_equip_slot_pressed(ability_id: String, slot_index: int) -> void:
 
 func _compute_state_signature() -> String:
 	var parts: PackedStringArray = PackedStringArray()
-	parts.append(GameManager.current_class_id)
+	parts.append(GameManager.selected_class_id)
 	parts.append(",".join(PackedStringArray(GameManager.equipped_ability_ids)))
 	for ab: AbilityData in GameManager.all_abilities:
 		if ab == null:
