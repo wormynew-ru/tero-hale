@@ -388,6 +388,60 @@ test('mana potions, buff potions, village map hotspots, Diff-10 Sanctuary garden
   }
 });
 
+test('SpellbookUI updates slot and spell buttons in-place without rebuilding on cooldown ticks', () => {
+  const spellbookGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SpellbookUI.gd'), 'utf-8');
+  assert.ok(spellbookGd.includes('_update_active_slots()'), 'SpellbookUI must update active slots in-place');
+  assert.ok(spellbookGd.includes('_update_spell_list()'), 'SpellbookUI must update spell list in-place');
+  assert.ok(spellbookGd.includes('_compute_state_signature()'), 'SpellbookUI must skip redundant refreshes during cooldown ticks');
+  assert.ok(spellbookGd.includes('is_visible_in_tree()'), 'SpellbookUI must defer refreshes when hidden');
+});
+
+test('Shop excludes high-tier melee/armor (drop-only) while keeping starter gear and all ranged weapons/ammo', () => {
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const shopMatch = /const SHOP_ITEM_PATHS: Array\[String\] = \[([\s\S]*?)\]/.exec(gmContent);
+  assert.ok(shopMatch, 'Expected SHOP_ITEM_PATHS in GameManager.gd');
+  const shopBlock = shopMatch[1];
+
+  const dropOnlyItems = [
+    'steel_halberd.tres',
+    'assassin_kris.tres',
+    'dragonbone_blade.tres',
+    'trident_of_abyss.tres',
+    'astral_greatsword.tres',
+    'steel_plate.tres',
+    'dragonscale_armor.tres',
+    'abyssal_carapace.tres',
+    'celestial_aegis.tres',
+  ];
+  for (const item of dropOnlyItems) {
+    assert.ok(!shopBlock.includes(item), `High-tier item ${item} should not be sold in shop`);
+  }
+
+  const keptItems = [
+    'wooden_sword.tres',
+    'hunter_dagger.tres',
+    'iron_sword.tres',
+    'leather_jacket.tres',
+    'chainmail_armor.tres',
+    'wooden_bow.tres',
+    'iron_crossbow.tres',
+    'elven_longbow.tres',
+    'dragon_crossbow.tres',
+    'astral_bow.tres',
+    'wooden_arrows.tres',
+    'iron_bolts.tres',
+    'steel_arrows.tres',
+    'mithril_bolts.tres',
+    'astral_arrows.tres',
+    'abyss_bolts.tres',
+  ];
+  for (const item of keptItems) {
+    assert.ok(shopBlock.includes(item), `Kept item ${item} must remain in shop`);
+  }
+});
+
+
+
 
 
 
