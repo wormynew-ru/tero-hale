@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/leather_jacket.tres" id="3_jacket"]
+[ext_resource type="Resource" path="res://resources/items/hunter_dagger.tres" id="4_dagger"]
+[ext_resource type="Resource" path="res://resources/items/medium_healing_potion.tres" id="5_med_potion"]
+[ext_resource type="Resource" path="res://resources/items/wooden_bow.tres" id="6_bow"]
+[ext_resource type="Resource" path="res://resources/items/iron_bolts.tres" id="7_bolts"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "bandit"
+enemy_name = "Лесной разбойник"
+icon_emoji = "🏴‍☠️"
+max_hp = 128.0
+attack_damage = 17.0
+agility = 11
+defense = 3.5
+xp_reward = 55
+gold_reward = 32
+spawn_weight = 0.4
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_jacket"), ExtResource("4_dagger"), ExtResource("5_med_potion"), ExtResource("6_bow"), ExtResource("7_bolts")])
+drop_chances = Array[float]([0.25, 0.18, 0.22, 0.15, 0.22])
+sprite_color = Color(0.76, 0.34, 0.28, 1)

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "abyssal_carapace"
+item_name = "Панцирь левиафана"
+icon_emoji = "🐚"
+description = "Непробиваемая чешуйчатая броня морского чудовища."
+item_type = 1
+bonus_strength = 16
+bonus_agility = 14
+bonus_endurance = 44
+heal_amount = 0.0
+buy_price = 3100
+sell_value = 1450
+icon_color = Color(0.28, 0.72, 0.88, 1)

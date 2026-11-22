@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "elemental_mastery"
+title = "Повелитель стихий"
+icon_emoji = "🔥"
+description = "Полное подчинение магии даёт мощный прирост ко всем заклинаниям."
+grid_position = Vector2(8, 1)
+prerequisites = Array[String](["archmage_focus"])
+cost_skill_points = 1
+bonus_type = "spell_power"
+bonus_value = 1.15

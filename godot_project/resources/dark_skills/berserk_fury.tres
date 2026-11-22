@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "berserk_fury"
+title = "Ярость берсерка"
+icon_emoji = "💢"
+branch_name = "Кровь и Ярость"
+description = "Чем ниже здоровье героя, тем яростнее его удары — вплоть до +80% урона на грани гибели."
+grid_position = Vector2(1, 0)
+prerequisites = Array[String](["echo_strike"])
+cost_dark_points = 5
+effect_type = "berserk_fury"
+effect_value = 0.8

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "azure_lotus_harvest"
+item_name = "Лазурный лотос"
+icon_emoji = "🪷"
+description = "Урожай Сада. Гораздо ценнее в алхимическом котле, чем при продаже за 220 з."
+item_type = 5
+buy_price = 880
+sell_value = 220
+icon_color = Color(0.42, 0.76, 0.98, 1)
+seed_crop_id = "azure_lotus"

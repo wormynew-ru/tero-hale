@@ -1,0 +1,110 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/AbilitySlotButton.gd" id="1_ability_btn"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_circle_btn"]
+bg_color = Color(0.17, 0.19, 0.22, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.75, 0.66, 0.95)
+corner_radius_top_left = 48
+corner_radius_top_right = 48
+corner_radius_bottom_right = 48
+corner_radius_bottom_left = 48
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_circle_btn_pressed"]
+bg_color = Color(0.26, 0.31, 0.38, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.85, 0.45, 1)
+corner_radius_top_left = 48
+corner_radius_top_right = 48
+corner_radius_bottom_right = 48
+corner_radius_bottom_left = 48
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hold_bg"]
+bg_color = Color(0.05, 0.06, 0.08, 0.9)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hold_fill"]
+bg_color = Color(0.98, 0.82, 0.28, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="AbilitySlotButton" type="Button"]
+custom_minimum_size = Vector2(78, 78)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_circle_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_circle_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_circle_btn_pressed")
+script = ExtResource("1_ability_btn")
+
+[node name="ContentVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = -6.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+alignment = 1
+theme_override_constants/separation = 1
+
+[node name="AutoBadgeLabel" type="Label" parent="ContentVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.98, 0.84, 0.3, 1)
+theme_override_font_sizes/font_size = 9
+text = "🔄 АВТО"
+horizontal_alignment = 1
+
+[node name="EmojiLabel" type="Label" parent="ContentVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 24
+text = "🔥"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="ContentVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 11
+text = "💧18"
+horizontal_alignment = 1
+
+[node name="HoldProgressBar" type="ProgressBar" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = -10.0
+offset_right = -14.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_hold_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_hold_fill")
+value = 0.0
+show_percentage = false

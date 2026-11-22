@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/HeroClassData.gd" id="1_hclass"]
+
+[resource]
+script = ExtResource("1_hclass")
+id = "reflector"
+title = "Отражатель"
+icon_emoji = "🪞"
+subtitle = "Бастион шипов и гниения"
+description = "Чистый танк-поглотитель: не умеет наносить прямой урон оружием и атакующими заклинаниями, но впитывает удары и обращает силу врага против него самого."
+passive_summary = "0 прямого урона | Отражает 20% любого входящего урона | Бьёт аурой на 5% своего Max HP/с | Враг гниёт на 0.1% своего Max HP/с | +30% Max HP и +40% Брони"
+required_difficulty = 50
+accent_color = Color(0.38, 0.85, 0.92, 1)
+disables_equipment = false

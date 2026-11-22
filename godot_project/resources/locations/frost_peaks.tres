@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/ice_golem.tres" id="3_golem"]
+[ext_resource type="Resource" path="res://resources/enemies/frost_wyvern.tres" id="4_wyvern"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "frost_peaks"
+location_name = "Ледяные пики"
+icon_emoji = "🏔️"
+description = "Суровые заснеженные вершины, охраняемые ледяными големами и вивернами."
+required_level = 15
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_golem"), ExtResource("4_wyvern")])
+background_color = Color(0.11, 0.18, 0.28, 1)

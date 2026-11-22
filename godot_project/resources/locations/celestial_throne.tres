@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/fallen_seraph.tres" id="3_seraph"]
+[ext_resource type="Resource" path="res://resources/enemies/eternal_titan.tres" id="4_titan"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "celestial_throne"
+location_name = "Небесный престол"
+icon_emoji = "👑"
+description = "Финальный рубеж мира. Сразитесь с падшими серафимами и Вечным титаном."
+required_level = 50
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_seraph"), ExtResource("4_titan")])
+background_color = Color(0.24, 0.19, 0.07, 1)

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "arcane_echo"
+title = "Эхо заклинаний"
+icon_emoji = "🔮"
+branch_name = "Тайная Аркана"
+description = "Боевые заклинания резонируют с резервом энергии, добавляя +40% от текущей маны к урону."
+grid_position = Vector2(5, 0)
+prerequisites = Array[String](["swift_runes"])
+cost_dark_points = 5
+effect_type = "arcane_echo"
+effect_value = 0.4

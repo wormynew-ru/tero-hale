@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "fireball"
+title = "Огненный шар"
+icon_emoji = "🔥"
+description = "Магический удар огнём: наносит 220% от урона героя."
+mana_cost = 18.0
+cooldown = 6.0
+effect_type = "damage"
+power_multiplier = 2.2

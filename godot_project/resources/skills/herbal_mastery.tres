@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "herbal_mastery"
+title = "Зелёные грядки"
+icon_emoji = "🌱"
+description = "Открывает 5-ю грядку в Саду Убежища и ускоряет созревание всех временных культур на +50%. Доступно только после 10-й сложности."
+grid_position = Vector2(7, 5)
+prerequisites = Array[String](["vital_surge"])
+cost_skill_points = 1
+requires_alchemy = true
+bonus_type = "garden_mastery"
+bonus_value = 0.5

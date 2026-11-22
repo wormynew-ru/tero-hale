@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "dark_execution"
+title = "Казнь бездны"
+icon_emoji = "💥"
+branch_name = "Кровь и Ярость"
+description = "Когда у противника остаётся меньше 30% здоровья, атаки героя наносят +60% добивающего урона."
+grid_position = Vector2(0, 0)
+prerequisites = Array[String](["armor_rend"])
+cost_dark_points = 5
+effect_type = "dark_execution"
+effect_value = 0.6

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "spell_overload"
+title = "Цепная перегрузка"
+icon_emoji = "🔥"
+branch_name = "Тайная Аркана"
+description = "Каждое применение боевого заклинания имеет 30% шанс мгновенно сбросить его перезарядку."
+grid_position = Vector2(6, 1)
+prerequisites = Array[String](["swift_runes"])
+cost_dark_points = 4
+effect_type = "spell_overload"
+effect_value = 0.3

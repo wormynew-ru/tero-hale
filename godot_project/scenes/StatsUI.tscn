@@ -1,0 +1,255 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/StatsUI.gd" id="1_stats_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mastery_card"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.11, 0.13, 0.17, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.34, 0.44, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="StatsUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_stats_ui")
+
+[node name="StatsVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ClassSummaryLabel" type="Label" parent="StatsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.84, 0.38, 1)
+theme_override_font_sizes/font_size = 14
+text = "🎭 Класс: Странник"
+autowrap_mode = 3
+
+[node name="ComputedStatsLabel" type="Label" parent="StatsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.84, 0.94, 1)
+text = "Урон: 13.5 | DPS: 8.2 | Атака: 1.71с | Уклон: 4.0% | Броня: 3.0"
+autowrap_mode = 3
+
+[node name="MasteryCard" type="PanelContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mastery_card")
+
+[node name="MasteryVBox" type="VBoxContainer" parent="StatsVBox/MasteryCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MasteryTitleLabel" type="Label" parent="StatsVBox/MasteryCard/MasteryVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.86, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "📘 Боевое мастерство (Learn by Doing — растёт от применения в бою)"
+autowrap_mode = 3
+
+[node name="MeleeRow" type="HBoxContainer" parent="StatsVBox/MasteryCard/MasteryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MeleeMasteryLabel" type="Label" parent="StatsVBox/MasteryCard/MasteryVBox/MeleeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "⚔️ Ближний бой Ур. 1 (+0%)"
+
+[node name="MeleeXPBar" type="ProgressBar" parent="StatsVBox/MasteryCard/MasteryVBox/MeleeRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 15.0
+show_percentage = false
+
+[node name="MeleeXPLabel" type="Label" parent="StatsVBox/MasteryCard/MasteryVBox/MeleeRow/MeleeXPBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 11
+text = "0 / 15 XP"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RangedRow" type="HBoxContainer" parent="StatsVBox/MasteryCard/MasteryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RangedMasteryLabel" type="Label" parent="StatsVBox/MasteryCard/MasteryVBox/RangedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "🏹 Дальний бой Ур. 1 (+0%)"
+
+[node name="RangedXPBar" type="ProgressBar" parent="StatsVBox/MasteryCard/MasteryVBox/RangedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 15.0
+show_percentage = false
+
+[node name="RangedXPLabel" type="Label" parent="StatsVBox/MasteryCard/MasteryVBox/RangedRow/RangedXPBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 11
+text = "0 / 15 XP"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MagicRow" type="HBoxContainer" parent="StatsVBox/MasteryCard/MasteryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MagicMasteryLabel" type="Label" parent="StatsVBox/MasteryCard/MasteryVBox/MagicRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "✨ Магия Ур. 1 (+0%)"
+
+[node name="MagicXPBar" type="ProgressBar" parent="StatsVBox/MasteryCard/MasteryVBox/MagicRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 18)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+max_value = 30.0
+show_percentage = false
+
+[node name="MagicXPLabel" type="Label" parent="StatsVBox/MasteryCard/MasteryVBox/MagicRow/MagicXPBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 11
+text = "0 / 30 XP"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="StatsVBox"]
+layout_mode = 2
+
+[node name="StrengthRow" type="HBoxContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StrValueLabel" type="Label" parent="StatsVBox/StrengthRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "💪 Сила: 5 (5 + 0)"
+
+[node name="StrSPButton" type="Button" parent="StatsVBox/StrengthRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "+1 (Очко)"
+
+[node name="StrGoldButton" type="Button" parent="StatsVBox/StrengthRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 44)
+layout_mode = 2
+text = "Тренир. (35 з.)"
+
+[node name="AgilityRow" type="HBoxContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AgiValueLabel" type="Label" parent="StatsVBox/AgilityRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⚡ Ловкость: 5 (5 + 0)"
+
+[node name="AgiSPButton" type="Button" parent="StatsVBox/AgilityRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "+1 (Очко)"
+
+[node name="AgiGoldButton" type="Button" parent="StatsVBox/AgilityRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 44)
+layout_mode = 2
+text = "Тренир. (35 з.)"
+
+[node name="EnduranceRow" type="HBoxContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="EndValueLabel" type="Label" parent="StatsVBox/EnduranceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🛡️ Выносливость: 5 (5 + 0)"
+
+[node name="EndSPButton" type="Button" parent="StatsVBox/EnduranceRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "+1 (Очко)"
+
+[node name="EndGoldButton" type="Button" parent="StatsVBox/EnduranceRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 44)
+layout_mode = 2
+text = "Тренир. (35 з.)"
+
+[node name="ResetSeparator" type="HSeparator" parent="StatsVBox"]
+layout_mode = 2
+
+[node name="ResetRow" type="HBoxContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ResetHintLabel" type="Label" parent="StatsVBox/ResetRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.62, 0.68, 0.76, 1)
+theme_override_font_sizes/font_size = 13
+text = "Начать путь героя заново (удаляет user://save.tres)"
+autowrap_mode = 3
+
+[node name="ResetButton" type="Button" parent="StatsVBox/ResetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "🔄 Сброс"

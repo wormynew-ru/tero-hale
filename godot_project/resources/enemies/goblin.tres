@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/wooden_sword.tres" id="3_sword"]
+[ext_resource type="Resource" path="res://resources/items/small_healing_potion.tres" id="4_potion"]
+[ext_resource type="Resource" path="res://resources/items/hunter_dagger.tres" id="5_dagger"]
+[ext_resource type="Resource" path="res://resources/items/wooden_arrows.tres" id="6_arrows"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "goblin"
+enemy_name = "Гоблин-налётчик"
+icon_emoji = "👺"
+max_hp = 92.0
+attack_damage = 13.0
+agility = 9
+defense = 2.0
+xp_reward = 38
+gold_reward = 20
+spawn_weight = 0.6
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_sword"), ExtResource("4_potion"), ExtResource("5_dagger"), ExtResource("6_arrows")])
+drop_chances = Array[float]([0.2, 0.35, 0.12, 0.25])
+sprite_color = Color(0.45, 0.68, 0.22, 1)

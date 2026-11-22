@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "titan_heritage"
+title = "Наследие титанов"
+icon_emoji = "👑"
+branch_name = "Тёмная Алхимия"
+description = "Каждый новый ран герой начинает с +1 000 золота (с учётом сложности) и +5 ко всем базовым характеристикам."
+grid_position = Vector2(4, 3)
+prerequisites = Array[String](["abyss_awakening"])
+cost_dark_points = 2
+effect_type = "titan_heritage"
+effect_value = 1.0

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "astral_greatsword"
+item_name = "Астральный клинок вечности"
+icon_emoji = "🌌"
+description = "Сияющий двуручник из звёздного металла, сокрушающий даже титанов."
+item_type = 0
+bonus_strength = 72
+bonus_agility = 24
+bonus_endurance = 24
+heal_amount = 0.0
+buy_price = 7400
+sell_value = 3400
+icon_color = Color(0.68, 0.56, 1, 1)

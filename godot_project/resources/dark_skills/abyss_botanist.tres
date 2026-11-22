@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark"]
+
+[resource]
+script = ExtResource("1_dark")
+id = "abyss_botanist"
+title = "Тёмный ботаник"
+icon_emoji = "🌿"
+branch_name = "Алхимия"
+description = "Навсегда увеличивает шанс выпадения редких семян с монстров и боссов на +50%. Доступно после открытия Убежища (Сл. 10)."
+grid_position = Vector2(7, 3)
+prerequisites = Array[String](["abyssal_greed"])
+cost_dark_points = 1
+requires_alchemy = true
+effect_type = "seed_drop_mult"
+effect_value = 0.5

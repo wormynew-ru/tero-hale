@@ -1,0 +1,6 @@
+{
+  "name": "Hero Tale — Godot 4.7 Inspector",
+  "description": "Инспектор структуры и исходного кода стартового MVP-проекта 2D Idle RPG для Godot Engine 4.7.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

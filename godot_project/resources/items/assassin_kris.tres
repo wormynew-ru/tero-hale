@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "assassin_kris"
+item_name = "Клинок тени"
+icon_emoji = "🔪"
+description = "Лёгкий изогнутый клинок из тёмной стали, многократно ускоряющий удары."
+item_type = 0
+bonus_strength = 12
+bonus_agility = 14
+bonus_endurance = 0
+heal_amount = 0.0
+buy_price = 680
+sell_value = 310
+icon_color = Color(0.62, 0.45, 0.92, 1)

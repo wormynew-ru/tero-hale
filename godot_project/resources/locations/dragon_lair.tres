@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/fire_elemental.tres" id="3_elemental"]
+[ext_resource type="Resource" path="res://resources/enemies/ember_knight.tres" id="4_knight"]
+[ext_resource type="Resource" path="res://resources/enemies/ancient_dragon.tres" id="5_dragon"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "dragon_lair"
+location_name = "Логово дракона"
+icon_emoji = "🐉"
+description = "Раскалённые недра горы. Финальное испытание ради легендарного драконьего снаряжения."
+required_level = 26
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_elemental"), ExtResource("4_knight"), ExtResource("5_dragon")])
+background_color = Color(0.24, 0.08, 0.06, 1)

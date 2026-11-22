@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "armor_rend"
+title = "Раскол брони"
+icon_emoji = "🗡️"
+branch_name = "Кровь и Ярость"
+description = "Тёмные атаки рассекают даже каменную кожу: все атаки и заклинания игнорируют 50% плоской брони врага."
+grid_position = Vector2(0, 1)
+prerequisites = Array[String](["echo_strike"])
+cost_dark_points = 4
+effect_type = "armor_rend"
+effect_value = 0.5

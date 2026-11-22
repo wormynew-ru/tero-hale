@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "swift_runes"
+title = "Быстрые руны"
+icon_emoji = "⏳"
+branch_name = "Тайная Аркана"
+description = "Сокращает перезарядку всех магических способностей на 25% и усиливает эффект заклинаний на +35%."
+grid_position = Vector2(5, 1)
+prerequisites = Array[String](["mana_fountain"])
+cost_dark_points = 3
+effect_type = "swift_runes"
+effect_value = 0.25

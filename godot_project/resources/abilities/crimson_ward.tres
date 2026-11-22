@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "crimson_ward"
+title = "Кровавый щит"
+icon_emoji = "🧣"
+description = "Эксклюзив Архимага Крови (Бафф 10с): +150% к броне, +25% вампиризма атак и возврат 60% урона врагу."
+required_class_id = "blood_archmage"
+mana_cost = 26.0
+cooldown = 14.0
+effect_type = "buff"
+power_multiplier = 1.0
+duration = 10.0
+buff_armor_pct = 1.5
+buff_lifesteal_pct = 0.25
+buff_thorns_pct = 0.6

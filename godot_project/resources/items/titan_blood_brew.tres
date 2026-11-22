@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "titan_blood_brew"
+item_name = "Отвар крови титана"
+icon_emoji = "🔥"
+description = "Трёхступенчатый шедевр алхимии: +75% урона, +35% скорости и +25% крита на 90с."
+item_type = 2
+buy_price = 5200
+sell_value = 1400
+icon_color = Color(0.98, 0.52, 0.18, 1)
+buff_id = "potion_titan_blood"
+buff_duration = 90.0
+buff_damage_pct = 0.75
+buff_attack_speed_pct = 0.35
+buff_crit_chance_bonus = 0.25

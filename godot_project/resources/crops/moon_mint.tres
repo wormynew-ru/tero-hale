@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "moon_mint"
+crop_name = "Лунная мята"
+icon_emoji = "🌿"
+rarity_label = "Обычное (0.05%)"
+description = "Базовая трава Сада. Растёт за 2 минуты и даёт 1-2 листа для основ зелий."
+seed_item_path = "res://resources/items/moon_mint_seed.tres"
+harvest_item_path = "res://resources/items/moon_mint_harvest.tres"
+base_drop_chance = 0.0005
+boss_drop_chance = 0.0005
+min_enemy_xp = 0.0
+grow_seconds = 120.0
+required_final_boss_kills = 0
+harvest_min = 1
+harvest_max = 2
+accent_color = Color(0.45, 0.92, 0.58, 1)

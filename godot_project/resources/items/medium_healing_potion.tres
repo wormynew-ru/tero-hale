@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "medium_healing_potion"
+item_name = "Большое зелье лечения"
+icon_emoji = "🍷"
+description = "Концентрированный эликсир, восстанавливающий 130 HP."
+item_type = 2
+bonus_strength = 0
+bonus_agility = 0
+bonus_endurance = 0
+heal_amount = 130.0
+buy_price = 45
+sell_value = 20
+icon_color = Color(0.76, 0.16, 0.42, 1)

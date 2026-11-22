@@ -1,0 +1,37 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ShopUI.gd" id="1_shop_ui"]
+
+[node name="ShopUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_shop_ui")
+
+[node name="ShopVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ShopHintLabel" type="Label" parent="ShopVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.82, 0.92, 1)
+theme_override_font_sizes/font_size = 14
+text = "🏪 Лавка торговца — покупайте зелья и снаряжение за золото."
+autowrap_mode = 3
+
+[node name="ShopFeedbackLabel" type="Label" parent="ShopVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.86, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="ShopSeparator" type="HSeparator" parent="ShopVBox"]
+layout_mode = 2
+
+[node name="ShopList" type="VBoxContainer" parent="ShopVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8

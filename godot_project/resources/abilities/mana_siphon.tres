@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "mana_siphon"
+title = "Похищение духа"
+icon_emoji = "🌀"
+description = "Наносит 150% урона, исцеляет героя на 45% от урона и возвращает 12 маны."
+mana_cost = 16.0
+cooldown = 8.0
+effect_type = "lifesteal_damage"
+power_multiplier = 1.5
+armor_ignore_pct = 0.5
+lifesteal_ratio = 0.45
+mana_restore_flat = 12.0

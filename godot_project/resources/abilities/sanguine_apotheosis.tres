@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "sanguine_apotheosis"
+title = "Апофеоз крови"
+icon_emoji = "👑"
+description = "Эксклюзив Архимага Крови (Ульт-бафф 8с): +100% силы заклинаний, +35% крит-шанса, +30% вампиризма и +150% регена маны."
+required_class_id = "blood_archmage"
+mana_cost = 45.0
+cooldown = 20.0
+effect_type = "buff"
+power_multiplier = 1.0
+duration = 8.0
+buff_spell_power_pct = 1.0
+buff_crit_chance_bonus = 0.35
+buff_lifesteal_pct = 0.3
+buff_mana_regen_pct = 1.5

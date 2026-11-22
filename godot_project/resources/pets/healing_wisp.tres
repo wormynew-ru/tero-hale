@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PetData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/PetData.gd" id="1_pet"]
+
+[resource]
+script = ExtResource("1_pet")
+id = "healing_wisp"
+pet_name = "Лесной светлячок"
+icon_emoji = "🧚"
+subtitle = "Целительный путник"
+description = "Не имеет HP. Неустанно кружит рядом с героем: в бою восстанавливает 2.5% Max HP в секунду и ускоряет регенерацию маны на +25%."
+effect_type = "aura_regen"
+effect_value = 0.025
+effect_secondary = 0.25
+buy_price = 450.0
+required_difficulty = 1
+accent_color = Color(0.38, 0.94, 0.65, 1)

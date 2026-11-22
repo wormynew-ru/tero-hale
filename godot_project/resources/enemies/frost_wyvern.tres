@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/assassin_kris.tres" id="3_kris"]
+[ext_resource type="Resource" path="res://resources/items/large_healing_potion.tres" id="4_large_potion"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "frost_wyvern"
+enemy_name = "Ледяная виверна"
+icon_emoji = "🦅"
+max_hp = 680.0
+max_mana = 80.0
+attack_damage = 66.0
+agility = 22
+defense = 11.0
+xp_reward = 485
+gold_reward = 295
+spawn_weight = 0.45
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_kris"), ExtResource("4_large_potion")])
+drop_chances = Array[float]([0.18, 0.45])
+sprite_color = Color(0.38, 0.72, 0.98, 1)

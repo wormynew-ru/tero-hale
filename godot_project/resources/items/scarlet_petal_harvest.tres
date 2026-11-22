@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "scarlet_petal_harvest"
+item_name = "Алый лепесток"
+icon_emoji = "🌺"
+description = "Урожай легендарного цветка, впитавшего силу 2000 Вечных титанов. Продавать невыгодно — сварите Эликсир Алого Лепестка!"
+item_type = 5
+buy_price = 25000
+sell_value = 5000
+icon_color = Color(1, 0.25, 0.42, 1)
+seed_crop_id = "scarlet_petal"

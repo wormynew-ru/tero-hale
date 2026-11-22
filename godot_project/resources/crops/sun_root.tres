@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "sun_root"
+crop_name = "Солнечный корень"
+icon_emoji = "🥕"
+rarity_label = "Редкое (0.03%)"
+description = "Боевой корнеплод. Растёт за 4 минуты и используется для зелий ярости и вихря."
+seed_item_path = "res://resources/items/sun_root_seed.tres"
+harvest_item_path = "res://resources/items/sun_root_harvest.tres"
+base_drop_chance = 0.0003
+boss_drop_chance = 0.0004
+min_enemy_xp = 25.0
+grow_seconds = 240.0
+required_final_boss_kills = 0
+harvest_min = 1
+harvest_max = 2
+accent_color = Color(0.96, 0.72, 0.25, 1)

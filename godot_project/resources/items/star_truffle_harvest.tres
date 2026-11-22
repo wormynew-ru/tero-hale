@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "star_truffle_harvest"
+item_name = "Звёздный трюфель"
+icon_emoji = "🌟"
+description = "Мифический урожай Сада. Катализатор 3-й ступени зельеварения (продажа всего 500 з.)."
+item_type = 5
+buy_price = 2000
+sell_value = 500
+icon_color = Color(0.86, 0.56, 0.98, 1)
+seed_crop_id = "star_truffle"

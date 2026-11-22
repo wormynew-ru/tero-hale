@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "immortal_pact"
+title = "Пакт бессмертия"
+icon_emoji = "❤️‍🔥"
+branch_name = "Кровь и Ярость"
+description = "Кровь Бездны навсегда увеличивает Max HP на +25% и восстанавливает +2% HP каждую секунду даже в бою."
+grid_position = Vector2(2, 0)
+prerequisites = Array[String](["blood_vampirism"])
+cost_dark_points = 6
+effect_type = "immortal_pact"
+effect_value = 0.25

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "titan_might"
+title = "Мощь титана"
+icon_emoji = "🪓"
+description = "Герой вкладывает всю массу тела в каждый взмах, значительно увеличивая базовую Силу."
+grid_position = Vector2(1, 1)
+prerequisites = Array[String](["deadly_precision"])
+cost_skill_points = 1
+bonus_type = "strength"
+bonus_value = 28.0

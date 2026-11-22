@@ -1,0 +1,47 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/MainUI.gd" id="1_main_ui"]
+[ext_resource type="Script" path="res://scripts/CombatSystem.gd" id="2_combat"]
+[ext_resource type="PackedScene" path="res://scenes/BattleArenaUI.tscn" id="3_battle_arena"]
+[ext_resource type="PackedScene" path="res://scenes/RightSidebarUI.tscn" id="4_right_sidebar"]
+[ext_resource type="PackedScene" path="res://scenes/HeroMenuUI.tscn" id="5_hero_menu"]
+[ext_resource type="PackedScene" path="res://scenes/AfkOverlayUI.tscn" id="6_afk_overlay"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main_ui")
+
+[node name="CombatSystem" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("2_combat")
+
+[node name="RootHBox" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="BattleArenaUI" parent="RootHBox" instance=ExtResource("3_battle_arena")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RightSidebarUI" parent="RootHBox" instance=ExtResource("4_right_sidebar")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HeroMenuUI" parent="." instance=ExtResource("5_hero_menu")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="AfkOverlayUI" parent="." instance=ExtResource("6_afk_overlay")]
+unique_name_in_owner = true
+layout_mode = 1

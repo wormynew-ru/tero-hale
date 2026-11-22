@@ -1,0 +1,62 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/PetUI.gd" id="1_pet_ui"]
+
+[node name="PetUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_pet_ui")
+
+[node name="PetVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="PetStatusLabel" type="Label" parent="PetVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.9, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "🐾 Слот Путника: выберите бессмертного спутника (не имеет HP, даёт уникальное усиление)."
+autowrap_mode = 3
+
+[node name="PetFeedbackLabel" type="Label" parent="PetVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.95, 0.68, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="ActivePetPanel" type="PanelContainer" parent="PetVBox"]
+layout_mode = 2
+
+[node name="ActivePetRow" type="HBoxContainer" parent="PetVBox/ActivePetPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ActivePetLabel" type="Label" parent="PetVBox/ActivePetPanel/ActivePetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 14
+text = "🐾 Активный путник: [Слот пуст]"
+autowrap_mode = 3
+
+[node name="UnequipPetButton" type="Button" parent="PetVBox/ActivePetPanel/ActivePetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(116, 44)
+layout_mode = 2
+text = "Убрать"
+
+[node name="PetListHeader" type="Label" parent="PetVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.84, 0.36, 1)
+theme_override_font_sizes/font_size = 15
+text = "🌟 Доступные путники (6 бессмертных спутников):"
+
+[node name="PetListVBox" type="VBoxContainer" parent="PetVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10

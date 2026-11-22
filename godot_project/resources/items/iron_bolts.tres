@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "iron_bolts"
+item_name = "Железные болты"
+icon_emoji = "🔩"
+description = "Утяжелённые болты для арбалетов. Пробивают начальную броню врагов. 50 шт."
+item_type = 3
+bonus_strength = 0
+bonus_agility = 0
+bonus_endurance = 0
+weapon_style = 0
+required_ammo = 0
+ammo_kind = 2
+bonus_damage = 6.0
+bonus_crit_chance = 0.0
+armor_penetration = 8.0
+shop_pack_amount = 50
+heal_amount = 0.0
+buy_price = 35
+sell_value = 1
+icon_color = Color(0.62, 0.66, 0.72, 1)

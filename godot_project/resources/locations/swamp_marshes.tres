@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/bog_toad.tres" id="3_toad"]
+[ext_resource type="Resource" path="res://resources/enemies/swamp_witch.tres" id="4_witch"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "swamp_marshes"
+location_name = "Проклятые топи"
+icon_emoji = "🐸"
+description = "Туманные болота, где затаились жабозубы и ведьмы. Хорошее место для фарма стального снаряжения."
+required_level = 10
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_toad"), ExtResource("4_witch")])
+background_color = Color(0.08, 0.18, 0.14, 1)

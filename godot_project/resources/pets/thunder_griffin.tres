@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PetData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/PetData.gd" id="1_pet"]
+
+[resource]
+script = ExtResource("1_pet")
+id = "thunder_griffin"
+pet_name = "Грозовой сокол"
+icon_emoji = "🦅"
+subtitle = "Штормовой путник"
+description = "Не имеет HP. Даёт +12% к шансу крита, замедляет атаки врага на 15% и каждые 4 секунды бьёт врага молнией в обход брони."
+effect_type = "crit_lightning"
+effect_value = 0.12
+effect_secondary = 0.15
+buy_price = 1200.0
+required_difficulty = 1
+accent_color = Color(0.45, 0.88, 1, 1)

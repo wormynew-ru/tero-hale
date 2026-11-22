@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "soul_overload"
+title = "Выжигание души"
+icon_emoji = "🌋"
+description = "Бёрст-перегрузка (тик раз в 1с): жжёт 1 HP/1 MP → 2/2 → 4/4+1 → 8/8+2 → ..., каждый тик взрывает врага с множителем x1.75^(тик-1). Повторное нажатие гасит поток."
+mana_cost = 10.0
+cooldown = 12.0
+effect_type = "overcharge_burn"
+power_multiplier = 1.15
+duration = 10.0
+armor_ignore_pct = 0.65

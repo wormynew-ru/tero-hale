@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "crimson_lance"
+title = "Кровавое копьё"
+icon_emoji = "🩸"
+description = "Эксклюзив Архимага Крови: жертвует 6% HP, нанося 340% урона + 250% от пожертвованного HP."
+required_class_id = "blood_archmage"
+mana_cost = 28.0
+cooldown = 6.0
+effect_type = "blood_damage"
+power_multiplier = 3.4
+armor_ignore_pct = 0.7
+hp_sacrifice_pct = 0.06

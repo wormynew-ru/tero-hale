@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "ancient_memory"
+title = "Память предков"
+icon_emoji = "📖"
+branch_name = "Тёмная Алхимия"
+description = "Навыки Ближнего боя, Дальнего боя и Магии качаются на +100% быстрее, а новый ран стартует сразу с 3-го уровня владения!"
+grid_position = Vector2(4, 4)
+prerequisites = Array[String](["titan_heritage"])
+cost_dark_points = 3
+effect_type = "ancient_memory"
+effect_value = 1.0

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "steel_halberd"
+item_name = "Стальная алебарда"
+icon_emoji = "🪓"
+description = "Тяжёлое двуручное древковое оружие, пробивающее панцири и ледяную броню."
+item_type = 0
+bonus_strength = 15
+bonus_agility = 0
+bonus_endurance = 4
+heal_amount = 0.0
+buy_price = 380
+sell_value = 175
+icon_color = Color(0.68, 0.78, 0.88, 1)

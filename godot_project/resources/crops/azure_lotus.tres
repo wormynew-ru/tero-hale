@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "azure_lotus"
+crop_name = "Лазурный лотос"
+icon_emoji = "🪷"
+rarity_label = "Эпическое (0.02%)"
+description = "Эфирный цветок. Растёт за 7 минут — даёт ману, защиту и эликсиры мудрости."
+seed_item_path = "res://resources/items/azure_lotus_seed.tres"
+harvest_item_path = "res://resources/items/azure_lotus_harvest.tres"
+base_drop_chance = 0.0002
+boss_drop_chance = 0.0003
+min_enemy_xp = 90.0
+grow_seconds = 420.0
+required_final_boss_kills = 0
+harvest_min = 1
+harvest_max = 2
+accent_color = Color(0.42, 0.76, 0.98, 1)

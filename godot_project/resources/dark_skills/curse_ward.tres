@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "curse_ward"
+title = "Очищение скверны"
+icon_emoji = "🕯️"
+branch_name = "Тёмная Алхимия"
+description = "Ослабляет все активные проклятия высоких сложностей (дегенерацию, наценки, удорожание маны и прочие) на 40%."
+grid_position = Vector2(6, 4)
+prerequisites = Array[String](["abyssal_greed"])
+cost_dark_points = 5
+effect_type = "curse_ward"
+effect_value = 0.4

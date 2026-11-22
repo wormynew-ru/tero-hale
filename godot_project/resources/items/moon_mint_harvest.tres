@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "moon_mint_harvest"
+item_name = "Лист лунной мяты"
+icon_emoji = "🌿"
+description = "Урожай Сада. Продаётся дёшево (35 з.), но служит основой и ингредиентом мощных зелий."
+item_type = 5
+buy_price = 140
+sell_value = 35
+icon_color = Color(0.45, 0.92, 0.58, 1)
+seed_crop_id = "moon_mint"

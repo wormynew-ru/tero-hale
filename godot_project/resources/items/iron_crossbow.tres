@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "iron_crossbow"
+item_name = "Лёгкий арбалет"
+icon_emoji = "🎯"
+description = "Стальной арбалет с тугой тетивой. Пробивает броню врага. Требует болты."
+item_type = 0
+bonus_strength = 7
+bonus_agility = 2
+bonus_endurance = 0
+weapon_style = 2
+required_ammo = 2
+ammo_kind = 0
+bonus_damage = 9.0
+bonus_crit_chance = 0.05
+armor_penetration = 4.0
+shop_pack_amount = 1
+heal_amount = 0.0
+buy_price = 175
+sell_value = 80
+icon_color = Color(0.56, 0.64, 0.74, 1)

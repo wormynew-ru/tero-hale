@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "dragon_crossbow"
+item_name = "Драконий арбалет"
+icon_emoji = "🔥"
+description = "Тяжёлый арбалет из кости дракона. Выпускает болты с чудовищной пробивной силой."
+item_type = 0
+bonus_strength = 26
+bonus_agility = 12
+bonus_endurance = 8
+weapon_style = 2
+required_ammo = 2
+ammo_kind = 0
+bonus_damage = 32.0
+bonus_crit_chance = 0.1
+armor_penetration = 18.0
+shop_pack_amount = 1
+heal_amount = 0.0
+buy_price = 1480
+sell_value = 680
+icon_color = Color(0.95, 0.42, 0.24, 1)

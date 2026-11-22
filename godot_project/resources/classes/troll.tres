@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/HeroClassData.gd" id="1_class"]
+
+[resource]
+script = ExtResource("1_class")
+id = "troll"
+title = "Тролль"
+icon_emoji = "👹"
+subtitle = "Сокрушитель брони"
+description = "Раскалывает защиту боссов каждым ударом вплоть до глубокого минуса, выжигая даже титанов."
+passive_summary = "• Каждый удар накладывает на врага -1 брони до бесконечности (уходит в минус!).\n• Каждый стак даёт +1.5% уязвимости цели, а отрицательная броня напрямую увеличивает урон.\n• Регенерация 2.5% Max HP каждую секунду прямо в бою.\n• +25% к Max HP и +20% к Силе."
+required_difficulty = 50
+accent_color = Color(0.92, 0.44, 0.28, 1)
+disables_equipment = false

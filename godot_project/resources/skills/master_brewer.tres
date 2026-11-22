@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "master_brewer"
+title = "Мастер котла"
+icon_emoji = "⚗️"
+description = "Открывает 3-й котёл зельеварения в Убежище и усиливает лечение/ману/длительность всех зелий на +35%. Доступно только после 10-й сложности."
+grid_position = Vector2(8, 5)
+prerequisites = Array[String](["herbal_mastery"])
+cost_skill_points = 1
+requires_alchemy = true
+bonus_type = "alchemy_cauldron"
+bonus_value = 0.35

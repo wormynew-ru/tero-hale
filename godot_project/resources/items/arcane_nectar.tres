@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "arcane_nectar"
+item_name = "Арканный нектар"
+icon_emoji = "🔮"
+description = "Чистая эссенция эфира, восстанавливающая 1100 MP."
+item_type = 2
+mana_amount = 1100.0
+buy_price = 1200
+sell_value = 360
+icon_color = Color(0.62, 0.36, 0.98, 1)

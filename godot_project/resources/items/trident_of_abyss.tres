@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "trident_of_abyss"
+item_name = "Трезубец бездны"
+icon_emoji = "🔱"
+description = "Древнее морское оружие из глубин Затопленного храма."
+item_type = 0
+bonus_strength = 44
+bonus_agility = 16
+bonus_endurance = 14
+heal_amount = 0.0
+buy_price = 3200
+sell_value = 1500
+icon_color = Color(0.24, 0.82, 0.94, 1)

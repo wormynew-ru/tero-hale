@@ -1,0 +1,35 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/ClassUI.gd" id="1_class_ui"]
+
+[node name="ClassUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_class_ui")
+
+[node name="ClassVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ClassStatusLabel" type="Label" parent="ClassVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.88, 0.96, 1)
+theme_override_font_sizes/font_size = 14
+text = "🎭 Классы героя открываются после достижения 50-й сложности."
+autowrap_mode = 3
+
+[node name="ClassFeedbackLabel" type="Label" parent="ClassVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.95, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="ClassListVBox" type="VBoxContainer" parent="ClassVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10

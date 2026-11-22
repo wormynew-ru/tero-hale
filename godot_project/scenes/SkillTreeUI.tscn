@@ -1,0 +1,134 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/SkillTreeUI.gd" id="1_skill_tree"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_details"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.094, 0.11, 0.145, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.21, 0.25, 0.32, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="SkillTreeUI" type="Control"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_skill_tree")
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="HeaderRow" type="HBoxContainer" parent="RootVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="RootVBox/HeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Дерево навыков"
+
+[node name="AvailableSPLabel" type="Label" parent="RootVBox/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.42, 0.82, 0.98, 1)
+theme_override_font_sizes/font_size = 15
+text = "Доступно очков: 1"
+
+[node name="GraphScroll" type="ScrollContainer" parent="RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GraphCanvas" type="Control" parent="RootVBox/GraphScroll"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(560, 360)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LinesLayer" type="Control" parent="RootVBox/GraphScroll/GraphCanvas"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="NodesLayer" type="Control" parent="RootVBox/GraphScroll/GraphCanvas"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DetailsPanel" type="PanelContainer" parent="RootVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_details")
+
+[node name="DetailsRow" type="HBoxContainer" parent="RootVBox/DetailsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DetailsVBox" type="VBoxContainer" parent="RootVBox/DetailsPanel/DetailsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="TitleAndStatusRow" type="HBoxContainer" parent="RootVBox/DetailsPanel/DetailsRow/DetailsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SelectedTitleLabel" type="Label" parent="RootVBox/DetailsPanel/DetailsRow/DetailsVBox/TitleAndStatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Основа закалки"
+
+[node name="SelectedStatusLabel" type="Label" parent="RootVBox/DetailsPanel/DetailsRow/DetailsVBox/TitleAndStatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Статус: Доступно"
+horizontal_alignment = 2
+
+[node name="SelectedBonusLabel" type="Label" parent="RootVBox/DetailsPanel/DetailsRow/DetailsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.8, 0.25, 1)
+theme_override_font_sizes/font_size = 13
+text = "Бонус: +2 к Выносливости"
+
+[node name="SelectedDescLabel" type="Label" parent="RootVBox/DetailsPanel/DetailsRow/DetailsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.88, 1)
+theme_override_font_sizes/font_size = 13
+text = "Описание навыка"
+autowrap_mode = 3
+
+[node name="LearnButton" type="Button" parent="RootVBox/DetailsPanel/DetailsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 46)
+layout_mode = 2
+size_flags_vertical = 4
+text = "Изучить"

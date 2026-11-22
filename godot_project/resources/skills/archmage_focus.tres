@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "archmage_focus"
+title = "Фокус архимага"
+icon_emoji = "⏳"
+description = "Быстрая концентрация сокращает время перезарядки всех заклинаний."
+grid_position = Vector2(7, 1)
+prerequisites = Array[String](["spell_weaving", "mana_flow"])
+cost_skill_points = 1
+bonus_type = "ability_cd_red"
+bonus_value = 0.35

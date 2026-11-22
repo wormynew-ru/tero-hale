@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/goblin.tres" id="3_goblin"]
+[ext_resource type="Resource" path="res://resources/enemies/bandit.tres" id="4_bandit"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "dark_forest"
+location_name = "Тёмный лес"
+icon_emoji = "🌲"
+description = "Опасная чаща, где рыщут гоблины и разбойники. Награда выше, но враги бьют сильнее."
+required_level = 3
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_goblin"), ExtResource("4_bandit")])
+background_color = Color(0.14, 0.11, 0.19, 1)

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "ice_lance"
+title = "Ледяное копьё"
+icon_emoji = "❄️"
+description = "Пронзает врага осколком льда на 195% урона, полностью игнорируя его броню."
+mana_cost = 22.0
+cooldown = 7.0
+effect_type = "pierce_damage"
+power_multiplier = 1.95
+armor_ignore_pct = 1.0

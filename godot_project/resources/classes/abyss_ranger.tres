@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/HeroClassData.gd" id="1_class"]
+
+[resource]
+script = ExtResource("1_class")
+id = "abyss_ranger"
+title = "Снайпер Бездны"
+icon_emoji = "🏹"
+subtitle = "Мастер залпа и критов"
+description = "Превращает луки и арбалеты в шквал пронзающих критов с бережным расходом боезапаса."
+passive_summary = "• +40% урона оружием дальнего боя (луки и арбалеты).\n• 60% шанс не потратить стрелу/болт при выстреле.\n• Критические выстрелы игнорируют 100% плоской брони врага.\n• Ловкость даёт +1.5% к крит-множителю за единицу.\n• 30% шанс мгновенного второго выстрела."
+required_difficulty = 50
+accent_color = Color(0.98, 0.78, 0.28, 1)
+disables_equipment = false

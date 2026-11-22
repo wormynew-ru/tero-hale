@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark"]
+
+[resource]
+script = ExtResource("1_dark")
+id = "eternal_cauldron"
+title = "Вечный котёл"
+icon_emoji = "🧪"
+branch_name = "Алхимия"
+description = "Навсегда ускоряет все этапы многоступенчатого зельеварения в Убежище на +50%. Доступно после Сл. 10."
+grid_position = Vector2(7, 4)
+prerequisites = Array[String](["abyss_botanist"])
+cost_dark_points = 1
+requires_alchemy = true
+effect_type = "brew_speed_mult"
+effect_value = 0.5

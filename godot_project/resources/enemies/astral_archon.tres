@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/astral_greatsword.tres" id="3_astral"]
+[ext_resource type="Resource" path="res://resources/items/abyssal_carapace.tres" id="4_carapace"]
+[ext_resource type="Resource" path="res://resources/items/ambrosia_flask.tres" id="5_ambrosia"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "astral_archon"
+enemy_name = "Астральный архонт"
+icon_emoji = "⚡"
+max_hp = 6200.0
+max_mana = 260.0
+attack_damage = 275.0
+agility = 32
+defense = 52.0
+xp_reward = 6800
+gold_reward = 4100
+spawn_weight = 0.45
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_astral"), ExtResource("4_carapace"), ExtResource("5_ambrosia")])
+drop_chances = Array[float]([0.1, 0.22, 0.4])
+sprite_color = Color(0.45, 0.68, 1, 1)

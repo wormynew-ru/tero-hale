@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "blacksmith_brand"
+title = "Клеймо кузнеца"
+icon_emoji = "🔨"
+branch_name = "Тёмная Алхимия"
+description = "Снижает стоимость зачарования экипировки на 25% и усиливает прирост статов от каждого уровня заточки на +25%."
+grid_position = Vector2(5, 3)
+prerequisites = Array[String](["titan_heritage"])
+cost_dark_points = 3
+effect_type = "blacksmith_brand"
+effect_value = 0.25

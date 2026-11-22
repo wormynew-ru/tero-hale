@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "wind_mastery_dark"
+title = "Стремительность тени"
+icon_emoji = "💨"
+branch_name = "Тень и Залп"
+description = "Ускоряет все атаки и выстрелы героя на +15% навсегда во всех ранах."
+grid_position = Vector2(1, 4)
+prerequisites = Array[String](["piercing_volley"])
+cost_dark_points = 5
+effect_type = "wind_mastery_dark"
+effect_value = 0.15

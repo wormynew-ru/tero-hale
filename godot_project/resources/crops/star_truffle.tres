@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "star_truffle"
+crop_name = "Звёздный трюфель"
+icon_emoji = "🌟"
+rarity_label = "Мифическое (0.012%)"
+description = "Редчайший гриб-катализатор для 3-й ступени зельеварения. Растёт 10 минут."
+seed_item_path = "res://resources/items/star_truffle_seed.tres"
+harvest_item_path = "res://resources/items/star_truffle_harvest.tres"
+base_drop_chance = 0.00012
+boss_drop_chance = 0.0002
+min_enemy_xp = 300.0
+grow_seconds = 600.0
+required_final_boss_kills = 0
+harvest_min = 1
+harvest_max = 1
+accent_color = Color(0.86, 0.56, 0.98, 1)

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "moon_mint_seed"
+item_name = "Семя лунной мяты"
+icon_emoji = "🌱"
+description = "Редчайшее базовое семя (0.05% шанс дропа). Посадите в Саду Убежища (2 мин роста)."
+item_type = 4
+buy_price = 100
+sell_value = 15
+icon_color = Color(0.45, 0.92, 0.58, 1)
+seed_crop_id = "moon_mint"

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "abyssal_greed"
+title = "Алчность бездны"
+icon_emoji = "💎"
+branch_name = "Тёмная Алхимия"
+description = "Навсегда увеличивает добычу золота на +100% и получаемый опыт на +50% во всех текущих и будущих ранах."
+grid_position = Vector2(6, 3)
+prerequisites = Array[String](["blacksmith_brand"])
+cost_dark_points = 4
+effect_type = "abyssal_greed"
+effect_value = 1.0

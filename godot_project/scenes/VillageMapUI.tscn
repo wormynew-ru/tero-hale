@@ -1,0 +1,210 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/VillageMapUI.gd" id="1_village_map"]
+[ext_resource type="Texture2D" path="res://assets/textures/village_map.jpg" id="2_village_tex"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hotspot"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hotspot_hover"]
+bg_color = Color(1, 0.96, 0.72, 0.14)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.92, 0.55, 0.55)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_modal_card"]
+content_margin_left = 20.0
+content_margin_top = 18.0
+content_margin_right = 20.0
+content_margin_bottom = 18.0
+bg_color = Color(0.118, 0.137, 0.176, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.84, 0.78, 0.56, 0.95)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[node name="VillageMapUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_village_map")
+
+[node name="RootVBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+
+[node name="MapAspectContainer" type="AspectRatioContainer" parent="RootVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+ratio = 1.8333
+
+[node name="MapCanvas" type="Control" parent="RootVBox/MapAspectContainer"]
+layout_mode = 2
+
+[node name="VillageSprite" type="TextureRect" parent="RootVBox/MapAspectContainer/MapCanvas"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_village_tex")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="MountainsHotspot" type="Button" parent="RootVBox/MapAspectContainer/MapCanvas"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.47
+anchor_top = 0.25
+anchor_right = 0.85
+anchor_bottom = 0.62
+grow_horizontal = 2
+grow_vertical = 2
+tooltip_text = "🏔️ Горы и Охотничьи тропы (вернуться к бою)"
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hotspot")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hotspot")
+flat = true
+
+[node name="HouseHotspot" type="Button" parent="RootVBox/MapAspectContainer/MapCanvas"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.36
+anchor_right = 0.23
+anchor_bottom = 0.74
+grow_horizontal = 2
+grow_vertical = 2
+tooltip_text = "🏡 Убежище: Сад и Зельеварение (открывается с Сл. 10)"
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hotspot")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hotspot")
+flat = true
+
+[node name="ShopBuildingHotspot" type="Button" parent="RootVBox/MapAspectContainer/MapCanvas"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.31
+anchor_top = 0.43
+anchor_right = 0.47
+anchor_bottom = 0.69
+grow_horizontal = 2
+grow_vertical = 2
+tooltip_text = "🏬 МАГАЗИН: открыть Лавку или Кузню"
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hotspot")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hotspot")
+flat = true
+
+[node name="DogHotspot" type="Button" parent="RootVBox/MapAspectContainer/MapCanvas"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.48
+anchor_top = 0.59
+anchor_right = 0.56
+anchor_bottom = 0.73
+grow_horizontal = 2
+grow_vertical = 2
+tooltip_text = "🐾 Приют путников (питомцы)"
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hotspot")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hotspot")
+flat = true
+
+[node name="MapHintLabel" type="Label" parent="RootVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.84, 0.94, 1)
+theme_override_font_sizes/font_size = 13
+text = "🗺️ Нажмите на объекты на картине: Домик (🏡 Убежище — Сад и Зелья), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ShopChoiceOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.03, 0.05, 0.72)
+
+[node name="CenterBox" type="CenterContainer" parent="ShopChoiceOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ChoiceCard" type="PanelContainer" parent="ShopChoiceOverlay/CenterBox"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_modal_card")
+
+[node name="ChoiceVBox" type="VBoxContainer" parent="ShopChoiceOverlay/CenterBox/ChoiceCard"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ChoiceTitle" type="Label" parent="ShopChoiceOverlay/CenterBox/ChoiceCard/ChoiceVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "🏬 Здание «МАГАЗИН»"
+horizontal_alignment = 1
+
+[node name="ChoiceSubtitle" type="Label" parent="ShopChoiceOverlay/CenterBox/ChoiceCard/ChoiceVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.82, 0.92, 1)
+theme_override_font_sizes/font_size = 13
+text = "Куда хотите зайти?"
+horizontal_alignment = 1
+
+[node name="GoShopButton" type="Button" parent="ShopChoiceOverlay/CenterBox/ChoiceCard/ChoiceVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🏪 Лавка (зелья, оружие, броня)"
+
+[node name="GoEnchantButton" type="Button" parent="ShopChoiceOverlay/CenterBox/ChoiceCard/ChoiceVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⚒️ Кузня (заточка экипировки)"
+
+[node name="CancelChoiceButton" type="Button" parent="ShopChoiceOverlay/CenterBox/ChoiceCard/ChoiceVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "✕ Отмена"

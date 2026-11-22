@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/small_healing_potion.tres" id="3_potion"]
+[ext_resource type="Resource" path="res://resources/items/wooden_sword.tres" id="4_sword"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "slime"
+enemy_name = "Лесной слизень"
+icon_emoji = "🟢"
+max_hp = 36.0
+attack_damage = 5.0
+agility = 3
+defense = 0.0
+xp_reward = 14
+gold_reward = 6
+spawn_weight = 0.65
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_potion"), ExtResource("4_sword")])
+drop_chances = Array[float]([0.3, 0.12])
+sprite_color = Color(0.28, 0.78, 0.44, 1)

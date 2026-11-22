@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/orc_warlord.tres" id="3_orc"]
+[ext_resource type="Resource" path="res://resources/enemies/shadow_lich.tres" id="4_lich"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "obsidian_citadel"
+location_name = "Обсидиановая цитадель"
+icon_emoji = "🌋"
+description = "Мрачная крепость из чёрного стекла, где правят берсерки и повелители теней."
+required_level = 20
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_orc"), ExtResource("4_lich")])
+background_color = Color(0.16, 0.09, 0.18, 1)

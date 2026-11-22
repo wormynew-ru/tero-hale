@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/skeleton.tres" id="3_skeleton"]
+[ext_resource type="Resource" path="res://resources/enemies/dark_mage.tres" id="4_mage"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "ancient_ruins"
+location_name = "Древние руины"
+icon_emoji = "🏚️"
+description = "Забытые катакомбы, охраняемые нежитью и культистами. Здесь добывается железное снаряжение."
+required_level = 6
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_skeleton"), ExtResource("4_mage")])
+background_color = Color(0.16, 0.12, 0.15, 1)

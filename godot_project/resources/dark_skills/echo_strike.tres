@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "echo_strike"
+title = "Эхо-удар"
+icon_emoji = "⚡"
+branch_name = "Кровь и Ярость"
+description = "Клинок оставляет теневой след: 22% шанс мгновенно нанести дополнительный удар с силой 75%."
+grid_position = Vector2(1, 1)
+prerequisites = Array[String](["blood_vampirism"])
+cost_dark_points = 3
+effect_type = "echo_strike"
+effect_value = 0.22

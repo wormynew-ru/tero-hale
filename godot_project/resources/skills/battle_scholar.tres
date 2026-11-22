@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "battle_scholar"
+title = "Мудрость битв"
+icon_emoji = "📚"
+description = "Анализ каждого поединка ускоряет получение боевого опыта героя."
+grid_position = Vector2(4, 4)
+prerequisites = Array[String](["hero_foundation"])
+cost_skill_points = 1
+bonus_type = "xp_mult"
+bonus_value = 0.65

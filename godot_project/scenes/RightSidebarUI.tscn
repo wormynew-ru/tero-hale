@@ -1,0 +1,431 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/RightSidebarUI.gd" id="1_sidebar_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sidebar"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.125, 0.141, 0.165, 1)
+border_width_left = 2
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+border_color = Color(0.7, 0.68, 0.58, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sidebar_card"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.165, 0.184, 0.212, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.68, 0.66, 0.56, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sidebar_card_pressed"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.26, 0.31, 0.38, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.85, 0.45, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="RightSidebarUI" type="PanelContainer"]
+custom_minimum_size = Vector2(286, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_sidebar")
+script = ExtResource("1_sidebar_ui")
+
+[node name="SidebarVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MapPanel" type="PanelContainer" parent="SidebarVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.88
+theme_override_styles/panel = SubResource("StyleBoxFlat_sidebar_card")
+
+[node name="MapVBox" type="VBoxContainer" parent="SidebarVBox/MapPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MapTitleLabel" type="Label" parent="SidebarVBox/MapPanel/MapVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "КАРТА"
+horizontal_alignment = 1
+
+[node name="LocationTitleLabel" type="Label" parent="SidebarVBox/MapPanel/MapVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.84, 0.94, 1)
+theme_override_font_sizes/font_size = 13
+text = "🌿 Тихая опушка"
+horizontal_alignment = 1
+
+[node name="MapScroll" type="ScrollContainer" parent="SidebarVBox/MapPanel/MapVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="LocationsRow" type="VBoxContainer" parent="SidebarVBox/MapPanel/MapVBox/MapScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="SlotsGrid" type="GridContainer" parent="SidebarVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.12
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="Slot1Button" type="Button" parent="SidebarVBox/SlotsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sidebar_card_pressed")
+
+[node name="Slot1Box" type="VBoxContainer" parent="SidebarVBox/SlotsGrid/Slot1Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Slot1Top" type="HBoxContainer" parent="SidebarVBox/SlotsGrid/Slot1Button/Slot1Box"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Slot1Icon" type="Label" parent="SidebarVBox/SlotsGrid/Slot1Button/Slot1Box/Slot1Top"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "🧪"
+
+[node name="Slot1CountLabel" type="Label" parent="SidebarVBox/SlotsGrid/Slot1Button/Slot1Box/Slot1Top"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = "x2"
+
+[node name="Slot1Label" type="Label" parent="SidebarVBox/SlotsGrid/Slot1Button/Slot1Box"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "СЛОТ 1
+Пусто"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot2Button" type="Button" parent="SidebarVBox/SlotsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sidebar_card_pressed")
+
+[node name="Slot2Box" type="VBoxContainer" parent="SidebarVBox/SlotsGrid/Slot2Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Slot2Top" type="HBoxContainer" parent="SidebarVBox/SlotsGrid/Slot2Button/Slot2Box"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Slot2Icon" type="Label" parent="SidebarVBox/SlotsGrid/Slot2Button/Slot2Box/Slot2Top"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "▫️"
+
+[node name="Slot2CountLabel" type="Label" parent="SidebarVBox/SlotsGrid/Slot2Button/Slot2Box/Slot2Top"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Slot2Label" type="Label" parent="SidebarVBox/SlotsGrid/Slot2Button/Slot2Box"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "СЛОТ 2
+Пусто"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot3Button" type="Button" parent="SidebarVBox/SlotsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sidebar_card_pressed")
+
+[node name="Slot3Box" type="VBoxContainer" parent="SidebarVBox/SlotsGrid/Slot3Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Slot3Top" type="HBoxContainer" parent="SidebarVBox/SlotsGrid/Slot3Button/Slot3Box"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Slot3Icon" type="Label" parent="SidebarVBox/SlotsGrid/Slot3Button/Slot3Box/Slot3Top"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "▫️"
+
+[node name="Slot3CountLabel" type="Label" parent="SidebarVBox/SlotsGrid/Slot3Button/Slot3Box/Slot3Top"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Slot3Label" type="Label" parent="SidebarVBox/SlotsGrid/Slot3Button/Slot3Box"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "СЛОТ 3
+Пусто"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot4Button" type="Button" parent="SidebarVBox/SlotsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sidebar_card_pressed")
+
+[node name="Slot4Box" type="VBoxContainer" parent="SidebarVBox/SlotsGrid/Slot4Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Slot4Top" type="HBoxContainer" parent="SidebarVBox/SlotsGrid/Slot4Button/Slot4Box"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Slot4Icon" type="Label" parent="SidebarVBox/SlotsGrid/Slot4Button/Slot4Box/Slot4Top"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "▫️"
+
+[node name="Slot4CountLabel" type="Label" parent="SidebarVBox/SlotsGrid/Slot4Button/Slot4Box/Slot4Top"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Slot4Label" type="Label" parent="SidebarVBox/SlotsGrid/Slot4Button/Slot4Box"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "СЛОТ 4
+Пусто"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot5Button" type="Button" parent="SidebarVBox/SlotsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sidebar_card_pressed")
+
+[node name="Slot5Box" type="VBoxContainer" parent="SidebarVBox/SlotsGrid/Slot5Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Slot5Top" type="HBoxContainer" parent="SidebarVBox/SlotsGrid/Slot5Button/Slot5Box"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Slot5Icon" type="Label" parent="SidebarVBox/SlotsGrid/Slot5Button/Slot5Box/Slot5Top"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "▫️"
+
+[node name="Slot5CountLabel" type="Label" parent="SidebarVBox/SlotsGrid/Slot5Button/Slot5Box/Slot5Top"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Slot5Label" type="Label" parent="SidebarVBox/SlotsGrid/Slot5Button/Slot5Box"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "СЛОТ 5
+Пусто"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true
+
+[node name="Slot6Button" type="Button" parent="SidebarVBox/SlotsGrid"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/hover = SubResource("StyleBoxFlat_sidebar_card")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_sidebar_card_pressed")
+
+[node name="Slot6Box" type="VBoxContainer" parent="SidebarVBox/SlotsGrid/Slot6Button"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 6.0
+offset_right = -8.0
+offset_bottom = -6.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Slot6Top" type="HBoxContainer" parent="SidebarVBox/SlotsGrid/Slot6Button/Slot6Box"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Slot6Icon" type="Label" parent="SidebarVBox/SlotsGrid/Slot6Button/Slot6Box/Slot6Top"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 18
+text = "▫️"
+
+[node name="Slot6CountLabel" type="Label" parent="SidebarVBox/SlotsGrid/Slot6Button/Slot6Box/Slot6Top"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.95, 0.85, 0.55, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Slot6Label" type="Label" parent="SidebarVBox/SlotsGrid/Slot6Button/Slot6Box"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "СЛОТ 6
+Пусто"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+clip_text = true

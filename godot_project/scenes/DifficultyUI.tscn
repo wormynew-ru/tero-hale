@@ -1,0 +1,163 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/DifficultyUI.gd" id="1_diff_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_diff_card"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+bg_color = Color(0.12, 0.13, 0.17, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.36, 0.32, 0.44, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="DifficultyUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_diff_ui")
+
+[node name="DiffVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="StatusCard" type="PanelContainer" parent="DiffVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_diff_card")
+
+[node name="StatusVBox" type="VBoxContainer" parent="DiffVBox/StatusCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CurrentRunLabel" type="Label" parent="DiffVBox/StatusCard/StatusVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "💀 Текущий ран: Сложность 1 (Открыто до 1)"
+
+[node name="BossStatusLabel" type="Label" parent="DiffVBox/StatusCard/StatusVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.88, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Победите Вечного титана в Небесном престоле, чтобы получить +2 🌑 и открыть следующую сложность."
+autowrap_mode = 3
+
+[node name="CrucibleStatusLabel" type="Label" parent="DiffVBox/StatusCard/StatusVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.68, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "🌀 Горнило Проклятий (от Сл.100): всегда открытая бонус-локация с реролл-боссом."
+autowrap_mode = 3
+
+[node name="SelectorCard" type="PanelContainer" parent="DiffVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_diff_card")
+
+[node name="SelectorVBox" type="VBoxContainer" parent="DiffVBox/SelectorCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SelectorRow" type="HBoxContainer" parent="DiffVBox/SelectorCard/SelectorVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DiffMinusButton" type="Button" parent="DiffVBox/SelectorCard/SelectorVBox/SelectorRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 44)
+layout_mode = 2
+text = "−"
+
+[node name="SelectedDiffLabel" type="Label" parent="DiffVBox/SelectorCard/SelectorVBox/SelectorRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Выбранная сложность: 1"
+horizontal_alignment = 1
+
+[node name="DiffPlusButton" type="Button" parent="DiffVBox/SelectorCard/SelectorVBox/SelectorRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 44)
+layout_mode = 2
+text = "+"
+
+[node name="DiffMaxButton" type="Button" parent="DiffVBox/SelectorCard/SelectorVBox/SelectorRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "Макс."
+
+[node name="MultipliersPreviewLabel" type="Label" parent="DiffVBox/SelectorCard/SelectorVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.82, 0.4, 1)
+theme_override_font_sizes/font_size = 13
+text = "Множители..."
+autowrap_mode = 3
+
+[node name="StartRunRow" type="HBoxContainer" parent="DiffVBox/SelectorCard/SelectorVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RunPersistHintLabel" type="Label" parent="DiffVBox/SelectorCard/SelectorVBox/StartRunRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.72, 0.78, 0.88, 1)
+theme_override_font_sizes/font_size = 12
+text = "Новый ран сбрасывает уровень, золото, вещи и обычные навыки, но СОХРАНЯЕТ Тёмные очки 🌑, Тёмные навыки, жетоны реролла 🎲, выбранный класс и открытую сложность."
+autowrap_mode = 3
+
+[node name="StartNewRunButton" type="Button" parent="DiffVBox/SelectorCard/SelectorVBox/StartRunRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 46)
+layout_mode = 2
+text = "🔥 Начать ран (Сл. 1)"
+
+[node name="CursesCard" type="PanelContainer" parent="DiffVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_diff_card")
+
+[node name="CursesVBox" type="VBoxContainer" parent="DiffVBox/CursesCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CursesHeaderRow" type="HBoxContainer" parent="DiffVBox/CursesCard/CursesVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CursesTitleLabel" type="Label" parent="DiffVBox/CursesCard/CursesVBox/CursesHeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.48, 0.56, 1)
+theme_override_font_sizes/font_size = 15
+text = "☠️ Проклятия каждых 10 сложностей"
+
+[node name="RerollTokensLabel" type="Label" parent="DiffVBox/CursesCard/CursesVBox/CursesHeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.92, 0.98, 1)
+theme_override_font_sizes/font_size = 14
+text = "🎲 Жетоны реролла: 0"
+
+[node name="CursesFeedbackLabel" type="Label" parent="DiffVBox/CursesCard/CursesVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.96, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="CursesRowsVBox" type="VBoxContainer" parent="DiffVBox/CursesCard/CursesVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6

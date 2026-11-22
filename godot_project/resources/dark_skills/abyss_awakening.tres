@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "abyss_awakening"
+title = "Пробуждение бездны"
+icon_emoji = "🌑"
+branch_name = "Основа"
+description = "Первый шаг за грань смертности: пробуждает постоянную силу, открывающую 4 тёмных направления Бездны."
+grid_position = Vector2(3, 2)
+prerequisites = Array[String]([])
+cost_dark_points = 1
+effect_type = "awakening_power"
+effect_value = 0.2

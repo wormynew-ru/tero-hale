@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "crimson_nova"
+title = "Кровавая сверхновая"
+icon_emoji = "💢"
+description = "Эксклюзив Архимага Крови: жертвует 12% HP, наносит 460% чистого урона (100% пробития) и лечит на 35% от урона."
+required_class_id = "blood_archmage"
+mana_cost = 40.0
+cooldown = 12.0
+effect_type = "blood_nova"
+power_multiplier = 4.6
+armor_ignore_pct = 1.0
+hp_sacrifice_pct = 0.12
+lifesteal_ratio = 0.35

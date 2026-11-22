@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "arcane_meditation"
+title = "Медитация потока"
+icon_emoji = "🔮"
+description = "Бафф на 10с: +120% к регенерации маны и +40% к силе всех заклинаний."
+mana_cost = 15.0
+cooldown = 16.0
+effect_type = "buff"
+power_multiplier = 1.0
+duration = 10.0
+buff_mana_regen_pct = 1.2
+buff_spell_power_pct = 0.4

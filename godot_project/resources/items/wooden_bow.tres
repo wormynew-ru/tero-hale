@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "wooden_bow"
+item_name = "Охотничий лук"
+icon_emoji = "🏹"
+description = "Лёгкий деревянный лук для стрельбы на дистанции. Требует стрелы."
+item_type = 0
+bonus_strength = 2
+bonus_agility = 4
+bonus_endurance = 0
+weapon_style = 1
+required_ammo = 1
+ammo_kind = 0
+bonus_damage = 4.0
+bonus_crit_chance = 0.03
+armor_penetration = 0.0
+shop_pack_amount = 1
+heal_amount = 0.0
+buy_price = 45
+sell_value = 20
+icon_color = Color(0.66, 0.5, 0.3, 1)

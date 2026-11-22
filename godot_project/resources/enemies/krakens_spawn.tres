@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/abyssal_carapace.tres" id="3_carapace"]
+[ext_resource type="Resource" path="res://resources/items/divine_nectar.tres" id="4_nectar"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "krakens_spawn"
+enemy_name = "Отродье Кракена"
+icon_emoji = "🐙"
+max_hp = 4400.0
+max_mana = 0.0
+attack_damage = 205.0
+agility = 26
+defense = 44.0
+xp_reward = 3900
+gold_reward = 2350
+spawn_weight = 0.45
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_carapace"), ExtResource("4_nectar")])
+drop_chances = Array[float]([0.16, 0.48])
+sprite_color = Color(0.18, 0.56, 0.82, 1)

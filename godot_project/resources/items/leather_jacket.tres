@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "leather_jacket"
+item_name = "Кожаная куртка"
+icon_emoji = "🧥"
+description = "Лёгкая стёганая броня. Повышает живучесть и не сковывает движения."
+item_type = 1
+bonus_strength = 0
+bonus_agility = 1
+bonus_endurance = 2
+heal_amount = 0.0
+buy_price = 38
+sell_value = 18
+icon_color = Color(0.54, 0.36, 0.22, 1)

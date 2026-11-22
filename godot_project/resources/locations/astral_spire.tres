@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/void_stalker.tres" id="3_stalker"]
+[ext_resource type="Resource" path="res://resources/enemies/astral_archon.tres" id="4_archon"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "astral_spire"
+location_name = "Астральная башня"
+icon_emoji = "🌌"
+description = "Парящая в межзвёздной пустоте башня магов и тёмных наблюдателей."
+required_level = 40
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_stalker"), ExtResource("4_archon")])
+background_color = Color(0.11, 0.08, 0.26, 1)

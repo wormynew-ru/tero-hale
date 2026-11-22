@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/trident_of_abyss.tres" id="3_trident"]
+[ext_resource type="Resource" path="res://resources/items/divine_nectar.tres" id="4_nectar"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "void_stalker"
+enemy_name = "Ловец пустоты"
+icon_emoji = "👁️"
+max_hp = 5200.0
+max_mana = 0.0
+attack_damage = 245.0
+agility = 35
+defense = 46.0
+xp_reward = 5400
+gold_reward = 3200
+spawn_weight = 0.55
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_trident"), ExtResource("4_nectar")])
+drop_chances = Array[float]([0.2, 0.45])
+sprite_color = Color(0.54, 0.28, 0.88, 1)

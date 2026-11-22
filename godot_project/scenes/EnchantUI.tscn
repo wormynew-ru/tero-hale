@@ -1,0 +1,128 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/EnchantUI.gd" id="1_enchant_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+bg_color = Color(0.11, 0.13, 0.17, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.36, 0.44, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="EnchantUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_enchant_ui")
+
+[node name="EnchantVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="HeaderHintLabel" type="Label" parent="EnchantVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.84, 0.94, 1)
+theme_override_font_sizes/font_size = 14
+text = "⚒️ Кузня зачарования: усиливает экипированные слоты Оружия и Брони от +0 до +100. При неудаче уровень не теряется, но шанс падает до 0.50% на +99 → +100."
+autowrap_mode = 3
+
+[node name="EnchantFeedbackLabel" type="Label" parent="EnchantVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.84, 0.34, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+autowrap_mode = 3
+
+[node name="WeaponCard" type="PanelContainer" parent="EnchantVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="WeaponVBox" type="VBoxContainer" parent="EnchantVBox/WeaponCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="WeaponHeaderLabel" type="Label" parent="EnchantVBox/WeaponCard/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "⚔️ Слот оружия (+0)"
+
+[node name="WeaponStatsLabel" type="Label" parent="EnchantVBox/WeaponCard/WeaponVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Экипируйте оружие в инвентаре"
+autowrap_mode = 3
+
+[node name="WeaponActionRow" type="HBoxContainer" parent="EnchantVBox/WeaponCard/WeaponVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="WeaponNextLabel" type="Label" parent="EnchantVBox/WeaponCard/WeaponVBox/WeaponActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.8, 0.42, 1)
+theme_override_font_sizes/font_size = 13
+text = "Шанс: 95.00% | Цена: 50 з."
+autowrap_mode = 3
+
+[node name="WeaponEnchantButton" type="Button" parent="EnchantVBox/WeaponCard/WeaponVBox/WeaponActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+text = "⚒️ Зачаровать (+1)"
+
+[node name="ArmorCard" type="PanelContainer" parent="EnchantVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="ArmorVBox" type="VBoxContainer" parent="EnchantVBox/ArmorCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ArmorHeaderLabel" type="Label" parent="EnchantVBox/ArmorCard/ArmorVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🛡️ Слот брони (+0)"
+
+[node name="ArmorStatsLabel" type="Label" parent="EnchantVBox/ArmorCard/ArmorVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Экипируйте броню в инвентаре"
+autowrap_mode = 3
+
+[node name="ArmorActionRow" type="HBoxContainer" parent="EnchantVBox/ArmorCard/ArmorVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ArmorNextLabel" type="Label" parent="EnchantVBox/ArmorCard/ArmorVBox/ArmorActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.8, 0.42, 1)
+theme_override_font_sizes/font_size = 13
+text = "Шанс: 95.00% | Цена: 50 з."
+autowrap_mode = 3
+
+[node name="ArmorEnchantButton" type="Button" parent="EnchantVBox/ArmorCard/ArmorVBox/ArmorActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+text = "⚒️ Зачаровать (+1)"

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "hunter_dagger"
+item_name = "Кинжал следопыта"
+icon_emoji = "🗡️"
+description = "Лёгкий сбалансированный клинок. Отлично ускоряет атаки."
+item_type = 0
+bonus_strength = 4
+bonus_agility = 5
+bonus_endurance = 0
+heal_amount = 0.0
+buy_price = 85
+sell_value = 40
+icon_color = Color(0.42, 0.72, 0.88, 1)

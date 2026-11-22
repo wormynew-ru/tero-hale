@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "execute_sigil"
+title = "Печать казни"
+icon_emoji = "🗡️"
+description = "Наносит 200% урона. По врагам с <40% HP удар удваивается (400%) и пробивает броню."
+mana_cost = 26.0
+cooldown = 10.0
+effect_type = "execute_damage"
+power_multiplier = 2.0
+armor_ignore_pct = 0.4

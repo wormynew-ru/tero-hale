@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PetData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/PetData.gd" id="1_pet"]
+
+[resource]
+script = ExtResource("1_pet")
+id = "ember_fox"
+pet_name = "Огненный лисёнок"
+icon_emoji = "🦊"
+subtitle = "Пламенный путник"
+description = "Не имеет HP. Каждую секунду боя обжигает врага чистым пламенем на 0.8% от его Max HP и усиливает прямой урон героя на +15%."
+effect_type = "enemy_burn"
+effect_value = 0.008
+effect_secondary = 0.15
+buy_price = 750.0
+required_difficulty = 1
+accent_color = Color(0.98, 0.48, 0.22, 1)

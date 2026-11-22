@@ -1,0 +1,214 @@
+# CLAUDE.md — Hero Tale Idle RPG (Godot 4.7)
+
+Этот файл содержит обязательные правила работы с проектом, описание архитектуры, формулы баланса и конвенции Godot 4.7 для продолжения разработки.
+
+---
+
+## 1. Обязательные правила работы с проектом
+
+1. **Навигация через `ROADMAP.md`**:
+   - Перед поиском файлов или изменением кода **всегда** сначала прочитай `ROADMAP.md`, чтобы сразу знать точный путь и назначение каждого скрипта, сцены и ресурса.
+   - При добавлении, переименовании или удалении любого файла немедленно обновляй `ROADMAP.md`.
+2. **Проверка `TZ.md` перед задачей**:
+   - В начале каждой новой сессии/задачи проверяй `TZ.md`.
+   - Если `TZ.md` пустой (или содержит только шаблон без задач) — пропускай его.
+   - Если в `TZ.md` написаны требования пользователя — выполняй их в приоритетном порядке.
+3. **Ведение `CHANGELOG.md`**:
+   - После каждого завершённого изменения или новой фичи добавляй запись в `CHANGELOG.md` с указанием версии и списка изменённых систем.
+4. **Честная AFK-философия (без офлайн-прогрессии)**:
+   - В игре **запрещена** офлайн-прогрессия (никаких вычислений наград по разнице системного времени при закрытом приложении).
+   - Прогресс начисляется исключительно в реальном времени при запущенном окне (в том числе в фоновом/свёрнутом режиме и в режиме энергосбережения `AFK-режим`).
+   - `GameManager` и `CombatSystem` работают с `PROCESS_MODE_ALWAYS`, а `run/low_processor_mode=false` гарантирует продолжение боя при потере фокуса окна.
+5. **Кроссплатформенность (Телефон + ПК) и визуальная система**:
+   - Базовое горизонтальное (альбомное) разрешение `1280x720` (`stretch/mode = "canvas_items"`, `stretch/aspect = "expand"`, `window/handheld/orientation = 0`).
+   - Весь UI строится на адаптивных `Control`-контейнерах (`MarginContainer`, `VBoxContainer`, `HBoxContainer`, `ScrollContainer`, `GridContainer`, `AspectRatioContainer`) без жёстких абсолютных позиций (исключения: внутренний граф `SkillTreeUI`, `AvatarStage`-обёртки и якорные невидимые кнопки-хотспоты поверх спрайта `VillageMapUI`).
+   - В качестве визуальных иконок персонажей, врагов, предметов, локаций, навыков и заклинаний используются системные **эмодзи** (`icon_emoji`) внутри стилизованных `PanelContainer` / `Label`, а для фона карты деревни — иллюстрированный спрайт `res://assets/textures/village_map.jpg`.
+   - Минимальная высота интерактивных кнопок на мобильных устройствах — не менее `44px`–`48px` (`custom_minimum_size.y >= 44`).
+   - Все вычисления и анимации привязаны к `delta` / `Tween` и корректно работают как при `60 FPS`, так и при `2 FPS` в карманном OLED AFK-режиме (в AFK-режиме `RootHBox` скрывается, боевые попапы/анимации отключаются, экран не блокируется через `DisplayServer.screen_set_keep_on(true)` и доступна полная остановка рендера через `RenderingServer.render_loop_enabled = false`).
+6. **Стандарты GDScript 4.7**:
+   - **Строгая статическая типизация** везде: указывать типы у всех переменных (`var hp: float = 100.0`), параметров функций, возвращаемых значений (`-> void`, `-> float`, `-> int`) и массивов (`Array[ItemData]`, `Array[SkillNodeData]`, `Array[AbilityData]`).
+   - Для ресурсов использовать `class_name` и `@export` с явными типами.
+   - Обратная совместимость сохранений `SaveData` обязательна: новые поля всегда должны иметь безопасные значения по умолчанию.
+7. **Модульная архитектура сцен (строго НЕ в 1 сцене)**:
+   - Запрещено сваливать весь интерфейс, экраны и подсистемы в одну монолитную сцену `Main.tscn` и один огромный скрипт.
+   - Каждый самостоятельный экран, панель, кнопка со сложной логикой или оверлей (боевая арена, боковая панель с картой и быстрыми слотами, меню героя, инвентарь, дерево навыков, статы, лавка, F.A.Q., ромб атаки, кнопка магии, AFK-оверлей) **обязан** быть оформлен как отдельная переиспользуемая сцена `res://scenes/*.tscn` со своим изолированным контроллером в `res://scripts/ui/*.gd` (или `res://scripts/`).
+   - `Main.tscn` и `MainUI.gd` выполняют исключительно роль корневой композиции (инстансят дочерние `.tscn` сцены и связывают их сигналы между собой и с `CombatSystem`), не содержат инлайновых вкладок и бизнес-логики конкретных экранов.
+   - Взаимодействие дочерних сцен с корнем строится через явные `signal`-события (`open_menu_requested`, `open_inventory_requested`, `reset_triggered`, `manual_cast_requested`, `auto_cast_toggled`) и подписку на `GameManager`.
+8. **Без кликер-помощи и без боевого лога**:
+   - Игрок управляет только тактикой персонажа (включает/выключает поиск боя кнопкой `⚔️`/`🏳️`, применяет или переводит на автокаст магические способности, выбирает локацию, экипировку и быстрые слоты инвентаря).
+   - **Запрещено** ускорять таймеры атаки или наносить прямой урон обычными кликами по экрану/кнопке атаки.
+   - Текстовый лог боя в игре не используется (`CombatLogUI` удалён).
+
+---
+
+## 2. Архитектура проекта
+
+```
+GameManager (Autoload: res://scripts/GameManager.gd, PROCESS_MODE_ALWAYS)
+ ├── Хранит состояние игрока: уровень, XP, золото, очки навыков, базовые статы, HP и Ману
+ ├── Хранит экипировку, инвентарь, ассортимент лавки (shop_items), открытые навыки (unlocked_skills) и способности (abilities / cooldowns / auto_cast)
+ ├── Хранит открытые локации и текущую выбранную локацию
+ ├── Считает итоговые статы, DPS, шанс крита, ману, регенерацию маны и множители наград
+ ├── Управляет торговлей (buy_item / sell_item), быстрым лечением и авто-зельем (<35% HP)
+ ├── Управляет карманным AFK-режимом (Engine.max_fps = 2/60, DisplayServer.screen_set_keep_on, сброс render_loop_enabled, счётчики сессии) и сбросом прогресса
+ ├── Автосохранение каждые 60 сек + сохранение при потере фокуса/выходе в user://save.tres
+ └── Излучает сигналы для обновления UI
+
+Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой оркестратор)
+ ├── CombatSystem (Node, PROCESS_MODE_ALWAYS -> res://scripts/CombatSystem.gd)
+ │    ├── Конечный автомат боя: IDLE, FIGHTING, RESTING, SPAWNING
+ │    ├── Переключатель поиска боя (toggle_battle_search: ⚔️ <-> 🏳️), без кликер-помощи
+ │    ├── Таймеры перезарядки атак игрока и врага, автокаст способностей и трата/реген маны врага
+ │    ├── Расчёт попаданий, критов, уклонений, урона и триггер авто-зелья
+ │    └── Генерация лута и умноженных наград (Gold/XP multipliers)
+ ├── RootHBox (основной горизонтальный макет 1280x720)
+ │    ├── BattleArenaUI.tscn (res://scripts/ui/BattleArenaUI.gd)
+ │    │    ├── Левый верхний HUD: кликабельный круглый герб героя (открывает HeroMenuUI) и 3 стат-круга (без лишних чипов урона/валюты)
+ │    │    ├── Центр арены: AttackDiamond.tscn (ромбы перезарядки над сущностями), HP и Мана внутри полос (с %)
+ │    │    ├── Левый низ: кружок статуса автокаста + 3x AbilitySlotButton.tscn (тап — каст, удержание 1с — автокаст)
+ │    │    ├── Центр низ: кнопка поиска боя (⚔️ <-> 🏳️)
+ │    │    └── Правый низ: кнопка `РЮКЗАК 🎒`
+ │    └── RightSidebarUI.tscn (res://scripts/ui/RightSidebarUI.gd)
+ │         └── Блок `КАРТА` (смена локаций) + сетка `2×3` быстрых слотов первых 6 предметов `GameManager.inventory[0..5]`
+ ├── HeroMenuUI.tscn (res://scripts/ui/HeroMenuUI.gd, полноэкранное меню при нажатии на герб героя)
+ │    ├── Меню-хаб с кнопками разделов и навигацией (Назад / Закрыть)
+ │    ├── StatsUI.tscn (res://scripts/ui/StatsUI.gd) — характеристики, прокачка и сброс
+ │    ├── SkillTreeUI.tscn (res://scripts/SkillTreeUI.gd) — граф дерева навыков
+ │    ├── InventoryUI.tscn (res://scripts/ui/InventoryUI.gd) — слоты экипировки, рюкзак, авто-зелье и продажа
+ │    ├── ShopUI.tscn (res://scripts/ui/ShopUI.gd) — лавка торговца
+ │    └── FaqUI.tscn (res://scripts/ui/FaqUI.gd) — справочник по механикам (F.A.Q.)
+ └── AfkOverlayUI.tscn (res://scripts/ui/AfkOverlayUI.gd) — OLED-чёрная заставка карманного AFK (2 FPS + отключение рендера по кнопке)
+```
+
+---
+
+## 3. Формулы баланса (Core Math)
+
+### Базовые и итоговые характеристики
+- `total_strength = base_strength + weapon.bonus_strength + armor.bonus_strength + skill_bonus("strength")`
+- `total_agility = base_agility + weapon.bonus_agility + armor.bonus_agility + skill_bonus("agility")`
+- `total_endurance = base_endurance + weapon.bonus_endurance + armor.bonus_endurance + skill_bonus("endurance")`
+
+### Производные боевые параметры
+- **Физический урон игрока**:
+  `damage = 6.0 + float(total_strength) * 1.5`
+- **Критический удар**:
+  `crit_chance = clampf(0.05 + skill_bonus("crit_chance"), 0.0, 0.75)`
+  `crit_multiplier = 1.75`
+- **Интервал атаки (перезарядка в секундах)**:
+  `attack_interval = maxf(0.45, 2.4 / (1.0 + float(total_agility) * 0.08))`
+- **Расчётный DPS героя**:
+  `dps = (damage * (1.0 + crit_chance * (crit_multiplier - 1.0))) / attack_interval`
+- **Шанс уклонения (Dodge)**:
+  `dodge_chance = clampf(float(total_agility) * 0.008, 0.0, 0.35)`
+- **Максимальное здоровье (Max HP)**:
+  `max_hp = 100.0 + float(total_endurance) * 15.0`
+- **Максимальная мана и регенерация маны героя**:
+  `max_mana = 40.0 + float(level) * 5.0 + float(total_endurance) * 2.0`
+  `mana_regen_per_sec = 2.5 + float(total_endurance) * 0.25`
+- **Магические способности (`AbilityData`)**:
+  - Одиночный тап (<1 сек) кастует способность, если `cooldown <= 0` и `current_mana >= mana_cost`.
+  - Удержание `1.0 сек` включает/выключает `auto_cast`. При нехватке маны автокаст **не отключается**, а ждёт накопления нужного количества маны.
+- **Снижение входящего урона (Броня)**:
+  `armor_reduction = float(total_endurance) * 0.6`
+  `final_damage_taken = maxf(1.0, raw_enemy_damage - armor_reduction)`
+- **Авто-зелье**:
+  Срабатывает после получения удара врага, если `auto_potion_enabled == true` и `0 < current_hp / max_hp < 0.35`. Выбирается оптимальное лечебное зелье в рюкзаке.
+- **Множители фарма (из Дерева навыков)**:
+  `gold_multiplier = 1.0 + skill_bonus("gold_mult")`
+  `xp_multiplier = 1.0 + skill_bonus("xp_mult")`
+- **Скорость регенерации HP в состояниях `IDLE` и `RESTING`**:
+  `regen_per_sec = max_hp * 0.15`
+
+### Прогрессия уровня и тренировка за золото
+- **Опыт до следующего уровня**:
+  `xp_required = round(150.0 * pow(1.10, level - 1) + pow(level - 1, 2) * 55.0)`
+- **Награда за уровень**:
+  `+1 Skill Point` и полное восстановление HP и Маны до `100%`. Все 32 узла обычного древа талантов стоят ровно `1 ОН`.
+- **Лимит 🌑 Тёмных очков**:
+  За победу над финальным боссом на конкретной сложности (`difficulty_level`) игрок получает `+2 🌑` **максимум 1 раз за эту сложность** (`dark_points_claimed_difficulties`).
+- **Стоимость тренировки стата за золото**:
+  `train_cost = 10 + current_base_stat * 5`
+
+### Learn by Doing, Дальний бой, Классы и 100-я сложность (v0.11.0)
+- **3 навыка мастерства (`melee`, `ranged`, `magic`)**:
+  - `melee`: `+1 XP` за удар ближнего боя (`+3%` урона за уровень).
+  - `ranged`: `+1 XP` за выстрел дальнобойным оружием со снарядом (`+3.5%` урона и `+0.3%` крита за уровень).
+  - `magic`: `+XP` равный затраченной мане (`mana_cost`, напр. заклинание за 20 маны даёт 20 XP; `+3.5%` силы заклинаний и `+4%` регена маны за уровень).
+- **Дальнобойное оружие и снаряды (`ItemData`)**:
+  - `WeaponStyle.BOW` требует `AmmoKind.ARROW`, `WeaponStyle.CROSSBOW` требует `AmmoKind.BOLT`. При нехватке снарядов урон падает до `0.45x`.
+- **Классы героя (`HeroClassData`, открываются с `max_unlocked_difficulty >= 50`)**:
+  - `alchemist`: заточка до `+250`, `-40%` цена заточки, `1.6x` шанс успеха (мин `1.5%`), `+60%` лечение зельями, `20%` сохранение зелья, `+15%` золота и регена маны.
+  - `troll`: каждый удар добавляет `+1` к `enemy_troll_armor_shred` (бесконечно снижает броню врага даже в минус), реген `2.5% Max HP/с` в бою, `+25% Max HP`, `+20%` Силы.
+  - `spirit`: блокирует оружие/броню/снаряды, даёт `+35%` ко всем статам, `+50%` пассивной брони и 4 автономных духа природы в бою (Огонь, Ветер, Лес, Земля).
+  - `abyss_ranger`: `+40%` урон дальнего боя, `60%` сохранение снарядов, `30%` двойной выстрел, криты игнорируют плоскую броню врага, крит-множитель `+1.5% * Ловкость`.
+  - `blood_archmage`: `+75%` сила способностей, `-50%` манакост, `-30%` КД, каст за `8%` текущего HP при нехватке маны, базовые атаки снижают КД способностей на `0.5с`.
+  - `reflector`: `0` прямого урона оружием и атакующими чарами (только хил и баффы), `+30%` Max HP, `+40%` брони, отражение `20%` входящего урона, каждую `1.0с` аура `5%` своего Max HP + `0.1%` Max HP врага гниения.
+- **Путники / Питомцы (`PetData`, отдельный бессмертный слот без HP)**:
+  - Постоянная покупка (`owned_pet_ids`) и выбор (`equipped_pet_id`) сохраняются между ранами.
+  - `firework_spark`: оглушает врага в начале каждого боя на `5.0с` (1 раз за бой); другие 5 путников дают реген, золото, горение, ускорение/сброс КД или молнию + замедление врага.
+- **Горнило Проклятий (Сл. 100+)**:
+  - Локация `abyss_crucible` всегда открыта после `max_unlocked_difficulty >= 100`.
+  - Победа над `curse_warden` даёт `+1 curse_reroll_tokens` (реролл проклятия любого тира в `DifficultyUI`) и усиливает следующего босса в ране: `HP *= 1.85^kills`, `DMG *= 1.55^kills`, `DEF *= 1 + 0.45 * kills`.
+- **Книга заклинаний (20 заклинаний, максимум 3 активных слота)**:
+  - Всего 20 `AbilityData` (`14` общих + `6` эксклюзивов `blood_archmage`); активны в бою одновременно до 3 слотов (`equipped_ability_ids`).
+  - Типы эффектов: прямой/мульти/пробивающий/добивающий урон, лечение, временные баффы (`active_buffs`), периодический урон (`dot`) и бёрст-перегрузка `soul_overload` (`overcharge_burn`: тик `t` сжигает `2^(t-1)` HP и `2^(t-1) + max(0, t-2)` маны, давая мана-опыт магии и взрывной урон `1.75^(t-1)`).
+- **Зелья маны, баффов, Карта деревни и Убежище (Сад + Зельеварение с Сл.10+, v0.15.0)**:
+  - **Зелья маны и баффов**: `ItemData` поддерживает `mana_amount` и временные баффы (`buff_id`, `buff_duration`, `buff_damage_pct`, `buff_attack_speed_pct`, `buff_armor_pct`, `buff_dodge_bonus`, `buff_crit_chance_bonus`, `buff_crit_mult_bonus`, `buff_spell_power_pct`, `buff_mana_regen_pct`, `buff_lifesteal_pct`).
+  - **Карта деревни (`VillageMapUI.tscn`)**: 4 невидимые кнопки поверх `village_map.jpg` (Домик → `Sanctuary`, «МАГАЗИН» → выбор `Лавка` / `Кузня`, Щенок → `Путники`, Горы → Бой), при сохранении прямого доступа ко всем разделам из `HeroMenuUI`.
+  - **Открытие на Сл.10+ (`ALCHEMY_UNLOCK_DIFFICULTY = 10`)**: Сад, многоступенчатое Зельеварение и 4 таланта Убежища (`herbal_mastery`, `master_brewer`, `abyss_botanist`, `eternal_cauldron`) заблокированы (`🔒 Сл.10`), пока `max_unlocked_difficulty < 10`.
+  - **Постоянство между ранами**: `ItemType.SEED`, `ItemType.HARVEST`, `garden_plots`, `brewing_slots` и `alchemist_next_mistake_safe` **НЕ сбрасываются** в `start_new_run()`.
+  - **Редкий дроп и Алый лепесток**: шанс дропа семян от `0.05%` (`moon_mint_seed`). `scarlet_petal` растёт только от побед над финальным боссом `eternal_titan` (`required_final_boss_kills = 2000`).
+  - **Многоступенчатая варка и спас-флаг Алхимика**: `Вода → Шаг 1 → Шаг 2 → Шаг 3`. Неверный ингредиент даёт **100% взрыв** котла, но при активном классе `alchemist` булевый переключатель `alchemist_next_mistake_safe` гарантирует (без случайности), что **каждое 2-е неверное зелье не взрывается** и остаётся на том же этапе, а также даёт `x2` шанс дропа семян и `x2` скорость варки.
+
+---
+
+## 4. Сигналы
+
+### `GameManager`
+- `stats_changed()` — изменение статов, HP, XP, уровня, золота, экипировки, авто-зелья или бонусов навыков.
+- `hp_changed(current_hp: float, max_hp: float)` — изменение текущего или максимального HP.
+- `mana_changed(current_mana: float, max_mana: float)` — изменение текущей или максимальной маны.
+- `player_healed(amount: float)` — лечение игрока зельем или магией.
+- `inventory_changed()` — изменение инвентаря, экипировки или количества снарядов.
+- `location_changed(location: LocationData)` — смена текущей локации.
+- `level_up(new_level: int)` — повышение уровня игрока.
+- `item_acquired(item: ItemData, amount: int)` — получение нового предмета в инвентарь.
+- `save_status_changed(message: String)` — уведомление о сохранении прогресса.
+- `skills_changed()` — изучение нового узла в Дереве навыков или изменение очков навыков.
+- `dark_skills_changed()` — пробуждение Тёмного навыка или получение Очков Тьмы.
+- `difficulty_changed()` — изменение сложности, проклятий, реролл-жетонов или статуса боссов.
+- `enchant_changed()` — улучшение заточки слота оружия или брони.
+- `final_boss_cleared(dark_points_gained: int, unlocked_difficulty: int)` — первая победа над Вечным титаном в текущем ране.
+- `curse_warden_defeated(tokens_total: int, kills_in_run: int)` — победа над Хранителем Проклятий (+1 жетон реролла).
+- `mastery_changed(skill_id: String, new_level: int, leveled_up: bool)` — получение опыта/уровня в *Learn by Doing* (`melee`, `ranged`, `magic`).
+- `class_changed(class_data: HeroClassData)` — смена класса героя.
+- `pets_changed()` — покупка, выбор или снятие путника.
+- `abilities_changed()` — обновление слотов, кулдаунов или флагов автоприменения способностей.
+- `buffs_changed()` — наложение, тик таймера или снятие временных баффов (от заклинаний и бафф-зелий).
+- `garden_changed()` — посадка семян, прогресс роста грядок, счётчик убийств Вечного титана или сбор урожая.
+- `brewing_changed()` — налив воды, шаги многоступенчатой варки, взрыв котла, спас-флаг Алхимика или сбор зелья.
+- `afk_mode_changed(is_afk: bool)` — переключение карманного OLED AFK-режима.
+- `afk_stats_updated(elapsed_seconds: float, kills: int, gold_earned: float, xp_earned: float)` — обновление сводки AFK-сессии.
+- `game_reset()` — полный сброс прогресса игрока.
+
+### `CombatSystem`
+- `state_changed(new_state: int)` — переход между `IDLE`, `FIGHTING`, `RESTING`, `SPAWNING`.
+- `battle_search_changed(is_seeking: bool)` — включение/отключение режима поиска боя (`⚔️` <-> `🏳️`).
+- `enemy_spawned(enemy: EnemyData, current_hp: float, max_hp: float, current_mana: float, max_mana: float)` — появление нового врага.
+- `enemy_cleared()` — скрытие врага при выходе из поиска боя.
+- `enemy_hp_changed(current_hp: float, max_hp: float)` — изменение HP врага.
+- `enemy_mana_changed(current_mana: float, max_mana: float)` — изменение маны врага.
+- `attack_progress_updated(player_progress: float, enemy_progress: float)` — прогресс ромбов перезарядки `[0.0..1.0]`.
+- `player_attack_landed(damage: float, is_crit: bool)` — игрок нанёс удар.
+- `ranged_shot_fired(ammo_emoji: String, has_ammo: bool)` — выстрел из лука/арбалета (или предупреждение об отсутствии снарядов).
+- `spirit_action_performed(spirit_name: String, emoji: String, value: float, is_heal: bool)` — атака или лечение одного из 4 духов природы Спирита.
+- `pet_action_performed(pet_emoji: String, text_value: String, color: Color)` — срабатывание эффекта путника (стан, молния, лечение, горение, эхо-золото).
+- `enemy_stun_changed(remaining_seconds: float)` — изменение длительности оглушения врага (например, от 🎆 Фейерверка).
+- `troll_shred_updated(stacks: int)` — обновление стаков `-1` брони Тролля на текущем враге.
+- `enemy_attack_landed(damage: float, dodged: bool)` — враг нанёс удар или игрок уклонился.
+- `enemy_defeated_reward(xp_earned: float, gold_earned: float)` — награда при победе над врагом.
+- `ability_casted(slot_index: int, ability: AbilityData)` — успешное применение магической способности.
+- `overcharge_tick_fired(tick_num: int, hp_burn: float, mana_burn: float, damage: float)` — тик бёрст-перегрузки (`Выжигание души`).
+- `overcharge_state_changed(is_active: bool, slot_index: int, tick_num: int)` — переключение состояния активного канала перегрузки.
+- `dot_tick_landed(emoji: String, title: String, damage: float)` — тик периодического урона, шипов или отражения.

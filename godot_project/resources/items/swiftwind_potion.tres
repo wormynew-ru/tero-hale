@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "swiftwind_potion"
+item_name = "Зелье вихря"
+icon_emoji = "💨"
+description = "Летучая настойка ветра: +25% скорости атаки и +15% шанса крита на 45с."
+item_type = 2
+buy_price = 280
+sell_value = 85
+icon_color = Color(0.38, 0.92, 0.78, 1)
+buff_id = "potion_swiftwind"
+buff_duration = 45.0
+buff_attack_speed_pct = 0.25
+buff_crit_chance_bonus = 0.15

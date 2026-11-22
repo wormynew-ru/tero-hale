@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "soul_harvest"
+title = "Жатва душ"
+icon_emoji = "💀"
+branch_name = "Тёмная Алхимия"
+description = "За каждые 100 побеждённых врагов в текущем ране герой получает +5% ко всему урону."
+grid_position = Vector2(5, 4)
+prerequisites = Array[String](["blacksmith_brand"])
+cost_dark_points = 5
+effect_type = "soul_harvest"
+effect_value = 0.05

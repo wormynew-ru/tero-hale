@@ -1,0 +1,399 @@
+[gd_scene load_steps=17 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/HeroMenuUI.gd" id="1_hero_menu"]
+[ext_resource type="PackedScene" path="res://scenes/StatsUI.tscn" id="2_stats_ui"]
+[ext_resource type="PackedScene" path="res://scenes/SkillTreeUI.tscn" id="3_skill_tree"]
+[ext_resource type="PackedScene" path="res://scenes/InventoryUI.tscn" id="4_inventory_ui"]
+[ext_resource type="PackedScene" path="res://scenes/ShopUI.tscn" id="5_shop_ui"]
+[ext_resource type="PackedScene" path="res://scenes/FaqUI.tscn" id="6_faq_ui"]
+[ext_resource type="PackedScene" path="res://scenes/EnchantUI.tscn" id="7_enchant_ui"]
+[ext_resource type="PackedScene" path="res://scenes/DarkSkillTreeUI.tscn" id="8_dark_tree"]
+[ext_resource type="PackedScene" path="res://scenes/DifficultyUI.tscn" id="9_diff_ui"]
+[ext_resource type="PackedScene" path="res://scenes/ClassUI.tscn" id="10_class_ui"]
+[ext_resource type="PackedScene" path="res://scenes/SpellbookUI.tscn" id="11_spellbook_ui"]
+[ext_resource type="PackedScene" path="res://scenes/PetUI.tscn" id="12_pet_ui"]
+[ext_resource type="PackedScene" path="res://scenes/SanctuaryUI.tscn" id="13_sanctuary_ui"]
+[ext_resource type="PackedScene" path="res://scenes/VillageMapUI.tscn" id="14_village_map_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+content_margin_left = 16.0
+content_margin_top = 14.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+bg_color = Color(0.118, 0.137, 0.176, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.68, 0.66, 0.56, 0.9)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hub_btn"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.17, 0.195, 0.24, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.62, 0.6, 0.52, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="HeroMenuUI" type="ColorRect"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.04, 0.06, 0.8)
+script = ExtResource("1_hero_menu")
+
+[node name="MenuMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 72
+theme_override_constants/margin_top = 36
+theme_override_constants/margin_right = 72
+theme_override_constants/margin_bottom = 36
+
+[node name="MenuCard" type="PanelContainer" parent="MenuMargin"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="MenuVBox" type="VBoxContainer" parent="MenuMargin/MenuCard"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HeaderRow" type="HBoxContainer" parent="MenuMargin/MenuCard/MenuVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BackButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/HeaderRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "← Меню"
+
+[node name="MenuTitleLabel" type="Label" parent="MenuMargin/MenuCard/MenuVBox/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "📜 Меню героя"
+
+[node name="ResourceBadgeLabel" type="Label" parent="MenuMargin/MenuCard/MenuVBox/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.84, 0.36, 1)
+theme_override_font_sizes/font_size = 15
+text = "💰 20   |   💎 1 ОН   |   🌑 0"
+
+[node name="CloseButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/HeaderRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(124, 44)
+layout_mode = 2
+text = "✕ Закрыть"
+
+[node name="HeaderSeparator" type="HSeparator" parent="MenuMargin/MenuCard/MenuVBox"]
+layout_mode = 2
+
+[node name="ContentStack" type="Control" parent="MenuMargin/MenuCard/MenuVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MenuHub" type="VBoxContainer" parent="MenuMargin/MenuCard/MenuVBox/ContentStack"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+theme_override_constants/separation = 14
+
+[node name="HubHint" type="Label" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.82, 0.92, 1)
+theme_override_font_sizes/font_size = 14
+text = "Выберите раздел героя:"
+horizontal_alignment = 1
+
+[node name="HubGrid" type="GridContainer" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub"]
+custom_minimum_size = Vector2(720, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 12
+columns = 3
+
+[node name="OpenStatsButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "📈 Статы и Навыки"
+
+[node name="OpenClassesButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🎭 Класс героя"
+
+[node name="OpenSpellsButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "✨ Заклинания (20)"
+
+[node name="OpenPetsButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🐾 Путники (6)"
+
+[node name="OpenSkillsButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🌳 Древо талантов"
+
+[node name="OpenDarkSkillsButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🌑 Тёмные навыки"
+
+[node name="OpenInventoryButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🎒 Инвентарь"
+
+[node name="OpenEnchantButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "⚒️ Кузня (Заточка)"
+
+[node name="OpenShopButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🏪 Лавка"
+
+[node name="OpenDifficultyButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "💀 Сложность / Ран"
+
+[node name="OpenFaqButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "❓ F.A.Q."
+
+[node name="OpenVillageButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🗺️ Карта деревни"
+
+[node name="OpenSanctuaryButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🏡 Убежище (Сл.10)"
+
+[node name="OpenAfkButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🖤 Карманный AFK"
+
+[node name="StatsUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("2_stats_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ClassUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("10_class_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SpellbookUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("11_spellbook_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PetUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("12_pet_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SkillTreeUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("3_skill_tree")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DarkSkillTreeUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("8_dark_tree")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="InventoryUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("4_inventory_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="EnchantUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("7_enchant_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ShopUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("5_shop_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DifficultyUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("9_diff_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FaqUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("6_faq_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SanctuaryUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("13_sanctuary_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VillageMapUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("14_village_map_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

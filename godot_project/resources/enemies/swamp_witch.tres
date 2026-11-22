@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/large_healing_potion.tres" id="3_large_potion"]
+[ext_resource type="Resource" path="res://resources/items/steel_plate.tres" id="4_plate"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "swamp_witch"
+enemy_name = "Болотная ведьма"
+icon_emoji = "🧙‍♀️"
+max_hp = 480.0
+max_mana = 90.0
+attack_damage = 48.0
+agility = 16
+defense = 7.0
+xp_reward = 275
+gold_reward = 170
+spawn_weight = 0.4
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_large_potion"), ExtResource("4_plate")])
+drop_chances = Array[float]([0.42, 0.16])
+sprite_color = Color(0.46, 0.8, 0.52, 1)

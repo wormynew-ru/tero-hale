@@ -1,0 +1,86 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/SanctuaryUI.gd" id="1_sanctuary_ui"]
+
+[node name="SanctuaryUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_sanctuary_ui")
+
+[node name="SanctuaryVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="HeaderPanel" type="PanelContainer" parent="SanctuaryVBox"]
+layout_mode = 2
+
+[node name="HeaderVBox" type="VBoxContainer" parent="SanctuaryVBox/HeaderPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SanctuaryStatusLabel" type="Label" parent="SanctuaryVBox/HeaderPanel/HeaderVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "🏡 Убежище: Сад и Многоступенчатое Зельеварение"
+autowrap_mode = 3
+
+[node name="AlchemistFlagLabel" type="Label" parent="SanctuaryVBox/HeaderPanel/HeaderVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.92, 0.82, 1)
+theme_override_font_sizes/font_size = 13
+text = "ℹ️ Посадки и варка сохраняются между ранами!"
+autowrap_mode = 3
+
+[node name="FeedbackLabel" type="Label" parent="SanctuaryVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.94, 0.68, 1)
+theme_override_font_sizes/font_size = 14
+text = ""
+autowrap_mode = 3
+
+[node name="GardenHeaderLabel" type="Label" parent="SanctuaryVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.94, 0.62, 1)
+theme_override_font_sizes/font_size = 17
+text = "🌱 Сад Убежища (Редкие семена с монстров)"
+
+[node name="GardenPlotsBox" type="VBoxContainer" parent="SanctuaryVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="GardenSeparator" type="HSeparator" parent="SanctuaryVBox"]
+layout_mode = 2
+
+[node name="BrewHeaderLabel" type="Label" parent="SanctuaryVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.84, 0.98, 1)
+theme_override_font_sizes/font_size = 17
+text = "⚗️ Котлы зельеварения (Вода → Шаг 1 → Шаг 2 → Шаг 3)"
+
+[node name="BrewCauldronsBox" type="VBoxContainer" parent="SanctuaryVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RecipeSeparator" type="HSeparator" parent="SanctuaryVBox"]
+layout_mode = 2
+
+[node name="RecipeTitleLabel" type="Label" parent="SanctuaryVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.84, 0.42, 1)
+theme_override_font_sizes/font_size = 16
+text = "📖 Книга рецептов и Шансы семян"
+
+[node name="RecipeGuideLabel" type="RichTextLabel" parent="SanctuaryVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+text = ""

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CropData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/CropData.gd" id="1_crop"]
+
+[resource]
+script = ExtResource("1_crop")
+id = "scarlet_petal"
+crop_name = "Алый лепесток"
+icon_emoji = "🌺"
+rarity_label = "УЛЬТРА-РЕДКОЕ (0.005%)"
+description = "Мистический цветок Бездны. После посадки питается только силой павших владык: убейте 2000 Вечных титанов (последних боссов), чтобы он расцвёл!"
+seed_item_path = "res://resources/items/scarlet_petal_seed.tres"
+harvest_item_path = "res://resources/items/scarlet_petal_harvest.tres"
+base_drop_chance = 0.00005
+boss_drop_chance = 0.00025
+min_enemy_xp = 0.0
+grow_seconds = 0.0
+required_final_boss_kills = 2000
+harvest_min = 1
+harvest_max = 1
+accent_color = Color(1, 0.25, 0.42, 1)

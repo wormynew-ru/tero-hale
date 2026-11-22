@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "chain_thunder"
+title = "Грозовой шторм"
+icon_emoji = "🌩️"
+description = "Наносит 3 последовательных удара молнией по 95% урона каждый. Каждый удар может критовать."
+mana_cost = 30.0
+cooldown = 9.0
+effect_type = "multi_hit"
+power_multiplier = 0.95
+hit_count = 3
+armor_ignore_pct = 0.5

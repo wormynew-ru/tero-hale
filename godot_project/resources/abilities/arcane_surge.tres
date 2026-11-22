@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "arcane_surge"
+title = "Молния"
+icon_emoji = "⚡"
+description = "Быстрый разряд магии: наносит 165% урона героя с малой стоимостью маны."
+mana_cost = 14.0
+cooldown = 5.0
+effect_type = "damage"
+power_multiplier = 1.65

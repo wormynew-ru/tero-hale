@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "small_healing_potion"
+item_name = "Малое зелье лечения"
+icon_emoji = "🧪"
+description = "Травяной отвар, мгновенно восстанавливающий 50 HP в бою."
+item_type = 2
+bonus_strength = 0
+bonus_agility = 0
+bonus_endurance = 0
+heal_amount = 50.0
+buy_price = 18
+sell_value = 8
+icon_color = Color(0.86, 0.24, 0.32, 1)

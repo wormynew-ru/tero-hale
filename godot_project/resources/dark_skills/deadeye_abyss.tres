@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "deadeye_abyss"
+title = "Взор Бездны"
+icon_emoji = "👁️"
+branch_name = "Тень и Залп"
+description = "Смертельная точность Бездны: +15% шанса крита и +40% урона дальним оружием."
+grid_position = Vector2(0, 4)
+prerequisites = Array[String](["phantom_arrows"])
+cost_dark_points = 5
+effect_type = "deadeye_abyss"
+effect_value = 0.15

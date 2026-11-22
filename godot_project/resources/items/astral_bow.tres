@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "astral_bow"
+item_name = "Астральный лук звёзд"
+icon_emoji = "🌌"
+description = "Лук из звёздного света, разгоняющий стрелы до скорости молнии. Требует стрелы."
+item_type = 0
+bonus_strength = 52
+bonus_agility = 36
+bonus_endurance = 18
+weapon_style = 1
+required_ammo = 1
+ammo_kind = 0
+bonus_damage = 60.0
+bonus_crit_chance = 0.14
+armor_penetration = 20.0
+shop_pack_amount = 1
+heal_amount = 0.0
+buy_price = 7300
+sell_value = 3350
+icon_color = Color(0.56, 0.68, 1, 1)

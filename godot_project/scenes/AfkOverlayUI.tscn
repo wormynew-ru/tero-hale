@@ -1,0 +1,161 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/AfkOverlayUI.gd" id="1_afk_ui"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_afk_card"]
+content_margin_left = 24.0
+content_margin_top = 24.0
+content_margin_right = 24.0
+content_margin_bottom = 24.0
+bg_color = Color(0.03, 0.035, 0.045, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.22, 0.28, 0.36, 0.75)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_blackout_btn"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.06, 0.07, 0.09, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.38, 0.46, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="AfkOverlayUI" type="ColorRect"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 1)
+script = ExtResource("1_afk_ui")
+
+[node name="AfkCenter" type="CenterContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="AfkCard" type="PanelContainer" parent="AfkCenter"]
+custom_minimum_size = Vector2(430, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_afk_card")
+
+[node name="AfkVBox" type="VBoxContainer" parent="AfkCenter/AfkCard"]
+layout_mode = 2
+theme_override_constants/separation = 11
+
+[node name="AfkTitleLabel" type="Label" parent="AfkCenter/AfkCard/AfkVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.78, 0.94, 0.9)
+theme_override_font_sizes/font_size = 19
+text = "🖤 Карманный AFK (OLED, 2 FPS)"
+horizontal_alignment = 1
+
+[node name="AfkSubtitleLabel" type="Label" parent="AfkCenter/AfkCard/AfkVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.5, 0.58, 0.95)
+theme_override_font_sizes/font_size = 12
+text = "Игровая сцена скрыта, экран не гаснет (AMOLED-чёрный экономит батарею). Бой и автосохранение идут в реальном времени."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="AfkSep1" type="HSeparator" parent="AfkCenter/AfkCard/AfkVBox"]
+layout_mode = 2
+
+[node name="AfkTimeLabel" type="Label" parent="AfkCenter/AfkCard/AfkVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.66, 0.72, 0.95)
+theme_override_font_sizes/font_size = 15
+text = "⏱️ Время в AFK: 00:00:00"
+horizontal_alignment = 1
+
+[node name="AfkKillsLabel" type="Label" parent="AfkCenter/AfkCard/AfkVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.66, 0.72, 0.95)
+theme_override_font_sizes/font_size = 15
+text = "💀 Побеждено врагов: 0"
+horizontal_alignment = 1
+
+[node name="AfkGoldLabel" type="Label" parent="AfkCenter/AfkCard/AfkVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.64, 0.25, 0.92)
+theme_override_font_sizes/font_size = 15
+text = "💰 Заработано золота: 0"
+horizontal_alignment = 1
+
+[node name="AfkXPLabel" type="Label" parent="AfkCenter/AfkCard/AfkVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.72, 0.48, 0.92)
+theme_override_font_sizes/font_size = 15
+text = "✨ Получено опыта: 0"
+horizontal_alignment = 1
+
+[node name="AfkSep2" type="HSeparator" parent="AfkCenter/AfkCard/AfkVBox"]
+layout_mode = 2
+
+[node name="ButtonsRow" type="VBoxContainer" parent="AfkCenter/AfkCard/AfkVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BlackoutButton" type="Button" parent="AfkCenter/AfkCard/AfkVBox/ButtonsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 46)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/normal = SubResource("StyleBoxFlat_blackout_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_blackout_btn")
+text = "🖤 Погасить интерфейс (без графики)"
+
+[node name="ExitAfkButton" type="Button" parent="AfkCenter/AfkCard/AfkVBox/ButtonsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 46)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "⚔️ Выйти из AFK"
+
+[node name="WakeHintLabel" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -48.0
+offset_right = 220.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.18, 0.2, 0.24, 0.75)
+theme_override_font_sizes/font_size = 12
+text = "Коснитесь экрана, чтобы показать статистику AFK"
+horizontal_alignment = 1
+vertical_alignment = 1

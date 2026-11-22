@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/slime.tres" id="3_slime"]
+[ext_resource type="Resource" path="res://resources/enemies/wolf.tres" id="4_wolf"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "quiet_glade"
+location_name = "Тихая опушка"
+icon_emoji = "🌿"
+description = "Спокойная лесная поляна. Подходит для первых сражений и сбора базовой экипировки."
+required_level = 1
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_slime"), ExtResource("4_wolf")])
+background_color = Color(0.11, 0.18, 0.14, 1)

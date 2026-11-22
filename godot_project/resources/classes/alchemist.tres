@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/HeroClassData.gd" id="1_class"]
+
+[resource]
+script = ExtResource("1_class")
+id = "alchemist"
+title = "Алхимик"
+icon_emoji = "⚗️"
+subtitle = "Мастер бесконечной кузни"
+description = "Прорывает лимит заточки +100 и превращает золото, сад и зельеварение в абсолютную мощь."
+passive_summary = "• Заточка оружия и брони БЕЗ ЛИМИТА +100 (до +250), скидка -40%, шанс x1.60.\n• Шанс выпадения редких семян в 2 раза выше (x2.0).\n• Зелья в Убежище варятся в 2 раза быстрее (x2.0).\n• Защитный флажок: при ошибке смешивания каждое 2-е зелье НЕ взрывается, а остаётся на том же этапе.\n• Зелья HP/MP сильнее на +60%, баффы на +30% дольше, 20% шанс не потратить зелье.\n• +15% к золоту и регену маны."
+required_difficulty = 50
+accent_color = Color(0.32, 0.92, 0.65, 1)
+disables_equipment = false

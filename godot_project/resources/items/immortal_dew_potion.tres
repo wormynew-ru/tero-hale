@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "immortal_dew_potion"
+item_name = "Роса бессмертия"
+icon_emoji = "🥛"
+description = "Высший защитный эликсир сада: +12000 HP, +100% брони и +15% вампиризма на 60с."
+item_type = 2
+heal_amount = 12000.0
+buy_price = 6000
+sell_value = 1600
+icon_color = Color(0.68, 0.96, 0.84, 1)
+buff_id = "potion_immortal_dew"
+buff_duration = 60.0
+buff_armor_pct = 1.0
+buff_lifesteal_pct = 0.15

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/HeroClassData.gd" id="1_class"]
+
+[resource]
+script = ExtResource("1_class")
+id = "spirit"
+title = "Спирит"
+icon_emoji = "🌿"
+subtitle = "Призыватель 4 стихий"
+description = "Отказывается от оружия и брони. Вместо него сражаются и защищают 4 природных духа, чья мощь зависит от стат Спирита."
+passive_summary = "• Не может носить оружие, броню и снаряды.\n• +35% к итоговым Силе, Ловкости и Выносливости.\n• 4 автономных духа в бою:\n  🔥 Пламя — удар от Силы и Магии (раз в 1.4с).\n  💨 Ветер — быстрый удар от Ловкости, пробивает 35% брони (0.95с).\n  🌿 Лес — лечит 4% Max HP + Вын. и даёт +6 маны (2.5с).\n  🪨 Земля — удар от Выносливости (2.0с) и +50% пассивной брони."
+required_difficulty = 50
+accent_color = Color(0.45, 0.94, 0.78, 1)
+disables_equipment = true

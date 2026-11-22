@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "spirit_communion"
+title = "Зов духов"
+icon_emoji = "🌿"
+branch_name = "Тайная Аркана"
+description = "Углубляет связь с миром духов: природные духи класса Спирит наносят на +50% больше урона и действуют быстрее."
+grid_position = Vector2(4, 0)
+prerequisites = Array[String](["mana_fountain"])
+cost_dark_points = 4
+effect_type = "spirit_communion"
+effect_value = 0.5

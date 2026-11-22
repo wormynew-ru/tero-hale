@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "abyss_bolts"
+item_name = "Болты Бездны"
+icon_emoji = "🌑"
+description = "Проклятые арбалетные болты с глубоким пробитием брони и высоким критом. 50 шт."
+item_type = 3
+bonus_strength = 0
+bonus_agility = 0
+bonus_endurance = 0
+weapon_style = 0
+required_ammo = 0
+ammo_kind = 2
+bonus_damage = 55.0
+bonus_crit_chance = 0.12
+armor_penetration = 45.0
+shop_pack_amount = 50
+heal_amount = 0.0
+buy_price = 1400
+sell_value = 24
+icon_color = Color(0.76, 0.42, 0.98, 1)

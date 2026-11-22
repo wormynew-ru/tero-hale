@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "arcane_wisdom_potion"
+item_name = "Зелье прозрения"
+icon_emoji = "🧠"
+description = "Просветляющий эликсир: +40% силы заклинаний и +80% регена маны на 45с."
+item_type = 2
+buy_price = 260
+sell_value = 80
+icon_color = Color(0.45, 0.62, 0.98, 1)
+buff_id = "potion_wisdom"
+buff_duration = 45.0
+buff_spell_power_pct = 0.4
+buff_mana_regen_pct = 0.8

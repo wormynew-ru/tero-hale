@@ -1,0 +1,135 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/InventoryUI.gd" id="1_inventory_ui"]
+
+[node name="InventoryUI" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_inventory_ui")
+
+[node name="InventoryVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="SpiritEquipNotice" type="Label" parent="InventoryVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.96, 0.78, 1)
+theme_override_font_sizes/font_size = 13
+text = "🌿 Класс Спирит: экипировка оружия, брони и снарядов отключена — вместо неё сражаются 4 духа природы."
+autowrap_mode = 3
+
+[node name="WeaponRow" type="HBoxContainer" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="WeaponSlotLabel" type="Label" parent="InventoryVBox/WeaponRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "⚔️ Оружие: [Пусто]"
+autowrap_mode = 3
+
+[node name="UnequipWeaponButton" type="Button" parent="InventoryVBox/WeaponRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "Снять"
+
+[node name="ArmorRow" type="HBoxContainer" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ArmorSlotLabel" type="Label" parent="InventoryVBox/ArmorRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🛡️ Броня: [Пусто]"
+autowrap_mode = 3
+
+[node name="UnequipArmorButton" type="Button" parent="InventoryVBox/ArmorRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "Снять"
+
+[node name="AmmoRow" type="HBoxContainer" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AmmoSlotLabel" type="Label" parent="InventoryVBox/AmmoRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🏹 Снаряды: [Пусто]"
+autowrap_mode = 3
+
+[node name="UnequipAmmoButton" type="Button" parent="InventoryVBox/AmmoRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "Снять"
+
+[node name="PetRow" type="HBoxContainer" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PetSlotLabel" type="Label" parent="InventoryVBox/PetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🐾 Путник (без HP): [Пусто]"
+autowrap_mode = 3
+
+[node name="UnequipPetSlotButton" type="Button" parent="InventoryVBox/PetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "Убрать"
+
+[node name="PotionControlsRow" type="HBoxContainer" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="AutoPotionToggle" type="CheckButton" parent="InventoryVBox/PotionControlsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🤖 Авто-зелье (<35% HP)"
+
+[node name="QuickPotionButton" type="Button" parent="InventoryVBox/PotionControlsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(165, 44)
+layout_mode = 2
+text = "🧪 Выпить HP (2)"
+
+[node name="QuickManaPotionButton" type="Button" parent="InventoryVBox/PotionControlsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(165, 44)
+layout_mode = 2
+text = "💧 Выпить MP (0)"
+
+[node name="InvSeparator" type="HSeparator" parent="InventoryVBox"]
+layout_mode = 2
+
+[node name="InventoryTitle" type="Label" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.76, 0.84, 1)
+text = "🎒 Рюкзак (первые 6 предметов доступны справа на панели быстрого доступа)"
+
+[node name="FeedbackLabel" type="Label" parent="InventoryVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.38, 0.86, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="InventoryList" type="VBoxContainer" parent="InventoryVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8

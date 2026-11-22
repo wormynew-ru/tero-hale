@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "large_mana_potion"
+item_name = "Большое зелье маны"
+icon_emoji = "🌀"
+description = "Сильный магический фиал, восстанавливающий 400 MP."
+item_type = 2
+mana_amount = 400.0
+buy_price = 320
+sell_value = 110
+icon_color = Color(0.36, 0.44, 0.98, 1)

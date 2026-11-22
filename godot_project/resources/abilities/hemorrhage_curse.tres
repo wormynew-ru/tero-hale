@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "hemorrhage_curse"
+title = "Проклятие крови"
+icon_emoji = "💔"
+description = "Эксклюзив Архимага Крови: кровотечение на 8с (90% урона/с), исцеляющее героя на 25% от каждого тика."
+required_class_id = "blood_archmage"
+mana_cost = 30.0
+cooldown = 10.0
+effect_type = "dot"
+power_multiplier = 0.9
+duration = 8.0
+armor_ignore_pct = 0.8
+lifesteal_ratio = 0.25

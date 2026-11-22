@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HeroClassData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/HeroClassData.gd" id="1_class"]
+
+[resource]
+script = ExtResource("1_class")
+id = "wanderer"
+title = "Странник"
+icon_emoji = "🧙"
+subtitle = "Классический путь"
+description = "Универсальный герой без ограничений по экипировке и способностям."
+passive_summary = "• Полный доступ ко всем видам оружия, брони, снарядов и кузне (до +100).\n• Сбалансированный рост всех характеристик."
+required_difficulty = 1
+accent_color = Color(0.55, 0.72, 0.95, 1)
+disables_equipment = false

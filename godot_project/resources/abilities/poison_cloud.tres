@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "poison_cloud"
+title = "Ядовитый туман"
+icon_emoji = "☠️"
+description = "Накладывает на врага едкий яд на 8с: наносит 55% урона/с, игнорируя 70% брони."
+mana_cost = 24.0
+cooldown = 11.0
+effect_type = "dot"
+power_multiplier = 0.55
+duration = 8.0
+armor_ignore_pct = 0.7

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "star_truffle_seed"
+item_name = "Семя звёздного трюфеля"
+icon_emoji = "✨"
+description = "Мифическая спора (0.012% дроп). Вырастает за 10 мин — главный катализатор 3-й ступени зельеварения."
+item_type = 4
+buy_price = 1500
+sell_value = 180
+icon_color = Color(0.86, 0.56, 0.98, 1)
+seed_crop_id = "star_truffle"

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
+[ext_resource type="Resource" path="res://resources/items/ambrosia_flask.tres" id="3_ambrosia"]
+[ext_resource type="Resource" path="res://resources/items/astral_arrows.tres" id="4_arrows"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = "curse_warden"
+enemy_name = "Хранитель Проклятий"
+icon_emoji = "👁️"
+max_hp = 28000.0
+max_mana = 450.0
+attack_damage = 520.0
+agility = 38
+defense = 110.0
+xp_reward = 25000
+gold_reward = 15000
+spawn_weight = 1.0
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_ambrosia"), ExtResource("4_arrows")])
+drop_chances = Array[float]([0.8, 0.45])
+sprite_color = Color(0.82, 0.24, 0.68, 1)

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PetData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/PetData.gd" id="1_pet"]
+
+[resource]
+script = ExtResource("1_pet")
+id = "abyss_mimic"
+pet_name = "Мимик-копилка"
+icon_emoji = "🪙"
+subtitle = "Счастливый путник"
+description = "Не имеет HP. Увеличивает добычу золота на +45% и с шансом 25% удваивает золотую награду за победу над врагом."
+effect_type = "gold_echo"
+effect_value = 0.45
+effect_secondary = 0.25
+buy_price = 600.0
+required_difficulty = 1
+accent_color = Color(0.98, 0.84, 0.28, 1)

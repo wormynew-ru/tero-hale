@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "immortal_vessel"
+title = "Бессмертный оплот"
+icon_emoji = "🛡️"
+description = "Несокрушимая стойкость, резко поднимающая запас здоровья, маны и брони."
+grid_position = Vector2(7, 4)
+prerequisites = Array[String](["thick_hide", "vital_surge"])
+cost_skill_points = 1
+bonus_type = "endurance"
+bonus_value = 70.0

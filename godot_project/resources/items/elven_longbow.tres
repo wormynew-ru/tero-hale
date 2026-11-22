@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "elven_longbow"
+item_name = "Эльфийский длинный лук"
+icon_emoji = "🌿"
+description = "Изящный тисовый лук лесных стражей с высокой скоростью и точностью. Требует стрелы."
+item_type = 0
+bonus_strength = 10
+bonus_agility = 14
+bonus_endurance = 0
+weapon_style = 1
+required_ammo = 1
+ammo_kind = 0
+bonus_damage = 16.0
+bonus_crit_chance = 0.08
+armor_penetration = 4.0
+shop_pack_amount = 1
+heal_amount = 0.0
+buy_price = 520
+sell_value = 240
+icon_color = Color(0.36, 0.84, 0.52, 1)

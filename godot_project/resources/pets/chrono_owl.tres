@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PetData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/PetData.gd" id="1_pet"]
+
+[resource]
+script = ExtResource("1_pet")
+id = "chrono_owl"
+pet_name = "Хроно-сова"
+icon_emoji = "🦉"
+subtitle = "Магический путник"
+description = "Не имеет HP. Ускоряет перезарядку всех заклинаний на +35% и даёт 15% шанс мгновенно обнулить КД при применении чар."
+effect_type = "cooldown_haste"
+effect_value = 0.35
+effect_secondary = 0.15
+buy_price = 900.0
+required_difficulty = 1
+accent_color = Color(0.62, 0.72, 1, 1)

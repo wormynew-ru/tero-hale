@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="PetData" format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/PetData.gd" id="1_pet"]
+
+[resource]
+script = ExtResource("1_pet")
+id = "firework_spark"
+pet_name = "Фейерверк"
+icon_emoji = "🎆"
+subtitle = "Оглушающий путник"
+description = "Не имеет HP и не может погибнуть. В начале каждого боя вспыхивает залпом искр, путает врага и оглушает его на 5 секунд (1 раз за бой)."
+effect_type = "start_stun"
+effect_value = 5.0
+effect_secondary = 0.0
+buy_price = 350.0
+required_difficulty = 1
+accent_color = Color(1, 0.68, 0.25, 1)
