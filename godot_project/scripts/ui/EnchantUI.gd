@@ -15,6 +15,7 @@ extends ScrollContainer
 
 
 var _dirty: bool = true
+var _refresh_queued: bool = false
 
 
 func _ready() -> void:
@@ -42,12 +43,24 @@ func _on_state_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty = true
 		return
-	_refresh()
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_flush_refresh")
+
+
+func _flush_refresh() -> void:
+	_refresh_queued = false
+	if is_visible_in_tree():
+		_refresh()
+	else:
+		_dirty = true
 
 
 func _on_reset() -> void:
 	feedback_label.text = ""
 	_dirty = true
+	_refresh_queued = false
 	if is_visible_in_tree():
 		_refresh()
 

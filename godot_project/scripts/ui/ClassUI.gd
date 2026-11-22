@@ -5,76 +5,74 @@ extends ScrollContainer
 @onready var class_list_vbox: VBoxContainer = %ClassListVBox
 
 
+var _class_cards: Array[Dictionary] = []
+var _dirty: bool = true
+
+
 func _ready() -> void:
 	GameManager.class_changed.connect(_on_class_changed)
-	GameManager.difficulty_changed.connect(_refresh)
+	GameManager.difficulty_changed.connect(_on_state_updated)
 	GameManager.game_reset.connect(_on_reset)
+	_build_cards_once()
 	_refresh()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree() and _dirty:
+		_refresh()
 
 
 func _on_reset() -> void:
 	class_feedback_label.text = ""
-	_refresh()
+	_on_state_updated()
 
 
 func _on_class_changed(_class_data: HeroClassData) -> void:
+	_on_state_updated()
+
+
+func _on_state_updated() -> void:
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	_refresh()
 
 
-func _refresh() -> void:
+func _make_card_style(bg_col: Color, border_col: Color, border_w: int) -> StyleBoxFlat:
+	var style: StyleBoxFlat = StyleBoxFlat.new()
+	style.content_margin_left = 14.0
+	style.content_margin_top = 12.0
+	style.content_margin_right = 14.0
+	style.content_margin_bottom = 12.0
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_right = 8
+	style.corner_radius_bottom_left = 8
+	style.border_width_left = border_w
+	style.border_width_top = border_w
+	style.border_width_right = border_w
+	style.border_width_bottom = border_w
+	style.bg_color = bg_col
+	style.border_color = border_col
+	return style
+
+
+func _build_cards_once() -> void:
 	if class_list_vbox == null:
 		return
-
-	var unlocked: bool = GameManager.is_classes_unlocked()
-	var current_class: HeroClassData = GameManager.get_current_class()
-	var current_name: String = "%s %s" % [current_class.icon_emoji, current_class.title] if current_class != null else "Странник"
-
-	if unlocked:
-		class_status_label.text = "✅ Классы открыты (достигнута %d/%d сложность). Текущий класс: %s. Смена класса доступна в любой момент." % [
-			GameManager.max_unlocked_difficulty,
-			GameManager.CLASSES_UNLOCK_DIFFICULTY,
-			current_name,
-		]
-		class_status_label.modulate = Color(0.55, 0.95, 0.72, 1.0)
-	else:
-		class_status_label.text = "🔒 Классы открываются после достижения %d-й сложности (сейчас открыто до Сл.%d). До 50-й сложности активен базовый класс %s." % [
-			GameManager.CLASSES_UNLOCK_DIFFICULTY,
-			GameManager.max_unlocked_difficulty,
-			current_name,
-		]
-		class_status_label.modulate = Color(0.95, 0.78, 0.42, 1.0)
-
 	for child: Node in class_list_vbox.get_children():
 		child.queue_free()
+	_class_cards.clear()
 
 	for hc: HeroClassData in GameManager.hero_classes:
 		if hc == null:
 			continue
 
-		var is_active: bool = GameManager.has_hero_class(hc.id)
-		var req_met: bool = hc.required_difficulty <= 1 or unlocked
+		var active_style: StyleBoxFlat = _make_card_style(hc.accent_color.darkened(0.76), hc.accent_color, 2)
+		var inactive_style: StyleBoxFlat = _make_card_style(Color(0.11, 0.13, 0.17, 1.0), Color(0.32, 0.36, 0.44, 1.0), 1)
 
 		var card: PanelContainer = PanelContainer.new()
-		var style: StyleBoxFlat = StyleBoxFlat.new()
-		style.content_margin_left = 14.0
-		style.content_margin_top = 12.0
-		style.content_margin_right = 14.0
-		style.content_margin_bottom = 12.0
-		style.corner_radius_top_left = 8
-		style.corner_radius_top_right = 8
-		style.corner_radius_bottom_right = 8
-		style.corner_radius_bottom_left = 8
-		style.border_width_left = 2 if is_active else 1
-		style.border_width_top = 2 if is_active else 1
-		style.border_width_right = 2 if is_active else 1
-		style.border_width_bottom = 2 if is_active else 1
-		if is_active:
-			style.bg_color = hc.accent_color.darkened(0.76)
-			style.border_color = hc.accent_color
-		else:
-			style.bg_color = Color(0.11, 0.13, 0.17, 1.0)
-			style.border_color = Color(0.32, 0.36, 0.44, 1.0)
-		card.add_theme_stylebox_override("panel", style)
+		card.add_theme_stylebox_override("panel", inactive_style)
 
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
@@ -108,20 +106,73 @@ func _refresh() -> void:
 		var select_btn: Button = Button.new()
 		select_btn.custom_minimum_size = Vector2(148.0, 46.0)
 		select_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		if is_active:
-			select_btn.text = "✅ Активен"
-			select_btn.disabled = true
-		elif not req_met:
-			select_btn.text = "🔒 Сл. %d" % hc.required_difficulty
-			select_btn.disabled = true
-		else:
-			select_btn.text = "Выбрать"
-			select_btn.disabled = false
-			select_btn.pressed.connect(func() -> void:
-				if GameManager.select_hero_class(hc.id):
-					class_feedback_label.text = "Выбран класс: %s %s!" % [hc.icon_emoji, hc.title]
-			)
+		var cid: String = hc.id
+		var c_emoji: String = hc.icon_emoji
+		var c_title: String = hc.title
+		select_btn.pressed.connect(func() -> void:
+			if GameManager.select_hero_class(cid):
+				class_feedback_label.text = "Выбран класс: %s %s!" % [c_emoji, c_title]
+		)
 		row.add_child(select_btn)
 
 		card.add_child(row)
 		class_list_vbox.add_child(card)
+		_class_cards.append({
+			"id": hc.id,
+			"req_diff": hc.required_difficulty,
+			"card": card,
+			"btn": select_btn,
+			"active_style": active_style,
+			"inactive_style": inactive_style,
+			"last_state": "",
+		})
+
+
+func _refresh() -> void:
+	if class_list_vbox == null:
+		return
+	_dirty = false
+
+	var unlocked: bool = GameManager.is_classes_unlocked()
+	var current_class: HeroClassData = GameManager.get_current_class()
+	var current_name: String = "%s %s" % [current_class.icon_emoji, current_class.title] if current_class != null else "Странник"
+
+	if unlocked:
+		class_status_label.text = "✅ Классы открыты (достигнута %d/%d сложность). Текущий класс: %s. Смена класса доступна в любой момент." % [
+			GameManager.max_unlocked_difficulty,
+			GameManager.CLASSES_UNLOCK_DIFFICULTY,
+			current_name,
+		]
+		class_status_label.modulate = Color(0.55, 0.95, 0.72, 1.0)
+	else:
+		class_status_label.text = "🔒 Классы открываются после достижения %d-й сложности (сейчас открыто до Сл.%d). До 50-й сложности активен базовый класс %s." % [
+			GameManager.CLASSES_UNLOCK_DIFFICULTY,
+			GameManager.max_unlocked_difficulty,
+			current_name,
+		]
+		class_status_label.modulate = Color(0.95, 0.78, 0.42, 1.0)
+
+	for entry: Dictionary in _class_cards:
+		var cid: String = str(entry["id"])
+		var req_diff: int = int(entry["req_diff"])
+		var is_active: bool = GameManager.has_hero_class(cid)
+		var req_met: bool = req_diff <= 1 or unlocked
+		var state_key: String = "active" if is_active else ("locked_%d" % req_diff if not req_met else "ready")
+		if str(entry["last_state"]) == state_key:
+			continue
+		entry["last_state"] = state_key
+
+		var card: PanelContainer = entry["card"] as PanelContainer
+		var select_btn: Button = entry["btn"] as Button
+		if card != null:
+			card.add_theme_stylebox_override("panel", (entry["active_style"] if is_active else entry["inactive_style"]) as StyleBoxFlat)
+		if select_btn != null:
+			if is_active:
+				select_btn.text = "✅ Активен"
+				select_btn.disabled = true
+			elif not req_met:
+				select_btn.text = "🔒 Сл. %d" % req_diff
+				select_btn.disabled = true
+			else:
+				select_btn.text = "Выбрать"
+				select_btn.disabled = false

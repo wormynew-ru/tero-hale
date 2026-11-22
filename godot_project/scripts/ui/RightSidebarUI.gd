@@ -39,14 +39,16 @@ extends PanelContainer
 
 var _held_slot_item_ids: Array[String] = ["", "", "", "", "", ""]
 var _last_locations_sig: String = ""
+var _last_slot_sigs: Array[String] = ["", "", "", "", "", ""]
+var _refresh_queued: bool = false
 
 
 func _ready() -> void:
-	GameManager.stats_changed.connect(_refresh)
-	GameManager.inventory_changed.connect(_refresh)
+	GameManager.stats_changed.connect(_request_refresh)
+	GameManager.inventory_changed.connect(_request_refresh)
 	GameManager.location_changed.connect(_on_location_changed)
-	GameManager.difficulty_changed.connect(_refresh)
-	GameManager.mine_state_changed.connect(_refresh)
+	GameManager.difficulty_changed.connect(_request_refresh)
+	GameManager.mine_state_changed.connect(_request_refresh)
 	GameManager.game_reset.connect(_on_reset)
 
 	for i: int in range(_slot_buttons.size()):
@@ -68,6 +70,8 @@ func _ready() -> void:
 
 func _on_reset() -> void:
 	_last_locations_sig = ""
+	_last_slot_sigs = ["", "", "", "", "", ""]
+	_refresh_queued = false
 	_refresh()
 
 
@@ -102,6 +106,18 @@ func _on_slot_pressed(slot_index: int) -> void:
 		GameManager.use_or_equip_item(item)
 
 
+func _request_refresh() -> void:
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_flush_refresh")
+
+
+func _flush_refresh() -> void:
+	_refresh_queued = false
+	_refresh()
+
+
 func _refresh() -> void:
 	_refresh_inventory_slots()
 	_rebuild_location_buttons()
@@ -119,6 +135,10 @@ func _refresh_inventory_slots() -> void:
 			var item: ItemData = entry["item"] as ItemData
 			var count: int = int(entry["count"])
 			if item != null:
+				var slot_sig: String = "%s:%d:%s:%s" % [item.id, count, item.icon_emoji, item.item_name]
+				if _last_slot_sigs[i] == slot_sig:
+					continue
+				_last_slot_sigs[i] = slot_sig
 				btn.disabled = false
 				btn.modulate = Color.WHITE
 				icon_lbl.text = item.icon_emoji
@@ -126,6 +146,10 @@ func _refresh_inventory_slots() -> void:
 				name_lbl.text = item.item_name
 				continue
 
+		var empty_sig: String = "EMPTY:%d" % i
+		if _last_slot_sigs[i] == empty_sig:
+			continue
+		_last_slot_sigs[i] = empty_sig
 		btn.disabled = true
 		btn.modulate = Color(0.65, 0.68, 0.72, 0.75)
 		icon_lbl.text = "▫️"

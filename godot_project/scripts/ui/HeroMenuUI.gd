@@ -80,7 +80,9 @@ func _ready() -> void:
 	_refresh_resources()
 
 
-func _refresh_resources() -> void:
+func _refresh_resources(force: bool = false) -> void:
+	if not visible and not force:
+		return
 	resource_badge_label.text = "💰 %s   |   💎 %d ОН   |   🌑 %d   |   🎲 %d   |   💀 Сл.%d" % [
 		NumberFormatter.format_number(GameManager.gold),
 		GameManager.skill_points,
@@ -111,14 +113,14 @@ func open_hub() -> void:
 	menu_hub.visible = true
 	back_button.visible = false
 	menu_title_label.text = "📜 Меню героя"
-	_refresh_resources()
+	_refresh_resources(true)
 	visible = true
 
 
 func open_page(page_id: String) -> void:
 	_hide_all_pages()
 	back_button.visible = true
-	_refresh_resources()
+	_refresh_resources(true)
 	match page_id:
 		"stats":
 			menu_title_label.text = "📈 Статы и Мастерство"

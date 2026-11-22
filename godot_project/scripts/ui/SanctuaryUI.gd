@@ -21,6 +21,7 @@ var _light_plot_widgets: Array[Dictionary] = []
 var _dark_plot_widgets: Array[Dictionary] = []
 var _brew_widgets: Array[Dictionary] = []
 var _spirit_widgets: Array[Dictionary] = []
+var _rebuild_queued: bool = false
 
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func _ready() -> void:
 
 func _on_reset() -> void:
 	feedback_label.text = ""
+	_rebuild_queued = false
 	_rebuild_sanctuary(true)
 
 
@@ -54,9 +56,16 @@ func _on_visibility_changed() -> void:
 
 
 func _on_state_updated() -> void:
-	if not is_visible_in_tree():
+	if not is_visible_in_tree() or _rebuild_queued:
 		return
-	_rebuild_sanctuary(false)
+	_rebuild_queued = true
+	call_deferred("_flush_sanctuary_rebuild")
+
+
+func _flush_sanctuary_rebuild() -> void:
+	_rebuild_queued = false
+	if is_visible_in_tree():
+		_rebuild_sanctuary(false)
 
 
 func _rebuild_sanctuary(force: bool = false) -> void:
@@ -315,7 +324,7 @@ func _build_spirit_training() -> void:
 
 
 func _sync_spirit_training(force: bool) -> void:
-	var fruit_item: ItemData = load("res://resources/items/spirit_primordial_harvest.tres") as ItemData
+	var fruit_item: ItemData = GameManager.get_cached_item("res://resources/items/spirit_primordial_harvest.tres")
 	var fruit_cnt: int = GameManager.get_item_count_in_inventory(fruit_item) if fruit_item != null else 0
 	var is_spirit: bool = GameManager.has_hero_class("spirit")
 	var lvls: Array[String] = []

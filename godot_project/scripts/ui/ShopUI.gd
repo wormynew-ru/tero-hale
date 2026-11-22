@@ -6,6 +6,7 @@ extends ScrollContainer
 
 var _shop_rows: Array[Dictionary] = []
 var _dirty: bool = true
+var _refresh_queued: bool = false
 
 
 func _ready() -> void:
@@ -24,6 +25,7 @@ func _notification(what: int) -> void:
 func _on_reset() -> void:
 	shop_feedback_label.text = ""
 	_dirty = true
+	_refresh_queued = false
 	if is_visible_in_tree():
 		_refresh_shop_prices()
 
@@ -32,7 +34,18 @@ func _on_state_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty = true
 		return
-	_refresh_shop_prices()
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_flush_refresh")
+
+
+func _flush_refresh() -> void:
+	_refresh_queued = false
+	if is_visible_in_tree():
+		_refresh_shop_prices()
+	else:
+		_dirty = true
 
 
 func _build_shop() -> void:

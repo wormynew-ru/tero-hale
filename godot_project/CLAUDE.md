@@ -24,7 +24,7 @@
    - Весь UI строится на адаптивных `Control`-контейнерах (`MarginContainer`, `VBoxContainer`, `HBoxContainer`, `ScrollContainer`, `GridContainer`, `AspectRatioContainer`) без жёстких абсолютных позиций (исключения: внутренний граф `SkillTreeUI`, `AvatarStage`-обёртки и якорные невидимые кнопки-хотспоты поверх спрайта `VillageMapUI`).
    - В качестве визуальных иконок персонажей, врагов, предметов, локаций, навыков и заклинаний используются системные **эмодзи** (`icon_emoji`) внутри стилизованных `PanelContainer` / `Label`, а для фона карты деревни — иллюстрированный спрайт `res://assets/textures/village_map.jpg`.
    - Минимальная высота интерактивных кнопок на мобильных устройствах — не менее `44px`–`48px` (`custom_minimum_size.y >= 44`).
-   - Все вычисления и анимации привязаны к `delta` / `Tween` и корректно работают как при `60 FPS`, так и при `2 FPS` в карманном OLED AFK-режиме (в AFK-режиме `RootHBox` скрывается, боевые попапы/анимации отключаются, экран не блокируется через `DisplayServer.screen_set_keep_on(true)` и доступна полная остановка рендера через `RenderingServer.render_loop_enabled = false`).
+   - Все вычисления и анимации привязаны к `delta` / `Tween` и стабильно работают на `60 FPS` (в AFK-режиме `RootHBox` скрывается, боевые попапы/анимации отключаются, экран удерживается активным через `DisplayServer.screen_set_keep_on(true)`). Для мобильной производительности на Android используются O(1)-кэши прогрессии/ресурсов, фоновое сохранение в рабочем потоке (`Thread`), троттлинг непрерывных сигналов (`0.1с`), пулы нод и коалесцирование обновлений видимого UI.
 6. **Стандарты GDScript 4.7**:
    - **Строгая статическая типизация** везде: указывать типы у всех переменных (`var hp: float = 100.0`), параметров функций, возвращаемых значений (`-> void`, `-> float`, `-> int`) и массивов (`Array[ItemData]`, `Array[SkillNodeData]`, `Array[AbilityData]`).
    - Для ресурсов использовать `class_name` и `@export` с явными типами.
@@ -50,9 +50,9 @@ GameManager (Autoload: res://scripts/GameManager.gd, PROCESS_MODE_ALWAYS)
  ├── Хранит открытые локации и текущую выбранную локацию
  ├── Считает итоговые статы, DPS, шанс крита, ману, регенерацию маны и множители наград
  ├── Управляет торговлей (buy_item / sell_item), быстрым лечением и авто-зельем (<35% HP)
- ├── Управляет карманным AFK-режимом (Engine.max_fps = 2/60, DisplayServer.screen_set_keep_on, сброс render_loop_enabled, счётчики сессии) и сбросом прогресса
- ├── Автосохранение каждые 8 минут (480 сек) + атомарная запись через user://save.tmp.tres с бэкапом user://save.bak.tres и сохранением при потере фокуса/паузе/выходе в user://save.tres
- └── Излучает сигналы для обновления UI
+ ├── Управляет AFK-режимом (скрытие RootHBox, DisplayServer.screen_set_keep_on, счётчики сессии) и сбросом прогресса
+ ├── Автосохранение каждые 8 минут (480 сек) + фоновая асинхронная атомарная запись в потоке Thread через user://save.tmp.tres с бэкапом user://save.bak.tres и сохранением при потере фокуса/паузе/выходе в user://save.tres
+ └── Излучает сигналы для обновления UI (с троттлингом непрерывной регенерации и КД)
 
 Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой оркестратор)
  ├── CombatSystem (Node, PROCESS_MODE_ALWAYS -> res://scripts/CombatSystem.gd)
@@ -77,7 +77,7 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
  │    ├── InventoryUI.tscn (res://scripts/ui/InventoryUI.gd) — слоты экипировки, рюкзак, авто-зелье и продажа
  │    ├── ShopUI.tscn (res://scripts/ui/ShopUI.gd) — лавка торговца
  │    └── FaqUI.tscn (res://scripts/ui/FaqUI.gd) — справочник по механикам (F.A.Q.)
- └── AfkOverlayUI.tscn (res://scripts/ui/AfkOverlayUI.gd) — OLED-чёрная заставка карманного AFK (2 FPS + отключение рендера по кнопке)
+ └── AfkOverlayUI.tscn (res://scripts/ui/AfkOverlayUI.gd) — облегчённый экран AFK-режима со статистикой сессии и кнопкой выхода
 ```
 
 ---
@@ -214,7 +214,7 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - `buffs_changed()` — наложение, тик таймера или снятие временных баффов (от заклинаний и бафф-зелий).
 - `garden_changed()` — посадка семян, прогресс роста грядок, счётчик убийств Вечного титана или сбор урожая.
 - `brewing_changed()` — налив воды, шаги многоступенчатой варки, взрыв котла, спас-флаг Алхимика или сбор зелья.
-- `afk_mode_changed(is_afk: bool)` — переключение карманного OLED AFK-режима.
+- `afk_mode_changed(is_afk: bool)` — переключение AFK-режима.
 - `afk_stats_updated(elapsed_seconds: float, kills: int, gold_earned: float, xp_earned: float)` — обновление сводки AFK-сессии.
 - `dark_forge_changed()` — ковка или Тёмная заточка в Тёмной кузне.
 - `mine_state_changed()` — изменение глубины или блокировки Шахты в текущем ране.

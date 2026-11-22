@@ -77,6 +77,9 @@ var _pet_lightning_timer: float = 0.0
 var _reflector_pulse_timer: float = 0.0
 var _mine_ambient_timer: float = 0.0
 var _auto_potion_timer: float = 0.0
+var _enemy_hud_sync_timer: float = 0.0
+var _last_emitted_p_prog: float = -1.0
+var _last_emitted_e_prog: float = -1.0
 
 
 func _ready() -> void:
@@ -132,7 +135,7 @@ func toggle_battle_search() -> void:
 		enemy_troll_armor_shred = 0
 		troll_shred_updated.emit(0)
 		enemy_cleared.emit()
-		attack_progress_updated.emit(0.0, 0.0)
+		_emit_attack_progress(0.0, 0.0)
 		if GameManager.current_hp < GameManager.get_max_hp():
 			_set_state(State.RESTING)
 		else:
@@ -490,13 +493,21 @@ func _apply_vampirism(damage_dealt: float) -> void:
 		GameManager.heal(leach)
 
 
+func _emit_attack_progress(player_progress: float, enemy_progress: float) -> void:
+	if is_equal_approx(player_progress, _last_emitted_p_prog) and is_equal_approx(enemy_progress, _last_emitted_e_prog):
+		return
+	_last_emitted_p_prog = player_progress
+	_last_emitted_e_prog = enemy_progress
+	attack_progress_updated.emit(player_progress, enemy_progress)
+
+
 func _process_idle(delta: float) -> void:
 	var max_hp: float = GameManager.get_max_hp()
 	if GameManager.current_hp < max_hp:
 		var regen_mult: float = 2.0 if GameManager.has_dark_skill("arcane_barrier") else 1.0
-		GameManager.heal(max_hp * REGEN_RATE_PER_SEC * regen_mult * delta)
+		GameManager.heal(max_hp * REGEN_RATE_PER_SEC * regen_mult * delta, false)
 	_process_auto_potions(delta, false)
-	attack_progress_updated.emit(0.0, 0.0)
+	_emit_attack_progress(0.0, 0.0)
 
 
 func _process_auto_potions(delta: float, is_in_combat: bool) -> void:
@@ -544,12 +555,12 @@ func _process_fighting(delta: float) -> void:
 	if GameManager.has_dark_skill("immortal_pact"):
 		combat_regen_pct += 0.02
 	if combat_regen_pct > 0.0 and GameManager.current_hp < GameManager.get_max_hp():
-		GameManager.heal(GameManager.get_max_hp() * combat_regen_pct * delta)
+		GameManager.heal(GameManager.get_max_hp() * combat_regen_pct * delta, false)
 
 	var rot_pct: float = GameManager.get_curse_value("rot")
 	if rot_pct > 0.0:
 		var rot_dmg: float = GameManager.get_max_hp() * rot_pct * delta
-		GameManager.apply_rot_damage(rot_dmg)
+		GameManager.apply_rot_damage(rot_dmg, false)
 		if GameManager.current_hp <= 0.0:
 			_handle_player_death()
 			return
@@ -594,9 +605,13 @@ func _process_fighting(delta: float) -> void:
 		if current_state != State.FIGHTING or current_enemy == null:
 			return
 
+	var enemy_mana_dirty: bool = false
+	var enemy_mana_full: bool = false
 	if current_enemy.max_mana > 0.0 and enemy_mana < current_enemy.max_mana:
 		enemy_mana = minf(current_enemy.max_mana, enemy_mana + ENEMY_MANA_REGEN_PER_SEC * delta)
-		enemy_mana_changed.emit(enemy_mana, current_enemy.max_mana)
+		enemy_mana_dirty = true
+		if enemy_mana >= current_enemy.max_mana:
+			enemy_mana_full = true
 
 	var player_interval: float = GameManager.get_player_attack_interval()
 	var frenzy: float = GameManager.get_curse_value("abyss_frenzy")
@@ -611,13 +626,26 @@ func _process_fighting(delta: float) -> void:
 	else:
 		_player_attack_timer += delta
 
+	var stun_dirty: bool = false
+	var stun_finished: bool = false
 	if _enemy_stun_timer > 0.0:
 		_enemy_stun_timer = maxf(0.0, _enemy_stun_timer - delta)
-		enemy_stun_changed.emit(_enemy_stun_timer)
+		stun_dirty = true
+		if _enemy_stun_timer <= 0.0:
+			stun_finished = true
 	else:
 		_enemy_attack_timer += delta
 
-	attack_progress_updated.emit(
+	_enemy_hud_sync_timer += delta
+	var flush_enemy_hud: bool = _enemy_hud_sync_timer >= 0.1 or enemy_mana_full or stun_finished
+	if flush_enemy_hud:
+		_enemy_hud_sync_timer = 0.0
+		if enemy_mana_dirty:
+			enemy_mana_changed.emit(enemy_mana, current_enemy.max_mana)
+		if stun_dirty:
+			enemy_stun_changed.emit(_enemy_stun_timer)
+
+	_emit_attack_progress(
 		0.0 if is_reflector else clampf(_player_attack_timer / player_interval, 0.0, 1.0),
 		clampf(_enemy_attack_timer / enemy_interval, 0.0, 1.0)
 	)
@@ -665,7 +693,7 @@ func _process_pet_combat(delta: float) -> void:
 		"aura_regen":
 			var heal_amt: float = GameManager.get_max_hp() * GameManager.get_pet_effect_value("aura_regen") * delta
 			if GameManager.current_hp < GameManager.get_max_hp():
-				GameManager.heal(heal_amt)
+				GameManager.heal(heal_amt, false)
 		"enemy_burn":
 			_pet_pulse_timer += delta
 			while _pet_pulse_timer >= 1.0 and current_enemy != null and current_state == State.FIGHTING:
@@ -767,9 +795,9 @@ func _process_resting(delta: float) -> void:
 	var max_hp: float = GameManager.get_max_hp()
 	var regen_mult: float = 2.0 if GameManager.has_dark_skill("arcane_barrier") else 1.0
 	var regen_amount: float = max_hp * REGEN_RATE_PER_SEC * regen_mult * delta
-	GameManager.heal(regen_amount)
+	GameManager.heal(regen_amount, false)
 	_process_auto_potions(delta, false)
-	attack_progress_updated.emit(0.0, 0.0)
+	_emit_attack_progress(0.0, 0.0)
 
 	if GameManager.current_hp >= max_hp:
 		if is_seeking_battle:
@@ -787,7 +815,7 @@ func _process_spawning(delta: float) -> void:
 		_set_state(State.IDLE)
 		return
 	_spawn_timer -= delta
-	attack_progress_updated.emit(0.0, 0.0)
+	_emit_attack_progress(0.0, 0.0)
 	if _spawn_timer <= 0.0:
 		_spawn_enemy()
 		_set_state(State.FIGHTING)
@@ -979,6 +1007,7 @@ func _spawn_enemy() -> void:
 	_pet_pulse_timer = 0.0
 	_pet_lightning_timer = 0.0
 	_reflector_pulse_timer = 0.0
+	_enemy_hud_sync_timer = 0.0
 	_reset_spirit_timers()
 
 	enemy_spawned.emit(current_enemy, enemy_hp, enemy_max_hp, enemy_mana, current_enemy.max_mana)
@@ -1029,6 +1058,9 @@ func _on_game_reset() -> void:
 	_spawn_timer = 0.0
 	_mine_ambient_timer = 0.0
 	_auto_potion_timer = 0.0
+	_enemy_hud_sync_timer = 0.0
+	_last_emitted_p_prog = -1.0
+	_last_emitted_e_prog = -1.0
 	_reset_spirit_timers()
 	current_enemy = null
 	enemy_hp = 0.0

@@ -17,11 +17,12 @@ const TREAT_ITEM_PATHS: Array[String] = [
 var _treat_items: Array[ItemData] = []
 var _pet_views: Array[Dictionary] = []
 var _dirty: bool = true
+var _refresh_queued: bool = false
 
 
 func _ready() -> void:
 	for p: String in TREAT_ITEM_PATHS:
-		var it: ItemData = load(p) as ItemData
+		var it: ItemData = GameManager.get_cached_item(p)
 		if it != null:
 			_treat_items.append(it)
 
@@ -54,13 +55,24 @@ func _on_state_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty = true
 		return
-	_refresh()
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_flush_refresh")
+
+
+func _flush_refresh() -> void:
+	_refresh_queued = false
+	if is_visible_in_tree():
+		_refresh()
+	else:
+		_dirty = true
 
 
 func _get_item_display(item_id: String) -> String:
 	if item_id.is_empty():
 		return "—"
-	var item: ItemData = load("res://resources/items/%s.tres" % item_id) as ItemData
+	var item: ItemData = GameManager.get_cached_item("res://resources/items/%s.tres" % item_id)
 	if item != null:
 		return "%s %s" % [item.icon_emoji, item.item_name]
 	return item_id

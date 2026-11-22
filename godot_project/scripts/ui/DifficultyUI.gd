@@ -18,9 +18,11 @@ signal new_run_started
 var _selected_difficulty: int = 1
 var _confirm_deadline_ms: int = 0
 var _dirty: bool = true
+var _refresh_queued: bool = false
 
 
 func _ready() -> void:
+	set_process(false)
 	_selected_difficulty = GameManager.difficulty_level
 	GameManager.difficulty_changed.connect(_on_manager_updated)
 	GameManager.dark_skills_changed.connect(_on_state_updated)
@@ -44,6 +46,17 @@ func _on_state_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty = true
 		return
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_flush_deferred_refresh")
+
+
+func _flush_deferred_refresh() -> void:
+	_refresh_queued = false
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	_refresh()
 
 
@@ -51,6 +64,7 @@ func _process(_delta: float) -> void:
 	if _confirm_deadline_ms > 0 and Time.get_ticks_msec() > _confirm_deadline_ms:
 		_confirm_deadline_ms = 0
 		_refresh_start_button_text()
+		set_process(false)
 
 
 func _on_reset() -> void:
@@ -65,12 +79,14 @@ func _on_manager_updated() -> void:
 		GameManager.max_unlocked_difficulty
 	)
 	_confirm_deadline_ms = 0
+	set_process(false)
 	_on_state_updated()
 
 
 func _set_selected_difficulty(target: int) -> void:
 	_selected_difficulty = clampi(target, 1, GameManager.max_unlocked_difficulty)
 	_confirm_deadline_ms = 0
+	set_process(false)
 	_refresh()
 
 
@@ -79,8 +95,10 @@ func _on_start_new_run_pressed() -> void:
 	if _confirm_deadline_ms == 0 or now_ms > _confirm_deadline_ms:
 		_confirm_deadline_ms = now_ms + 3000
 		start_new_run_button.text = "⚠️ Точно начать (Сл. %d)?" % _selected_difficulty
+		set_process(true)
 		return
 	_confirm_deadline_ms = 0
+	set_process(false)
 	GameManager.start_new_run(_selected_difficulty)
 	new_run_started.emit()
 

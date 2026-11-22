@@ -69,10 +69,29 @@ var _search_btn_tween: Tween = null
 var _base_enemy_name: String = ""
 var _enemy_shred_stacks: int = 0
 var _enemy_stun_remaining: float = 0.0
+var _enemy_avatar_style: StyleBoxFlat = null
+var _hud_refresh_queued: bool = false
+var _last_hp_bar_str: String = ""
+var _last_mp_bar_str: String = ""
+var _last_enemy_hp_str: String = ""
+var _last_enemy_mp_str: String = ""
+
+var _player_popup_pool: Array[Dictionary] = []
+var _enemy_popup_pool: Array[Dictionary] = []
+var _proj_pool: Array[Dictionary] = []
+var _player_popup_cursor: int = 0
+var _enemy_popup_cursor: int = 0
+var _proj_cursor: int = 0
 
 
 func _ready() -> void:
-	GameManager.stats_changed.connect(_refresh_hud)
+	_init_visual_pools()
+	var base_style: StyleBoxFlat = enemy_avatar_panel.get_theme_stylebox("panel") as StyleBoxFlat
+	if base_style != null:
+		_enemy_avatar_style = base_style.duplicate() as StyleBoxFlat
+		enemy_avatar_panel.add_theme_stylebox_override("panel", _enemy_avatar_style)
+
+	GameManager.stats_changed.connect(_request_hud_refresh)
 	GameManager.hp_changed.connect(_on_player_hp_changed)
 	GameManager.mana_changed.connect(_on_player_mana_changed)
 	GameManager.player_healed.connect(_on_player_healed)
@@ -82,7 +101,7 @@ func _ready() -> void:
 	GameManager.final_boss_cleared.connect(_on_final_boss_cleared)
 	GameManager.curse_warden_defeated.connect(_on_curse_warden_defeated)
 	GameManager.mastery_changed.connect(_on_mastery_changed)
-	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _refresh_hud())
+	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _request_hud_refresh())
 	GameManager.pets_changed.connect(_refresh_companion_slot)
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.mine_run_failed.connect(_on_mine_run_failed)
@@ -103,6 +122,41 @@ func _ready() -> void:
 		slot_btn.auto_cast_toggled.connect(_on_ability_auto_toggled)
 
 	_refresh_all()
+
+
+func _init_visual_pools() -> void:
+	for _i: int in range(10):
+		_player_popup_pool.append(_create_popup_slot(player_avatar_stage))
+		_enemy_popup_pool.append(_create_popup_slot(enemy_avatar_stage))
+	for _i: int in range(6):
+		var proj: Label = Label.new()
+		proj.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		proj.z_index = 12
+		proj.visible = false
+		proj.add_theme_font_size_override("font_size", 26)
+		add_child(proj)
+		_proj_pool.append({"label": proj, "tween": null})
+
+
+func _create_popup_slot(stage: Control) -> Dictionary:
+	var popup: Label = Label.new()
+	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popup.z_index = 10
+	popup.visible = false
+	popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	popup.custom_minimum_size = Vector2(180.0, 24.0)
+	popup.add_theme_color_override("font_outline_color", Color(0.04, 0.05, 0.08, 0.95))
+	popup.add_theme_constant_override("outline_size", 4)
+	if stage != null:
+		stage.add_child(popup)
+	return {"label": popup, "tween": null}
+
+
+func _request_hud_refresh() -> void:
+	if _hud_refresh_queued:
+		return
+	_hud_refresh_queued = true
+	call_deferred("_refresh_hud")
 
 
 func bind_combat_system(combat: CombatSystem) -> void:
@@ -174,6 +228,7 @@ func _refresh_all() -> void:
 
 
 func _refresh_hud() -> void:
+	_hud_refresh_queued = false
 	level_label.text = "Lv. %d" % GameManager.level
 	var xp_req: float = GameManager.get_xp_to_next_level()
 	xp_bar.max_value = xp_req
@@ -389,31 +444,39 @@ func _on_player_hp_changed(current_hp: float, max_hp: float) -> void:
 	var pct: int = clampi(roundi((current_hp / maxf(1.0, max_hp)) * 100.0), 0, 100)
 	var cur_str: String = NumberFormatter.format_number(ceil(current_hp))
 	var max_str: String = NumberFormatter.format_number(maxf(1.0, max_hp))
+	var full_str: String = "%s / %s (%d%%)" % [cur_str, max_str, pct]
 
 	player_hp_bar.max_value = max_hp
 	player_hp_bar.value = current_hp
-	player_hp_bar_label.text = "%s / %s (%d%%)" % [cur_str, max_str, pct]
-
 	hero_crest_hp_bar.max_value = max_hp
 	hero_crest_hp_bar.value = current_hp
-	hero_crest_hp_label.text = "%s/%s" % [cur_str, max_str]
-	crest_red_label.text = "❤️ %s" % cur_str
+
+	if full_str != _last_hp_bar_str:
+		_last_hp_bar_str = full_str
+		player_hp_bar_label.text = full_str
+		hero_crest_hp_label.text = "%s/%s" % [cur_str, max_str]
+		crest_red_label.text = "❤️ %s" % cur_str
 
 
 func _on_player_mana_changed(current_mana: float, max_mana: float) -> void:
 	var has_mana: bool = max_mana > 0.0
 	player_mana_bar.visible = has_mana
 	if not has_mana:
-		crest_blue_label.text = "💧 0"
+		if _last_mp_bar_str != "0":
+			_last_mp_bar_str = "0"
+			crest_blue_label.text = "💧 0"
 		return
 	var pct: int = clampi(roundi((current_mana / maxf(1.0, max_mana)) * 100.0), 0, 100)
 	var cur_str: String = NumberFormatter.format_number(floor(current_mana))
 	var max_str: String = NumberFormatter.format_number(maxf(1.0, max_mana))
+	var full_str: String = "%s / %s (%d%%)" % [cur_str, max_str, pct]
 
 	player_mana_bar.max_value = max_mana
 	player_mana_bar.value = current_mana
-	player_mana_bar_label.text = "%s / %s (%d%%)" % [cur_str, max_str, pct]
-	crest_blue_label.text = "💧 %s" % cur_str
+	if full_str != _last_mp_bar_str:
+		_last_mp_bar_str = full_str
+		player_mana_bar_label.text = full_str
+		crest_blue_label.text = "💧 %s" % cur_str
 
 
 func _on_player_healed(amount: float) -> void:
@@ -431,14 +494,14 @@ func _on_enemy_spawned(enemy: EnemyData, current_hp: float, max_hp: float, curre
 		_base_enemy_name = "%s [Ур.+%d]" % [enemy.enemy_name, GameManager.reroll_boss_kills_in_run]
 	_update_enemy_name_label()
 	enemy_emoji_label.text = enemy.icon_emoji
+	_last_enemy_hp_str = ""
+	_last_enemy_mp_str = ""
 
-	var base_style: StyleBoxFlat = enemy_avatar_panel.get_theme_stylebox("panel") as StyleBoxFlat
-	if base_style != null:
-		var custom_style: StyleBoxFlat = base_style.duplicate() as StyleBoxFlat
-		custom_style.border_color = enemy.sprite_color
-		custom_style.bg_color = enemy.sprite_color.darkened(0.68)
-		custom_style.bg_color.a = 0.72
-		enemy_avatar_panel.add_theme_stylebox_override("panel", custom_style)
+	if _enemy_avatar_style != null:
+		_enemy_avatar_style.border_color = enemy.sprite_color
+		var bg: Color = enemy.sprite_color.darkened(0.68)
+		bg.a = 0.72
+		_enemy_avatar_style.bg_color = bg
 
 	_on_enemy_hp_changed(current_hp, max_hp)
 	_on_enemy_mana_changed(current_mana, max_mana)
@@ -485,13 +548,16 @@ func _update_enemy_name_label() -> void:
 
 func _on_enemy_hp_changed(current_hp: float, max_hp: float) -> void:
 	var pct: int = clampi(roundi((current_hp / maxf(1.0, max_hp)) * 100.0), 0, 100)
-	enemy_hp_bar.max_value = max_hp
-	enemy_hp_bar.value = current_hp
-	enemy_hp_bar_label.text = "%s / %s (%d%%)" % [
+	var hp_str: String = "%s / %s (%d%%)" % [
 		NumberFormatter.format_number(ceil(current_hp)),
 		NumberFormatter.format_number(maxf(1.0, max_hp)),
 		pct,
 	]
+	enemy_hp_bar.max_value = max_hp
+	enemy_hp_bar.value = current_hp
+	if hp_str != _last_enemy_hp_str:
+		_last_enemy_hp_str = hp_str
+		enemy_hp_bar_label.text = hp_str
 
 
 func _on_enemy_mana_changed(current_mana: float, max_mana: float) -> void:
@@ -500,13 +566,16 @@ func _on_enemy_mana_changed(current_mana: float, max_mana: float) -> void:
 	if not has_mana:
 		return
 	var pct: int = clampi(roundi((current_mana / maxf(1.0, max_mana)) * 100.0), 0, 100)
-	enemy_mana_bar.max_value = max_mana
-	enemy_mana_bar.value = current_mana
-	enemy_mana_bar_label.text = "%s / %s (%d%%)" % [
+	var mp_str: String = "%s / %s (%d%%)" % [
 		NumberFormatter.format_number(floor(current_mana)),
 		NumberFormatter.format_number(maxf(1.0, max_mana)),
 		pct,
 	]
+	enemy_mana_bar.max_value = max_mana
+	enemy_mana_bar.value = current_mana
+	if mp_str != _last_enemy_mp_str:
+		_last_enemy_mp_str = mp_str
+		enemy_mana_bar_label.text = mp_str
 
 
 func _on_attack_progress_updated(player_progress: float, enemy_progress: float) -> void:
@@ -567,21 +636,24 @@ func _on_enemy_defeated_reward(xp_earned: float, gold_earned: float) -> void:
 
 
 func _spawn_ranged_projectile(emoji: String) -> void:
-	if player_avatar_stage == null or enemy_avatar_stage == null:
+	if player_avatar_stage == null or enemy_avatar_stage == null or _proj_pool.is_empty():
 		return
-	var proj: Label = Label.new()
-	proj.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	proj.z_index = 12
+	var slot: Dictionary = _proj_pool[_proj_cursor]
+	_proj_cursor = (_proj_cursor + 1) % _proj_pool.size()
+	var prev_tween: Tween = slot.get("tween") as Tween
+	if prev_tween != null and prev_tween.is_valid():
+		prev_tween.kill()
+	var proj: Label = slot["label"] as Label
 	proj.text = emoji
-	proj.add_theme_font_size_override("font_size", 26)
 	var start_pos: Vector2 = player_avatar_stage.global_position + player_avatar_stage.size * 0.45
 	var end_pos: Vector2 = enemy_avatar_stage.global_position + enemy_avatar_stage.size * 0.45
-	add_child(proj)
 	proj.global_position = start_pos
+	proj.visible = true
 
 	var tween: Tween = create_tween()
 	tween.tween_property(proj, "global_position", end_pos, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_callback(proj.queue_free)
+	tween.tween_callback(func() -> void: proj.visible = false)
+	slot["tween"] = tween
 
 
 func _play_attack_animation(is_player: bool, offset_x: float) -> void:
@@ -645,23 +717,34 @@ func _play_enemy_spawn_pop() -> void:
 func _spawn_floating_text(stage: Control, text_value: String, color: Color, is_big: bool = false) -> void:
 	if stage == null:
 		return
-	var popup: Label = Label.new()
-	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	popup.z_index = 10
+	var is_player_stage: bool = (stage == player_avatar_stage)
+	var pool: Array[Dictionary] = _player_popup_pool if is_player_stage else _enemy_popup_pool
+	if pool.is_empty():
+		return
+	var idx: int = _player_popup_cursor if is_player_stage else _enemy_popup_cursor
+	if is_player_stage:
+		_player_popup_cursor = (_player_popup_cursor + 1) % pool.size()
+	else:
+		_enemy_popup_cursor = (_enemy_popup_cursor + 1) % pool.size()
+
+	var slot: Dictionary = pool[idx]
+	var prev_tween: Tween = slot.get("tween") as Tween
+	if prev_tween != null and prev_tween.is_valid():
+		prev_tween.kill()
+
+	var popup: Label = slot["label"] as Label
 	popup.text = text_value
-	popup.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	popup.custom_minimum_size = Vector2(180.0, 24.0)
 	popup.position = Vector2(-30.0 + randf_range(-8.0, 8.0), -10.0)
+	popup.modulate = Color.WHITE
 	popup.add_theme_font_size_override("font_size", 19 if is_big else 15)
 	popup.add_theme_color_override("font_color", color)
-	popup.add_theme_color_override("font_outline_color", Color(0.04, 0.05, 0.08, 0.95))
-	popup.add_theme_constant_override("outline_size", 4)
-	stage.add_child(popup)
+	popup.visible = true
 
 	var tween: Tween = create_tween()
 	tween.tween_property(popup, "position:y", popup.position.y - 40.0, 0.74).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(popup, "modulate:a", 0.0, 0.74).set_ease(Tween.EASE_IN)
-	tween.tween_callback(popup.queue_free)
+	tween.tween_callback(func() -> void: popup.visible = false)
+	slot["tween"] = tween
 
 
 func _on_combat_state_changed(new_state: int) -> void:
@@ -728,4 +811,4 @@ func _on_mine_run_failed(depth_reached: int) -> void:
 
 
 func _on_afk_mode_changed(is_afk: bool) -> void:
-	afk_toggle_button.text = "🖤 AFK (2)" if is_afk else "🌙 AFK"
+	afk_toggle_button.text = "🌙 AFK (вкл)" if is_afk else "🌙 AFK"

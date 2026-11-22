@@ -18,6 +18,8 @@ var _hold_triggered: bool = false
 var _overcharge_tick: int = 0
 var _normal_style: StyleBoxFlat = null
 var _auto_style: StyleBoxFlat = null
+var _last_auto_state: int = -1
+var _last_visual_sig: String = ""
 
 
 func _ready() -> void:
@@ -84,47 +86,79 @@ func _on_mana_changed(_current_mana: float, _max_mana: float) -> void:
 func _refresh() -> void:
 	var ability: AbilityData = GameManager.get_ability(slot_index)
 	if ability == null:
-		emoji_label.text = "✨"
-		status_label.text = "Пусто"
-		status_label.modulate = Color(0.55, 0.60, 0.68, 0.8)
-		emoji_label.modulate = Color(0.45, 0.50, 0.58, 0.65)
-		auto_badge_label.visible = false
+		if _last_auto_state != 0:
+			_last_auto_state = 0
+			if _normal_style != null:
+				add_theme_stylebox_override("normal", _normal_style)
+				add_theme_stylebox_override("hover", _normal_style)
+		if _last_visual_sig != "empty":
+			_last_visual_sig = "empty"
+			emoji_label.text = "✨"
+			status_label.text = "Пусто"
+			status_label.modulate = Color(0.55, 0.60, 0.68, 0.8)
+			emoji_label.modulate = Color(0.45, 0.50, 0.58, 0.65)
+			auto_badge_label.visible = false
 		return
 
-	emoji_label.text = ability.icon_emoji
 	var cd: float = GameManager.get_ability_cooldown(slot_index)
 	var is_auto: bool = GameManager.is_ability_auto_cast(slot_index)
+	var auto_int: int = 1 if is_auto else 0
+	if _last_auto_state != auto_int:
+		_last_auto_state = auto_int
+		auto_badge_label.visible = is_auto
+		if _auto_style != null and _normal_style != null:
+			var target_style: StyleBoxFlat = _auto_style if is_auto else _normal_style
+			add_theme_stylebox_override("normal", target_style)
+			add_theme_stylebox_override("hover", target_style)
+
 	var mana_cost: float = GameManager.get_ability_mana_cost(ability)
 	var has_mana: bool = GameManager.current_mana >= mana_cost
 	var buff_rem: float = GameManager.get_active_buff_remaining(ability.id) if ability.effect_type == "buff" else 0.0
 	var is_reflector_locked: bool = GameManager.has_hero_class("reflector") and ability.effect_type != "heal" and ability.effect_type != "buff"
 
-	auto_badge_label.visible = is_auto
-	if _auto_style != null and _normal_style != null:
-		add_theme_stylebox_override("normal", _auto_style if is_auto else _normal_style)
-		add_theme_stylebox_override("hover", _auto_style if is_auto else _normal_style)
+	var state_tag: String = ""
+	var status_txt: String = ""
+	var status_col: Color = Color.WHITE
+	var emoji_col: Color = Color.WHITE
 
 	if _overcharge_tick > 0 and ability.effect_type == "overcharge_burn":
-		status_label.text = "🔥Т%d" % _overcharge_tick
-		status_label.modulate = Color(1.0, 0.45, 0.28, 1.0)
-		emoji_label.modulate = Color(1.0, 0.85, 0.72, 1.0)
+		state_tag = "oc_%d" % _overcharge_tick
+		status_txt = "🔥Т%d" % _overcharge_tick
+		status_col = Color(1.0, 0.45, 0.28, 1.0)
+		emoji_col = Color(1.0, 0.85, 0.72, 1.0)
 	elif buff_rem > 0.1:
-		status_label.text = "✨%.0fс" % ceil(buff_rem)
-		status_label.modulate = Color(0.48, 0.96, 0.68, 1.0)
-		emoji_label.modulate = Color.WHITE
+		var ceil_buff: int = roundi(ceil(buff_rem))
+		state_tag = "buff_%d" % ceil_buff
+		status_txt = "✨%dс" % ceil_buff
+		status_col = Color(0.48, 0.96, 0.68, 1.0)
 	elif is_reflector_locked:
-		status_label.text = "🛡️ Блок"
-		status_label.modulate = Color(0.72, 0.78, 0.88, 0.92)
-		emoji_label.modulate = Color(0.55, 0.60, 0.68, 0.68)
+		state_tag = "ref_lock"
+		status_txt = "🛡️ Блок"
+		status_col = Color(0.72, 0.78, 0.88, 0.92)
+		emoji_col = Color(0.55, 0.60, 0.68, 0.68)
 	elif cd > 0.05:
-		status_label.text = "%.1fс" % cd
-		status_label.modulate = Color(0.95, 0.65, 0.35, 1.0)
-		emoji_label.modulate = Color(0.6, 0.65, 0.72, 1.0)
+		var cd_tenths: int = roundi(cd * 10.0)
+		state_tag = "cd_%d" % cd_tenths
+		status_txt = "%.1fс" % (float(cd_tenths) / 10.0)
+		status_col = Color(0.95, 0.65, 0.35, 1.0)
+		emoji_col = Color(0.6, 0.65, 0.72, 1.0)
 	elif not has_mana:
-		status_label.text = "💧%.0f" % mana_cost
-		status_label.modulate = Color(0.45, 0.72, 0.98, 0.85)
-		emoji_label.modulate = Color(0.7, 0.75, 0.85, 0.85)
+		var cost_i: int = roundi(mana_cost)
+		state_tag = "nomp_%d" % cost_i
+		status_txt = "💧%d" % cost_i
+		status_col = Color(0.45, 0.72, 0.98, 0.85)
+		emoji_col = Color(0.7, 0.75, 0.85, 0.85)
 	else:
-		status_label.text = "💧%.0f" % mana_cost
-		status_label.modulate = Color(0.55, 0.88, 1.0, 1.0)
-		emoji_label.modulate = Color.WHITE
+		var cost_i: int = roundi(mana_cost)
+		state_tag = "rdy_%d" % cost_i
+		status_txt = "💧%d" % cost_i
+		status_col = Color(0.55, 0.88, 1.0, 1.0)
+
+	var sig: String = "%s|%s" % [ability.id, state_tag]
+	if sig == _last_visual_sig:
+		return
+	_last_visual_sig = sig
+	emoji_label.text = ability.icon_emoji
+	status_label.text = status_txt
+	status_label.modulate = status_col
+	emoji_label.modulate = emoji_col

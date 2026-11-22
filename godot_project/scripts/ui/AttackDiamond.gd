@@ -6,6 +6,10 @@ extends Control
 @export var border_color: Color = Color(0.84, 0.8, 0.72, 0.95)
 
 var progress: float = 0.0
+var _bg_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+var _tri_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+var _pent_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+var _border_pts: PackedVector2Array = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
 
 
 func set_progress(value: float) -> void:
@@ -27,30 +31,35 @@ func _draw() -> void:
 	var bottom: Vector2 = Vector2(center.x, center.y + radius)
 	var left: Vector2 = Vector2(center.x - radius, center.y)
 
-	draw_colored_polygon(PackedVector2Array([top, right, bottom, left]), bg_color)
+	_bg_pts[0] = top
+	_bg_pts[1] = right
+	_bg_pts[2] = bottom
+	_bg_pts[3] = left
+	draw_colored_polygon(_bg_pts, bg_color)
 
 	if progress > 0.001:
 		var active_color: Color = ready_color if progress >= 0.98 else fill_color
 		var y_cut: float = lerpf(bottom.y, top.y, progress)
 		if progress < 0.5:
 			var half_w: float = radius * (progress / 0.5)
-			var pts: PackedVector2Array = PackedVector2Array([
-				bottom,
-				Vector2(center.x - half_w, y_cut),
-				Vector2(center.x + half_w, y_cut),
-			])
-			draw_colored_polygon(pts, active_color)
+			_tri_pts[0] = bottom
+			_tri_pts[1] = Vector2(center.x - half_w, y_cut)
+			_tri_pts[2] = Vector2(center.x + half_w, y_cut)
+			draw_colored_polygon(_tri_pts, active_color)
 		elif progress < 1.0:
 			var half_w: float = radius * ((1.0 - progress) / 0.5)
-			var pts: PackedVector2Array = PackedVector2Array([
-				bottom,
-				left,
-				Vector2(center.x - half_w, y_cut),
-				Vector2(center.x + half_w, y_cut),
-				right,
-			])
-			draw_colored_polygon(pts, active_color)
+			_pent_pts[0] = bottom
+			_pent_pts[1] = left
+			_pent_pts[2] = Vector2(center.x - half_w, y_cut)
+			_pent_pts[3] = Vector2(center.x + half_w, y_cut)
+			_pent_pts[4] = right
+			draw_colored_polygon(_pent_pts, active_color)
 		else:
-			draw_colored_polygon(PackedVector2Array([top, right, bottom, left]), active_color)
+			draw_colored_polygon(_bg_pts, active_color)
 
-	draw_polyline(PackedVector2Array([top, right, bottom, left, top]), border_color, 2.0, true)
+	_border_pts[0] = top
+	_border_pts[1] = right
+	_border_pts[2] = bottom
+	_border_pts[3] = left
+	_border_pts[4] = top
+	draw_polyline(_border_pts, border_color, 2.0, true)

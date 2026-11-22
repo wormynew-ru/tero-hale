@@ -2,6 +2,26 @@
 
 Все значимые изменения проекта фиксируются в этом файле.
 
+## [0.17.3] — Оптимизация производительности на Android (устранение фризов) и упрощение AFK-режима
+### Исправлено и оптимизировано
+- **Устранение многосекундных фризов I/O на Android (`GameManager.gd`)**:
+  - Обычное сохранение `save_game(false)` переведено в фоновый рабочий поток (`Thread` + `_save_worker_entry`) без блокировки главного UI-потока операциями `ResourceSaver.save()` / `DirAccess` (атомарная ротация `.tmp.tres` → `save.tres` / `.bak.tres` сохранена; `force_immediate = true` и завершение потока `_wait_for_save_thread()` синхронизированы для выхода/импорта/сброса).
+  - Троттлинг (коалесцирование) частых сохранений увеличен с `0.35с` до `2 минут` (`SAVE_THROTTLE_INTERVAL = 120.0`), а автосохранение в `_process()` переведено на асинхронный вызов `save_game(false)`.
+- **O(1)-кэши прогрессии и ресурсов (`GameManager.gd`, `PetUI.gd`, `SanctuaryUI.gd`)**:
+  - Добавлен кэш `ResourceLoader.load` для предметов (`get_cached_item()`), а также предвычисляемые `Dictionary`-кэши бонусов навыков, тёмных навыков, проклятий и множеств открытых узлов (`_ensure_progression_caches()`, сбрасываются только при реальных мутациях), устранившие сотни повторных линейных обходов и `load()` на горячем боевом пути.
+- **Троттлинг непрерывных сигналов и удаление холостых обновлений (`GameManager.gd`, `CombatSystem.gd`)**:
+  - Непрерывная регенерация HP/маны, гниение и тик кулдаунов в `_process()` ограничиваются синхронизацией UI до `10 Гц` (`0.1с`) с немедленной отправкой при достижении минимума/максимума/нулевого КД.
+  - В `CombatSystem.gd` добавлено кэширование `_emit_attack_progress()` (исключены 60 Гц холостые сигналы `0.0, 0.0` в простое) и `10 Гц` троттлинг `enemy_mana_changed` / `enemy_stun_changed`.
+- **Оптимизация графов, пулы UI-нод и коалесцирование обновлений**:
+  - `SkillTreeUI.gd`, `DarkSkillTreeUI.gd`, `ClassUI.gd`: вместо полного `queue_free()` + пересоздания сотен нод и `StyleBoxFlat` используются однократная сборка графа/карточек, 10 общих `StyleBoxFlat`-пресетов, отключение `Line2D.antialiased`, дифф-кэши состояний и отложенное обновление только при `is_visible_in_tree()`.
+  - `BattleArenaUI.gd`: введены предварительно выделенные пулы `Label`-нод для всплывающих чисел и снарядов (без `Label.new()`/`queue_free()` в бою), переиспользование `_enemy_avatar_style`, кэш строк HP/MP и отложенное коалесцирование `_request_hud_refresh()`.
+  - `AbilitySlotButton.gd`, `AttackDiamond.gd`, `HeroMenuUI.gd`, `RightSidebarUI.gd`, `StatsUI.gd`, `DifficultyUI.gd`, `ShopUI.gd`, `InventoryUI.gd`, `EnchantUI.gd`, `DarkForgeUI.gd`, `PetUI.gd`, `SanctuaryUI.gd`: добавлены кэширование сигнатур/состояний, переиспользование `PackedVector2Array` в `_draw()`, отключение `_process()` в простое для экранов таймеров подтверждения и `call_deferred` коалесцирование пачек сигналов.
+
+### Удалено и упрощено (AFK-режим)
+- **Убран OLED / 2 FPS режим и кнопка отключения интерфейса (`GameManager.gd`, `AfkOverlayUI.tscn/.gd`, `HeroMenuUI.tscn`, `BattleArenaUI.gd`)**:
+  - Удалены `AFK_FPS_LIMIT = 2`, кнопка `BlackoutButton` («Погасить интерфейс»), `WakeHintLabel`, `RenderingServer.render_loop_enabled` и приглушённая OLED-подложка `#000000`.
+  - AFK-режим (`🌙 AFK-режим`) работает на стандартном `Engine.max_fps = 60`, скрывает `RootHBox` для разгрузки интерфейса и удерживает экран активным через `DisplayServer.screen_set_keep_on(true)`.
+
 ## [0.17.2] — Экспорт и импорт сохранений в `.txt` файл (Android/ПК)
 ### Добавлено
 - **Экспорт и импорт в `.txt` (`GameManager.gd`, `StatsUI.tscn/.gd`)**:

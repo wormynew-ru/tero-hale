@@ -40,9 +40,11 @@ signal reset_triggered
 var _reset_confirm_deadline_ms: int = 0
 var _paste_confirm_deadline_ms: int = 0
 var _dirty: bool = true
+var _refresh_queued: bool = false
 
 
 func _ready() -> void:
+	set_process(false)
 	GameManager.stats_changed.connect(_on_state_updated)
 	GameManager.skills_changed.connect(_on_state_updated)
 	GameManager.dark_skills_changed.connect(_on_state_updated)
@@ -102,6 +104,17 @@ func _on_state_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty = true
 		return
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_flush_deferred_refresh")
+
+
+func _flush_deferred_refresh() -> void:
+	_refresh_queued = false
+	if not is_visible_in_tree():
+		_dirty = true
+		return
 	_refresh()
 
 
@@ -113,6 +126,8 @@ func _process(_delta: float) -> void:
 	if _paste_confirm_deadline_ms > 0 and now_ms > _paste_confirm_deadline_ms:
 		_paste_confirm_deadline_ms = 0
 		paste_txt_button.text = "📋 Вставить из буфера"
+	if _reset_confirm_deadline_ms == 0 and _paste_confirm_deadline_ms == 0:
+		set_process(false)
 
 
 func _refresh() -> void:
@@ -277,6 +292,7 @@ func _on_paste_txt_pressed() -> void:
 	if _paste_confirm_deadline_ms == 0 or now_ms > _paste_confirm_deadline_ms:
 		_paste_confirm_deadline_ms = now_ms + 3000
 		paste_txt_button.text = "⚠️ Заменить текущий?"
+		set_process(true)
 		return
 	_paste_confirm_deadline_ms = 0
 	paste_txt_button.text = "📋 Вставить из буфера"
@@ -290,6 +306,7 @@ func _on_reset_button_pressed() -> void:
 	if _reset_confirm_deadline_ms == 0 or now_ms > _reset_confirm_deadline_ms:
 		_reset_confirm_deadline_ms = now_ms + 3000
 		reset_button.text = "⚠️ Стереть ВСЁ?"
+		set_process(true)
 		return
 	_reset_confirm_deadline_ms = 0
 	reset_button.text = "🔄 Сброс"

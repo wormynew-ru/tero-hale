@@ -34,6 +34,8 @@ var _buff_filter_buttons: Dictionary = {}
 var _last_inv_sig: String = ""
 var _dirty_inv: bool = true
 var _dirty_ctrl: bool = true
+var _inv_queued: bool = false
+var _ctrl_queued: bool = false
 
 
 func _ready() -> void:
@@ -121,6 +123,8 @@ func _on_reset() -> void:
 	_last_inv_sig = ""
 	_dirty_inv = true
 	_dirty_ctrl = true
+	_inv_queued = false
+	_ctrl_queued = false
 	if is_visible_in_tree():
 		_rebuild_inventory(true)
 		_refresh_controls()
@@ -130,14 +134,37 @@ func _on_inventory_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty_inv = true
 		return
-	_rebuild_inventory(false)
+	if _inv_queued:
+		return
+	_inv_queued = true
+	call_deferred("_flush_inventory_rebuild")
+
+
+func _flush_inventory_rebuild() -> void:
+	_inv_queued = false
+	_ctrl_queued = false
+	if is_visible_in_tree():
+		_rebuild_inventory(false)
+	else:
+		_dirty_inv = true
 
 
 func _on_controls_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty_ctrl = true
 		return
-	_refresh_controls()
+	if _inv_queued or _ctrl_queued:
+		return
+	_ctrl_queued = true
+	call_deferred("_flush_controls_refresh")
+
+
+func _flush_controls_refresh() -> void:
+	_ctrl_queued = false
+	if is_visible_in_tree():
+		_refresh_controls()
+	else:
+		_dirty_ctrl = true
 
 
 func _on_hp_changed(_current_hp: float, _max_hp: float) -> void:

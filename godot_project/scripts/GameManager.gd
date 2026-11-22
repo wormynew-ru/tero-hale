@@ -37,7 +37,7 @@ const BASE_DAMAGE: float = 6.0
 const BASE_CRIT_CHANCE: float = 0.05
 const CRIT_MULTIPLIER: float = 1.75
 const AUTOSAVE_INTERVAL: float = 480.0
-const AFK_FPS_LIMIT: int = 2
+const SAVE_THROTTLE_INTERVAL: float = 120.0
 const NORMAL_FPS_LIMIT: int = 60
 const AUTO_POTION_HP_THRESHOLD: float = 0.35
 const MAX_ENCHANT_LEVEL: int = 100
@@ -657,8 +657,27 @@ var _autosave_timer: float = 0.0
 var _afk_ui_sync_timer: float = 0.0
 var _buff_ui_sync_timer: float = 0.0
 var _sanctuary_ui_sync_timer: float = 0.0
+var _hp_mp_ui_sync_timer: float = 0.0
+var _ability_ui_sync_timer: float = 0.0
+var _hp_ui_dirty: bool = false
+var _mana_ui_dirty: bool = false
+var _abilities_ui_dirty: bool = false
 var _save_throttle_timer: float = 0.0
 var _save_pending: bool = false
+
+var _save_thread: Thread = null
+var _save_in_progress: bool = false
+var _save_queued_after_worker: bool = false
+
+var _item_path_cache: Dictionary = {}
+var _unlocked_skill_set: Dictionary = {}
+var _unlocked_dark_skill_set: Dictionary = {}
+var _skill_bonus_cache: Dictionary = {}
+var _dark_bonus_cache: Dictionary = {}
+var _curse_value_cache: Dictionary = {}
+var _active_curses_cache: Array[Dictionary] = []
+var _progression_caches_dirty: bool = true
+var _cached_curse_difficulty: int = -1
 
 
 func _ready() -> void:
@@ -675,34 +694,58 @@ func _ready() -> void:
 		_init_full_reset_state()
 	_ensure_sanctuary_slots()
 	ensure_curses_for_difficulty(difficulty_level)
+	_invalidate_progression_caches()
 	Engine.max_fps = NORMAL_FPS_LIMIT
-	RenderingServer.render_loop_enabled = true
 	DisplayServer.screen_set_keep_on(false)
 	_emit_all_refresh_signals()
+
+
+func _exit_tree() -> void:
+	_wait_for_save_thread()
 
 
 func _process(delta: float) -> void:
 	if _save_throttle_timer > 0.0:
 		_save_throttle_timer = maxf(0.0, _save_throttle_timer - delta)
 		if _save_throttle_timer <= 0.0 and _save_pending:
-			save_game(true)
+			save_game(false)
 
 	_autosave_timer += delta
 	if _autosave_timer >= AUTOSAVE_INTERVAL:
 		_autosave_timer = 0.0
-		save_game(true)
+		_save_throttle_timer = 0.0
+		save_game(false)
 
 	var max_mana: float = get_max_mana()
 	if current_mana < max_mana:
-		restore_mana(get_mana_regen_per_sec() * delta)
+		restore_mana(get_mana_regen_per_sec() * delta, false)
 
 	var cd_speed_mult: float = 1.0 + get_pet_effect_value("cooldown_haste")
 	var cd_changed: bool = false
+	var cd_finished_any: bool = false
 	for i: int in range(ability_cooldowns.size()):
 		if ability_cooldowns[i] > 0.0:
 			ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - delta * cd_speed_mult)
 			cd_changed = true
+			if ability_cooldowns[i] <= 0.0:
+				cd_finished_any = true
 	if cd_changed:
+		_abilities_ui_dirty = true
+
+	_hp_mp_ui_sync_timer += delta
+	if _hp_mp_ui_sync_timer >= 0.1:
+		_hp_mp_ui_sync_timer = 0.0
+		if _hp_ui_dirty:
+			_hp_ui_dirty = false
+			hp_changed.emit(current_hp, get_max_hp())
+		if _mana_ui_dirty:
+			_mana_ui_dirty = false
+			mana_changed.emit(current_mana, get_max_mana())
+
+	_ability_ui_sync_timer += delta
+	if _abilities_ui_dirty and (cd_finished_any or _ability_ui_sync_timer >= 0.1):
+		_ability_ui_sync_timer = 0.0
+		_abilities_ui_dirty = false
 		abilities_changed.emit()
 
 	if not active_buffs.is_empty():
@@ -733,7 +776,6 @@ func _process(delta: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		RenderingServer.render_loop_enabled = true
 		DisplayServer.screen_set_keep_on(false)
 		save_game(true)
 	elif what == NOTIFICATION_APPLICATION_PAUSED:
@@ -848,6 +890,67 @@ func _load_crops() -> void:
 			_crops_by_id[crop.id] = crop
 
 
+func get_cached_item(path: String) -> ItemData:
+	if path.is_empty():
+		return null
+	if _item_path_cache.has(path):
+		return _item_path_cache[path] as ItemData
+	if not ResourceLoader.exists(path):
+		return null
+	var item: ItemData = load(path) as ItemData
+	if item != null:
+		_item_path_cache[path] = item
+	return item
+
+
+func _invalidate_progression_caches() -> void:
+	_progression_caches_dirty = true
+
+
+func _ensure_progression_caches() -> void:
+	if not _progression_caches_dirty and _cached_curse_difficulty == difficulty_level:
+		return
+	_progression_caches_dirty = false
+	_cached_curse_difficulty = difficulty_level
+
+	_unlocked_skill_set.clear()
+	_skill_bonus_cache.clear()
+	for skill_id: String in unlocked_skills:
+		_unlocked_skill_set[skill_id] = true
+		var skill: SkillNodeData = get_skill_by_id(skill_id)
+		if skill != null and not skill.bonus_type.is_empty():
+			_skill_bonus_cache[skill.bonus_type] = float(_skill_bonus_cache.get(skill.bonus_type, 0.0)) + skill.bonus_value
+
+	_unlocked_dark_skill_set.clear()
+	_dark_bonus_cache.clear()
+	for dskill_id: String in unlocked_dark_skills:
+		_unlocked_dark_skill_set[dskill_id] = true
+		var dskill: DarkSkillNodeData = get_dark_skill_by_id(dskill_id)
+		if dskill != null and not dskill.effect_type.is_empty():
+			_dark_bonus_cache[dskill.effect_type] = float(_dark_bonus_cache.get(dskill.effect_type, 0.0)) + dskill.effect_value
+
+	_curse_value_cache.clear()
+	_active_curses_cache.clear()
+	var max_tier: int = floori(float(difficulty_level) / 10.0) * 10
+	if max_tier >= 10:
+		ensure_curses_for_difficulty(difficulty_level)
+		var atten: float = 0.6 if _unlocked_dark_skill_set.has("curse_ward") else 1.0
+		for tier: int in range(10, max_tier + 1, 10):
+			var cid: String = str(difficulty_curses.get(tier, ""))
+			var def: Dictionary = _get_curse_definition(cid)
+			if def.is_empty():
+				continue
+			var eff_val: float = float(def["base_value"]) * atten
+			_active_curses_cache.append({
+				"tier": tier,
+				"id": cid,
+				"title": str(def["title"]),
+				"value": eff_val,
+				"description": format_curse_description(def, eff_val),
+			})
+			_curse_value_cache[cid] = float(_curse_value_cache.get(cid, 0.0)) + eff_val
+
+
 func _init_full_reset_state() -> void:
 	difficulty_level = 1
 	max_unlocked_difficulty = 1
@@ -889,6 +992,7 @@ func _init_full_reset_state() -> void:
 	_sync_equipped_abilities()
 	for i: int in range(MAX_ACTIVE_ABILITY_SLOTS):
 		ability_auto_cast[i] = false
+	_invalidate_progression_caches()
 	_init_run_state(1)
 	_ensure_sanctuary_slots()
 
@@ -896,6 +1000,7 @@ func _init_full_reset_state() -> void:
 func _init_run_state(target_difficulty: int) -> void:
 	difficulty_level = clampi(target_difficulty, 1, maxi(1, max_unlocked_difficulty))
 	ensure_curses_for_difficulty(difficulty_level)
+	_invalidate_progression_caches()
 
 	level = 1
 	current_xp = 0.0
@@ -954,12 +1059,13 @@ func _init_run_state(target_difficulty: int) -> void:
 	armor_enchant_level = 0
 	inventory.clear()
 	unlocked_skills.clear()
+	_invalidate_progression_caches()
 	active_buffs.clear()
 	_validate_equipped_abilities_for_class()
 	for i: int in range(MAX_ACTIVE_ABILITY_SLOTS):
 		ability_cooldowns[i] = 0.0
 
-	var starter_potion: ItemData = load(STARTER_POTION_PATH) as ItemData
+	var starter_potion: ItemData = get_cached_item(STARTER_POTION_PATH)
 	if starter_potion != null:
 		add_item(starter_potion, 2, false)
 
@@ -977,6 +1083,7 @@ func _init_run_state(target_difficulty: int) -> void:
 
 
 func start_new_run(target_difficulty: int) -> void:
+	_wait_for_save_thread()
 	var clamped_diff: int = clampi(target_difficulty, 1, maxi(1, max_unlocked_difficulty))
 	if boss_defeated_this_run:
 		total_runs_completed += 1
@@ -987,6 +1094,7 @@ func start_new_run(target_difficulty: int) -> void:
 
 
 func reset_progress() -> void:
+	_wait_for_save_thread()
 	for path: String in [SAVE_PATH, SAVE_BACKUP_PATH, SAVE_TEMP_PATH]:
 		if FileAccess.file_exists(path):
 			DirAccess.remove_absolute(path)
@@ -1355,6 +1463,7 @@ func ensure_curses_for_difficulty(target_diff: int) -> void:
 		if not cid.is_empty() and not used_ids.has(cid):
 			used_ids.append(cid)
 
+	var added_any: bool = false
 	for tier: int in range(10, max_tier + 1, 10):
 		if difficulty_curses.has(tier) and not str(difficulty_curses[tier]).is_empty():
 			continue
@@ -1367,8 +1476,11 @@ func ensure_curses_for_difficulty(target_diff: int) -> void:
 		var picked: Dictionary = candidates[randi() % candidates.size()]
 		var picked_id: String = str(picked["id"])
 		difficulty_curses[tier] = picked_id
+		added_any = true
 		if not used_ids.has(picked_id):
 			used_ids.append(picked_id)
+	if added_any:
+		_invalidate_progression_caches()
 
 
 func _get_curse_definition(curse_id: String) -> Dictionary:
@@ -1379,27 +1491,8 @@ func _get_curse_definition(curse_id: String) -> Dictionary:
 
 
 func get_active_curses() -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-	var max_tier: int = floori(float(difficulty_level) / 10.0) * 10
-	if max_tier < 10:
-		return result
-	ensure_curses_for_difficulty(difficulty_level)
-
-	var atten: float = get_curse_attenuation()
-	for tier: int in range(10, max_tier + 1, 10):
-		var cid: String = str(difficulty_curses.get(tier, ""))
-		var def: Dictionary = _get_curse_definition(cid)
-		if def.is_empty():
-			continue
-		var eff_val: float = float(def["base_value"]) * atten
-		result.append({
-			"tier": tier,
-			"id": cid,
-			"title": str(def["title"]),
-			"value": eff_val,
-			"description": format_curse_description(def, eff_val),
-		})
-	return result
+	_ensure_progression_caches()
+	return _active_curses_cache
 
 
 func format_curse_description(def: Dictionary, eff_val: float) -> String:
@@ -1414,11 +1507,8 @@ func format_curse_description(def: Dictionary, eff_val: float) -> String:
 
 
 func get_curse_value(curse_id: String) -> float:
-	var total: float = 0.0
-	for c: Dictionary in get_active_curses():
-		if str(c["id"]) == curse_id:
-			total += float(c["value"])
-	return total
+	_ensure_progression_caches()
+	return float(_curse_value_cache.get(curse_id, 0.0))
 
 
 func reroll_curse_at_tier(tier: int) -> Dictionary:
@@ -1451,6 +1541,7 @@ func reroll_curse_at_tier(tier: int) -> Dictionary:
 	var new_cid: String = str(picked["id"])
 	difficulty_curses[tier] = new_cid
 	curse_reroll_tokens -= 1
+	_invalidate_progression_caches()
 
 	difficulty_changed.emit()
 	stats_changed.emit()
@@ -1479,6 +1570,7 @@ func on_final_boss_defeated() -> void:
 	if difficulty_level >= max_unlocked_difficulty:
 		max_unlocked_difficulty = difficulty_level + 1
 	ensure_curses_for_difficulty(max_unlocked_difficulty)
+	_invalidate_progression_caches()
 	dark_skills_changed.emit()
 	difficulty_changed.emit()
 	stats_changed.emit()
@@ -1504,7 +1596,8 @@ func get_dark_skill_by_id(skill_id: String) -> DarkSkillNodeData:
 
 
 func has_dark_skill(skill_id: String) -> bool:
-	return unlocked_dark_skills.has(skill_id)
+	_ensure_progression_caches()
+	return _unlocked_dark_skill_set.has(skill_id)
 
 
 func are_dark_prerequisites_met(skill_id: String) -> bool:
@@ -1541,6 +1634,7 @@ func unlock_dark_skill(skill_id: String) -> bool:
 	var prev_max_mana: float = get_max_mana()
 	dark_points -= dskill.cost_dark_points
 	unlocked_dark_skills.append(skill_id)
+	_invalidate_progression_caches()
 
 	var new_max_hp: float = get_max_hp()
 	if new_max_hp > prev_max_hp:
@@ -1561,12 +1655,8 @@ func unlock_dark_skill(skill_id: String) -> bool:
 
 
 func get_dark_bonus(effect_type: String) -> float:
-	var total: float = 0.0
-	for skill_id: String in unlocked_dark_skills:
-		var dskill: DarkSkillNodeData = get_dark_skill_by_id(skill_id)
-		if dskill != null and dskill.effect_type == effect_type:
-			total += dskill.effect_value
-	return total
+	_ensure_progression_caches()
+	return float(_dark_bonus_cache.get(effect_type, 0.0))
 
 
 # --- Regular Skills ---
@@ -1578,7 +1668,8 @@ func get_skill_by_id(skill_id: String) -> SkillNodeData:
 
 
 func is_skill_unlocked(skill_id: String) -> bool:
-	return unlocked_skills.has(skill_id)
+	_ensure_progression_caches()
+	return _unlocked_skill_set.has(skill_id)
 
 
 func are_prerequisites_met(skill_id: String) -> bool:
@@ -1615,6 +1706,7 @@ func unlock_skill(skill_id: String) -> bool:
 	var prev_max_mana: float = get_max_mana()
 	skill_points -= skill.cost_skill_points
 	unlocked_skills.append(skill_id)
+	_invalidate_progression_caches()
 
 	var new_max_hp: float = get_max_hp()
 	if new_max_hp > prev_max_hp:
@@ -1633,12 +1725,8 @@ func unlock_skill(skill_id: String) -> bool:
 
 
 func get_skill_bonus(bonus_type: String) -> float:
-	var total: float = 0.0
-	for skill_id: String in unlocked_skills:
-		var skill: SkillNodeData = get_skill_by_id(skill_id)
-		if skill != null and skill.bonus_type == bonus_type:
-			total += skill.bonus_value
-	return total
+	_ensure_progression_caches()
+	return float(_skill_bonus_cache.get(bonus_type, 0.0))
 
 
 # --- Enchanting System (+0 .. +100, or +250 for Alchemist) ---
@@ -1850,7 +1938,7 @@ func try_dark_forge_enchant(slot_type: ItemData.ItemType) -> Dictionary:
 
 
 func get_dark_forge_material_count(item_id: String) -> int:
-	var item: ItemData = load("res://resources/items/%s.tres" % item_id) as ItemData
+	var item: ItemData = get_cached_item("res://resources/items/%s.tres" % item_id)
 	if item == null:
 		return 0
 	return get_item_count_in_inventory(item)
@@ -1888,14 +1976,14 @@ func craft_dark_forge_item(recipe_id: String) -> Dictionary:
 
 	if dark_points < need_dp:
 		return {"success": false, "message": "Недостаточно 🌑 Очков Тьмы (нужно %d, у вас %d)." % [need_dp, dark_points]}
-	var ore_item: ItemData = load("res://resources/items/abyss_ore.tres") as ItemData
-	var page_item: ItemData = load("res://resources/items/ancient_page.tres") as ItemData
+	var ore_item: ItemData = get_cached_item("res://resources/items/abyss_ore.tres")
+	var page_item: ItemData = get_cached_item("res://resources/items/ancient_page.tres")
 	if need_ore > 0 and (ore_item == null or get_item_count_in_inventory(ore_item) < need_ore):
 		return {"success": false, "message": "Недостаточно ⛏️ Руды Бездны (нужно %d)." % need_ore}
 	if need_page > 0 and (page_item == null or get_item_count_in_inventory(page_item) < need_page):
 		return {"success": false, "message": "Недостаточно 📜 Древних листов (нужно %d)." % need_page}
 
-	var result_item: ItemData = load(str(r.get("result_path", ""))) as ItemData
+	var result_item: ItemData = get_cached_item(str(r.get("result_path", "")))
 	if result_item == null:
 		return {"success": false, "message": "Предмет рецепта повреждён."}
 
@@ -2108,7 +2196,7 @@ func spend_mana(amount: float) -> bool:
 	return true
 
 
-func restore_mana(amount: float) -> float:
+func restore_mana(amount: float, emit_signal_immediately: bool = true) -> float:
 	if amount <= 0.0:
 		return 0.0
 	var max_mana: float = get_max_mana()
@@ -2116,7 +2204,11 @@ func restore_mana(amount: float) -> float:
 	current_mana = minf(max_mana, current_mana + amount)
 	var actual: float = current_mana - prev_mana
 	if actual > 0.0:
-		mana_changed.emit(current_mana, max_mana)
+		if emit_signal_immediately or current_mana >= max_mana:
+			_mana_ui_dirty = false
+			mana_changed.emit(current_mana, max_mana)
+		else:
+			_mana_ui_dirty = true
 	return actual
 
 
@@ -2720,10 +2812,9 @@ func set_afk_mode(enabled: bool) -> void:
 		afk_gold_earned = 0.0
 		afk_xp_earned = 0.0
 		_afk_ui_sync_timer = 0.0
-		Engine.max_fps = AFK_FPS_LIMIT
+		Engine.max_fps = NORMAL_FPS_LIMIT
 		DisplayServer.screen_set_keep_on(true)
 	else:
-		RenderingServer.render_loop_enabled = true
 		DisplayServer.screen_set_keep_on(false)
 		Engine.max_fps = NORMAL_FPS_LIMIT
 		save_game()
@@ -2794,12 +2885,12 @@ func roll_mine_ambient_find() -> String:
 		return ""
 	var r: float = randf()
 	if r < 0.44:
-		var ore_item: ItemData = load("res://resources/items/abyss_ore.tres") as ItemData
+		var ore_item: ItemData = get_cached_item("res://resources/items/abyss_ore.tres")
 		if ore_item != null:
 			add_item(ore_item, 1, true)
 			return "⛏️ Найдена жила: +1 Руда Бездны!"
 	elif r < 0.78:
-		var page_item: ItemData = load("res://resources/items/ancient_page.tres") as ItemData
+		var page_item: ItemData = get_cached_item("res://resources/items/ancient_page.tres")
 		if page_item != null:
 			add_item(page_item, 1, true)
 			return "📜 Найден тайник: +1 Древний лист!"
@@ -2852,14 +2943,18 @@ func apply_damage(raw_damage: float) -> float:
 	return reduced
 
 
-func apply_rot_damage(amount: float) -> void:
+func apply_rot_damage(amount: float, emit_signal_immediately: bool = true) -> void:
 	if amount <= 0.0:
 		return
 	current_hp = maxf(0.0, current_hp - amount)
-	hp_changed.emit(current_hp, get_max_hp())
+	if emit_signal_immediately or current_hp <= 0.0:
+		_hp_ui_dirty = false
+		hp_changed.emit(current_hp, get_max_hp())
+	else:
+		_hp_ui_dirty = true
 
 
-func heal(amount: float) -> float:
+func heal(amount: float, emit_signal_immediately: bool = true) -> float:
 	if amount <= 0.0:
 		return 0.0
 	var max_hp: float = get_max_hp()
@@ -2867,7 +2962,11 @@ func heal(amount: float) -> float:
 	current_hp = minf(max_hp, current_hp + amount)
 	var actual: float = current_hp - prev_hp
 	if actual > 0.0:
-		hp_changed.emit(current_hp, max_hp)
+		if emit_signal_immediately or current_hp >= max_hp:
+			_hp_ui_dirty = false
+			hp_changed.emit(current_hp, max_hp)
+		else:
+			_hp_ui_dirty = true
 	return actual
 
 
@@ -3398,7 +3497,7 @@ func roll_rare_seed_drops(enemy: EnemyData) -> void:
 		var raw_chance: float = crop.boss_drop_chance if (is_boss_enemy and crop.boss_drop_chance > 0.0) else crop.base_drop_chance
 		var effective_chance: float = raw_chance if crop.final_boss_only else (raw_chance * mult)
 		if effective_chance > 0.0 and randf() <= effective_chance:
-			var seed_item: ItemData = load(crop.seed_item_path) as ItemData
+			var seed_item: ItemData = get_cached_item(crop.seed_item_path)
 			if seed_item != null:
 				add_item(seed_item, 1, true)
 
@@ -3483,7 +3582,7 @@ func harvest_garden_plot(plot_index: int) -> Dictionary:
 		return {"success": false, "message": "Культура повреждена."}
 
 	var yield_amt: int = randi_range(crop.harvest_min, maxi(crop.harvest_min, crop.harvest_max))
-	var harvest_item: ItemData = load(crop.harvest_item_path) as ItemData
+	var harvest_item: ItemData = get_cached_item(crop.harvest_item_path)
 	if harvest_item != null:
 		add_item(harvest_item, yield_amt, true)
 
@@ -3513,7 +3612,7 @@ func can_instant_grow_plot(plot_index: int) -> bool:
 	for item_id_var: Variant in crop.instant_grow_feed_items.keys():
 		var req_id: String = str(item_id_var)
 		var req_cnt: int = int(crop.instant_grow_feed_items[item_id_var])
-		var req_item: ItemData = load("res://resources/items/%s.tres" % req_id) as ItemData
+		var req_item: ItemData = get_cached_item("res://resources/items/%s.tres" % req_id)
 		if req_item == null or get_item_count_in_inventory(req_item) < req_cnt:
 			return false
 	return true
@@ -3533,7 +3632,7 @@ func feed_growing_crop_for_instant_growth(plot_index: int) -> Dictionary:
 	for item_id_var: Variant in crop.instant_grow_feed_items.keys():
 		var req_id: String = str(item_id_var)
 		var req_cnt: int = int(crop.instant_grow_feed_items[item_id_var])
-		var req_item: ItemData = load("res://resources/items/%s.tres" % req_id) as ItemData
+		var req_item: ItemData = get_cached_item("res://resources/items/%s.tres" % req_id)
 		if req_item == null:
 			return {"success": false, "message": "Не найден ресурс растения %s." % req_id}
 		var owned_cnt: int = get_item_count_in_inventory(req_item)
@@ -3608,7 +3707,7 @@ func harvest_light_garden_plot(plot_index: int) -> Dictionary:
 		return {"success": false, "message": "Растение испорчено."}
 
 	var yield_amt: int = randi_range(crop.harvest_min, maxi(crop.harvest_min, crop.harvest_max))
-	var harvest_item: ItemData = load(crop.harvest_item_path) as ItemData
+	var harvest_item: ItemData = get_cached_item(crop.harvest_item_path)
 	if harvest_item != null:
 		add_item(harvest_item, yield_amt, true)
 
@@ -3713,7 +3812,7 @@ func train_spirit(spirit_key: String) -> Dictionary:
 		return {"success": false, "message": "Неизвестный дух природы."}
 	if not has_hero_class("spirit"):
 		return {"success": false, "message": "Дрессировка духов доступна только классу 🌿 Спирит (Сл.50+)."}
-	var fruit_item: ItemData = load("res://resources/items/spirit_primordial_harvest.tres") as ItemData
+	var fruit_item: ItemData = get_cached_item("res://resources/items/spirit_primordial_harvest.tres")
 	if fruit_item == null or not remove_item(fruit_item, 1):
 		return {"success": false, "message": "Нужен 🌟 Плод первоцвета духов (семя падает с 0.03% шансом ТОЛЬКО с Вечного титана)."}
 
@@ -3869,7 +3968,7 @@ func collect_brewed_potion(slot_index: int) -> Dictionary:
 		return {"success": false, "message": "Зелье ещё не доведено до готовой ступени (нужен минимум Шаг 2)."}
 	var path: String = str(cauldron.get("result_item_path", ""))
 	var cnt: int = maxi(1, int(cauldron.get("result_count", 1)))
-	var potion: ItemData = load(path) as ItemData
+	var potion: ItemData = get_cached_item(path)
 	if potion == null:
 		return {"success": false, "message": "Рецепт зелья повреждён."}
 
@@ -4046,6 +4145,7 @@ func _apply_save_data(save_data: SaveData) -> void:
 	for dskill_id: String in save_data.unlocked_dark_skills:
 		if _dark_skills_by_id.has(dskill_id) and not unlocked_dark_skills.has(dskill_id):
 			unlocked_dark_skills.append(dskill_id)
+	_invalidate_progression_caches()
 
 	if save_data.equipped_ability_ids.size() > 0:
 		equipped_ability_ids = save_data.equipped_ability_ids.duplicate()
@@ -4060,17 +4160,17 @@ func _apply_save_data(save_data: SaveData) -> void:
 			ability_auto_cast[i] = false
 
 	equipped_weapon = null
-	if not is_equipment_disabled() and not save_data.equipped_weapon_path.is_empty() and ResourceLoader.exists(save_data.equipped_weapon_path):
-		equipped_weapon = load(save_data.equipped_weapon_path) as ItemData
+	if not is_equipment_disabled() and not save_data.equipped_weapon_path.is_empty():
+		equipped_weapon = get_cached_item(save_data.equipped_weapon_path)
 
 	equipped_armor = null
-	if not is_equipment_disabled() and not save_data.equipped_armor_path.is_empty() and ResourceLoader.exists(save_data.equipped_armor_path):
-		equipped_armor = load(save_data.equipped_armor_path) as ItemData
+	if not is_equipment_disabled() and not save_data.equipped_armor_path.is_empty():
+		equipped_armor = get_cached_item(save_data.equipped_armor_path)
 
 	equipped_ammo = null
 	equipped_ammo_count = 0
-	if not is_equipment_disabled() and not save_data.equipped_ammo_path.is_empty() and ResourceLoader.exists(save_data.equipped_ammo_path):
-		equipped_ammo = load(save_data.equipped_ammo_path) as ItemData
+	if not is_equipment_disabled() and not save_data.equipped_ammo_path.is_empty():
+		equipped_ammo = get_cached_item(save_data.equipped_ammo_path)
 		equipped_ammo_count = maxi(0, save_data.equipped_ammo_count)
 		if equipped_ammo != null:
 			if equipped_ammo.is_dark_forged:
@@ -4082,10 +4182,9 @@ func _apply_save_data(save_data: SaveData) -> void:
 	var item_count: int = mini(save_data.inventory_paths.size(), save_data.inventory_counts.size())
 	for i: int in range(item_count):
 		var path: String = save_data.inventory_paths[i]
-		if ResourceLoader.exists(path):
-			var item: ItemData = load(path) as ItemData
-			if item != null:
-				add_item(item, save_data.inventory_counts[i], false)
+		var item: ItemData = get_cached_item(path)
+		if item != null:
+			add_item(item, save_data.inventory_counts[i], false)
 
 	garden_plots.clear()
 	for gp: Dictionary in save_data.garden_plots:
@@ -4329,6 +4428,7 @@ func export_save_to_txt_file(file_path: String) -> Dictionary:
 
 
 func import_save_from_text(raw_text: String) -> Dictionary:
+	_wait_for_save_thread()
 	var trimmed: String = raw_text.strip_edges()
 	if trimmed.is_empty():
 		return {"success": false, "message": "Файл или текст сохранения пуст."}
@@ -4342,6 +4442,7 @@ func import_save_from_text(raw_text: String) -> Dictionary:
 	var save_data: SaveData = _dict_to_save_data(data_dict)
 	_apply_save_data(save_data)
 	ensure_curses_for_difficulty(difficulty_level)
+	_invalidate_progression_caches()
 	save_game(true)
 	_emit_all_refresh_signals()
 	game_reset.emit()
@@ -4361,24 +4462,26 @@ func import_save_from_txt_file(file_path: String) -> Dictionary:
 	return import_save_from_text(content)
 
 
-func save_game(force_immediate: bool = false) -> void:
-	if not force_immediate and _save_throttle_timer > 0.0:
-		_save_pending = true
-		return
-	_save_pending = false
-	_save_throttle_timer = 0.35
-	var save_data: SaveData = _build_save_data()
+func _wait_for_save_thread() -> void:
+	if _save_thread != null and _save_thread.is_started():
+		_save_thread.wait_to_finish()
+	_save_thread = null
+	_save_in_progress = false
 
+
+func _write_save_data_to_disk(save_data: SaveData) -> bool:
+	if save_data == null:
+		return false
 	var err: Error = ResourceSaver.save(save_data, SAVE_TEMP_PATH)
 	if err != OK or not FileAccess.file_exists(SAVE_TEMP_PATH):
-		return
+		return false
 	var tmp_file: FileAccess = FileAccess.open(SAVE_TEMP_PATH, FileAccess.READ)
 	if tmp_file == null:
-		return
+		return false
 	var tmp_len: int = tmp_file.get_length()
 	tmp_file.close()
 	if tmp_len <= 0:
-		return
+		return false
 
 	if FileAccess.file_exists(SAVE_PATH):
 		if FileAccess.file_exists(SAVE_BACKUP_PATH):
@@ -4388,11 +4491,56 @@ func save_game(force_immediate: bool = false) -> void:
 	if FileAccess.file_exists(SAVE_PATH):
 		DirAccess.remove_absolute(SAVE_PATH)
 	var rename_err: Error = DirAccess.rename_absolute(SAVE_TEMP_PATH, SAVE_PATH)
-	if rename_err == OK:
+	return rename_err == OK
+
+
+func _save_worker_entry(save_data: SaveData) -> void:
+	var ok: bool = _write_save_data_to_disk(save_data)
+	call_deferred("_on_async_save_finished", ok)
+
+
+func _on_async_save_finished(ok: bool) -> void:
+	_wait_for_save_thread()
+	if ok:
 		save_status_changed.emit("Прогресс сохранён")
+	if _save_queued_after_worker:
+		_save_queued_after_worker = false
+		save_game(false)
+
+
+func save_game(force_immediate: bool = false) -> void:
+	if force_immediate:
+		_wait_for_save_thread()
+		_save_pending = false
+		_save_queued_after_worker = false
+		_save_throttle_timer = SAVE_THROTTLE_INTERVAL
+		var sync_data: SaveData = _build_save_data()
+		if _write_save_data_to_disk(sync_data):
+			save_status_changed.emit("Прогресс сохранён")
+		return
+
+	if _save_throttle_timer > 0.0:
+		_save_pending = true
+		return
+	if _save_in_progress:
+		_save_queued_after_worker = true
+		return
+
+	_save_pending = false
+	_save_throttle_timer = SAVE_THROTTLE_INTERVAL
+	var async_data: SaveData = _build_save_data()
+	_save_thread = Thread.new()
+	var start_err: Error = _save_thread.start(Callable(self, "_save_worker_entry").bind(async_data))
+	if start_err == OK:
+		_save_in_progress = true
+	else:
+		_save_thread = null
+		if _write_save_data_to_disk(async_data):
+			save_status_changed.emit("Прогресс сохранён")
 
 
 func load_game() -> bool:
+	_wait_for_save_thread()
 	var save_data: SaveData = null
 	var loaded_from_backup: bool = false
 	for candidate_path: String in [SAVE_PATH, SAVE_BACKUP_PATH, SAVE_TEMP_PATH]:

@@ -678,6 +678,92 @@ test('GameManager and StatsUI support .txt save export/import and clipboard tran
   assert.ok(statsGd.includes('export_save_to_txt_file') && statsGd.includes('import_save_from_txt_file'), 'StatsUI.gd must wire .txt export and import');
 });
 
+test('OLED 2 FPS mode and interface blackout button are completely removed from AFK mode', () => {
+  const forbiddenPatterns = [
+    /\bAFK_FPS_LIMIT\b/,
+    /render_loop_enabled/,
+    /BlackoutButton/,
+    /WakeHintLabel/,
+    /StyleBoxFlat_blackout_btn/,
+    /Погасить интерфейс/,
+    /Карманный AFK/,
+    /\bOLED\b/,
+    /\bAMOLED\b/,
+    /\b2 FPS\b/,
+  ];
+
+  const activeFiles = [
+    ...collectFilesRecursive(path.join(GODOT_ROOT, 'scripts'), '.gd'),
+    ...collectFilesRecursive(path.join(GODOT_ROOT, 'scenes'), '.tscn'),
+    path.join(GODOT_ROOT, 'CLAUDE.md'),
+    path.join(GODOT_ROOT, 'ROADMAP.md'),
+  ];
+
+  for (const filePath of activeFiles) {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    for (const pat of forbiddenPatterns) {
+      assert.ok(
+        !pat.test(content),
+        `Forbidden leftover AFK OLED/2fps reference ${pat} found in ${path.relative(GODOT_ROOT, filePath)}`,
+      );
+    }
+  }
+
+  const afkScene = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/AfkOverlayUI.tscn'), 'utf-8');
+  assert.ok(afkScene.includes('🌙 AFK-режим'), 'AfkOverlayUI.tscn should use clean AFK-режим title');
+  assert.ok(afkScene.includes('ExitAfkButton'), 'AfkOverlayUI.tscn must retain ExitAfkButton');
+});
+
+test('Android freeze optimizations (worker Thread save, O(1) caches, throttled signals, Label pools, coalesced UI) are wired', () => {
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  for (const sym of ['const SAVE_THROTTLE_INTERVAL: float = 120.0', '_save_thread', '_wait_for_save_thread', '_save_worker_entry', 'func get_cached_item(', '_ensure_progression_caches', 'emit_signal_immediately']) {
+    assert.ok(gmContent.includes(sym), `GameManager.gd must implement ${sym}`);
+  }
+
+  const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  assert.ok(combatContent.includes('func _emit_attack_progress('), 'CombatSystem must deduplicate idle attack progress emissions');
+  assert.ok(combatContent.includes('_enemy_hud_sync_timer'), 'CombatSystem must throttle enemy continuous HUD updates');
+
+  const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
+  for (const sym of ['_player_popup_pool', '_enemy_popup_pool', '_proj_pool', '_enemy_avatar_style', '_request_hud_refresh']) {
+    assert.ok(arenaGd.includes(sym), `BattleArenaUI.gd must implement ${sym}`);
+  }
+
+  for (const treeRel of ['scripts/SkillTreeUI.gd', 'scripts/ui/DarkSkillTreeUI.gd']) {
+    const treeGd = fs.readFileSync(path.join(GODOT_ROOT, treeRel), 'utf-8');
+    assert.ok(treeGd.includes('_style_presets'), `${treeRel} must reuse shared StyleBoxFlat presets`);
+    assert.ok(treeGd.includes('_build_graph_once'), `${treeRel} must build graph nodes once instead of rebuilding`);
+    assert.ok(treeGd.includes('is_visible_in_tree()'), `${treeRel} must gate updates when hidden`);
+  }
+
+  const classGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/ClassUI.gd'), 'utf-8');
+  assert.ok(classGd.includes('_build_cards_once') && classGd.includes('is_visible_in_tree()'), 'ClassUI.gd must update cards in place when visible');
+
+  for (const idleProcessRel of ['scripts/ui/StatsUI.gd', 'scripts/ui/DifficultyUI.gd']) {
+    const idleGd = fs.readFileSync(path.join(GODOT_ROOT, idleProcessRel), 'utf-8');
+    assert.ok(idleGd.includes('set_process(false)'), `${idleProcessRel} must disable _process when confirmation timers are inactive`);
+  }
+
+  for (const cachedRel of ['scripts/ui/PetUI.gd', 'scripts/ui/SanctuaryUI.gd']) {
+    const cachedGd = fs.readFileSync(path.join(GODOT_ROOT, cachedRel), 'utf-8');
+    assert.ok(cachedGd.includes('GameManager.get_cached_item('), `${cachedRel} must use GameManager.get_cached_item instead of raw load()`);
+  }
+
+  for (const coalescedRel of [
+    'scripts/ui/RightSidebarUI.gd',
+    'scripts/ui/ShopUI.gd',
+    'scripts/ui/InventoryUI.gd',
+    'scripts/ui/EnchantUI.gd',
+    'scripts/ui/DarkForgeUI.gd',
+    'scripts/ui/PetUI.gd',
+    'scripts/ui/SanctuaryUI.gd',
+  ]) {
+    const cGd = fs.readFileSync(path.join(GODOT_ROOT, coalescedRel), 'utf-8');
+    assert.ok(cGd.includes('call_deferred('), `${coalescedRel} must coalesce signal bursts with call_deferred`);
+  }
+});
+
+
 
 
 
