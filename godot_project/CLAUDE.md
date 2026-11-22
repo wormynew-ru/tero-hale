@@ -51,7 +51,7 @@ GameManager (Autoload: res://scripts/GameManager.gd, PROCESS_MODE_ALWAYS)
  ├── Считает итоговые статы, DPS, шанс крита, ману, регенерацию маны и множители наград
  ├── Управляет торговлей (buy_item / sell_item), быстрым лечением и авто-зельем (<35% HP)
  ├── Управляет карманным AFK-режимом (Engine.max_fps = 2/60, DisplayServer.screen_set_keep_on, сброс render_loop_enabled, счётчики сессии) и сбросом прогресса
- ├── Автосохранение каждые 60 сек + сохранение при потере фокуса/выходе в user://save.tres
+ ├── Автосохранение каждые 8 минут (480 сек) + атомарная запись через user://save.tmp.tres с бэкапом user://save.bak.tres и сохранением при потере фокуса/паузе/выходе в user://save.tres
  └── Излучает сигналы для обновления UI
 
 Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой оркестратор)

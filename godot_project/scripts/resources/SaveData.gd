@@ -1,6 +1,7 @@
 class_name SaveData
 extends Resource
 
+@export var save_version: int = 1
 @export var level: int = 1
 @export var current_xp: float = 0.0
 @export var gold: float = 20.0

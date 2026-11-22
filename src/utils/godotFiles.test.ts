@@ -650,6 +650,34 @@ test('Mage staffs & 2 tome types, Dark Forge (25%->20%->min 15% + eternal items)
   assert.ok(combatContent.includes('try_auto_use_all_potions'), 'CombatSystem must invoke configurable auto-potions');
 });
 
+test('GameManager runs 8-minute autosave (480s) with atomic temp/backup saves and SaveData schema versioning', () => {
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const saveContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
+
+  assert.ok(gmContent.includes('const AUTOSAVE_INTERVAL: float = 480.0'), 'AUTOSAVE_INTERVAL must be 480.0 seconds (8 minutes)');
+  assert.ok(gmContent.includes('const SAVE_BACKUP_PATH: String = "user://save.bak.tres"'), 'GameManager must maintain user://save.bak.tres backup');
+  assert.ok(gmContent.includes('const SAVE_TEMP_PATH: String = "user://save.tmp.tres"'), 'GameManager must write atomically via user://save.tmp.tres');
+  assert.ok(gmContent.includes('ResourceLoader.CACHE_MODE_IGNORE'), 'load_game must bypass stale resource cache');
+  assert.ok(saveContent.includes('@export var save_version: int = 1'), 'SaveData must include save_version with safe default');
+});
+
+test('GameManager and StatsUI support .txt save export/import and clipboard transfer', () => {
+  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const statsTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/StatsUI.tscn'), 'utf-8');
+  const statsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
+
+  for (const fnName of ['export_save_to_text', 'export_save_to_txt_file', 'import_save_from_text', 'import_save_from_txt_file']) {
+    assert.ok(gmContent.includes(`func ${fnName}(`), `GameManager must define ${fnName}`);
+  }
+  assert.ok(gmContent.includes('HERO_TALE_SAVE_TXT'), 'Exported .txt save must include HERO_TALE_SAVE_TXT format marker');
+
+  for (const nodeName of ['ExportTxtButton', 'ImportTxtButton', 'CopyTxtButton', 'PasteTxtButton', 'ExportTxtDialog', 'ImportTxtDialog']) {
+    assert.ok(statsTscn.includes(nodeName), `StatsUI.tscn must include ${nodeName}`);
+  }
+  assert.ok(statsGd.includes('use_native_dialog = true'), 'StatsUI.gd must enable native file picker for Android/PC');
+  assert.ok(statsGd.includes('export_save_to_txt_file') && statsGd.includes('import_save_from_txt_file'), 'StatsUI.gd must wire .txt export and import');
+});
+
 
 
 

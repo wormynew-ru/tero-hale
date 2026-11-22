@@ -28,9 +28,17 @@ signal reset_triggered
 @onready var end_value_label: Label = %EndValueLabel
 @onready var end_sp_button: Button = %EndSPButton
 @onready var end_gold_button: Button = %EndGoldButton
+@onready var export_txt_button: Button = %ExportTxtButton
+@onready var import_txt_button: Button = %ImportTxtButton
+@onready var copy_txt_button: Button = %CopyTxtButton
+@onready var paste_txt_button: Button = %PasteTxtButton
+@onready var save_transfer_status_label: Label = %SaveTransferStatusLabel
+@onready var export_txt_dialog: FileDialog = %ExportTxtDialog
+@onready var import_txt_dialog: FileDialog = %ImportTxtDialog
 @onready var reset_button: Button = %ResetButton
 
 var _reset_confirm_deadline_ms: int = 0
+var _paste_confirm_deadline_ms: int = 0
 var _dirty: bool = true
 
 
@@ -64,6 +72,23 @@ func _ready() -> void:
 	HoldAutoClicker.attach(agi_gold_button, 50.0)
 	HoldAutoClicker.attach(end_gold_button, 50.0)
 
+	export_txt_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	export_txt_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	export_txt_dialog.filters = PackedStringArray(["*.txt ; Текстовое сохранение (.txt)"])
+	export_txt_dialog.use_native_dialog = true
+	export_txt_dialog.file_selected.connect(_on_export_file_selected)
+
+	import_txt_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	import_txt_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	import_txt_dialog.filters = PackedStringArray(["*.txt ; Текстовое сохранение (.txt)"])
+	import_txt_dialog.use_native_dialog = true
+	import_txt_dialog.file_selected.connect(_on_import_file_selected)
+
+	export_txt_button.pressed.connect(_on_export_txt_pressed)
+	import_txt_button.pressed.connect(_on_import_txt_pressed)
+	copy_txt_button.pressed.connect(_on_copy_txt_pressed)
+	paste_txt_button.pressed.connect(_on_paste_txt_pressed)
+
 	reset_button.pressed.connect(_on_reset_button_pressed)
 	_refresh()
 
@@ -81,9 +106,13 @@ func _on_state_updated() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _reset_confirm_deadline_ms > 0 and Time.get_ticks_msec() > _reset_confirm_deadline_ms:
+	var now_ms: int = Time.get_ticks_msec()
+	if _reset_confirm_deadline_ms > 0 and now_ms > _reset_confirm_deadline_ms:
 		_reset_confirm_deadline_ms = 0
 		reset_button.text = "🔄 Сброс"
+	if _paste_confirm_deadline_ms > 0 and now_ms > _paste_confirm_deadline_ms:
+		_paste_confirm_deadline_ms = 0
+		paste_txt_button.text = "📋 Вставить из буфера"
 
 
 func _refresh() -> void:
@@ -206,6 +235,54 @@ func _refresh_masteries() -> void:
 	magic_xp_bar.max_value = g_req
 	magic_xp_bar.value = g_xp
 	magic_xp_label.text = "%.0f / %.0f XP" % [g_xp, g_req]
+
+
+func _set_transfer_status(message: String, is_success: bool) -> void:
+	save_transfer_status_label.visible = not message.is_empty()
+	save_transfer_status_label.text = message
+	save_transfer_status_label.add_theme_color_override(
+		"font_color",
+		Color(0.54, 0.92, 0.66, 1) if is_success else Color(0.96, 0.45, 0.45, 1)
+	)
+
+
+func _on_export_txt_pressed() -> void:
+	var stamp: String = Time.get_date_string_from_system()
+	export_txt_dialog.current_file = "hero_tale_save_%s.txt" % stamp
+	export_txt_dialog.popup_centered_ratio(0.75)
+
+
+func _on_import_txt_pressed() -> void:
+	import_txt_dialog.popup_centered_ratio(0.75)
+
+
+func _on_export_file_selected(file_path: String) -> void:
+	var res: Dictionary = GameManager.export_save_to_txt_file(file_path)
+	_set_transfer_status(str(res.get("message", "")), bool(res.get("success", false)))
+
+
+func _on_import_file_selected(file_path: String) -> void:
+	var res: Dictionary = GameManager.import_save_from_txt_file(file_path)
+	_set_transfer_status(str(res.get("message", "")), bool(res.get("success", false)))
+
+
+func _on_copy_txt_pressed() -> void:
+	var txt: String = GameManager.export_save_to_text()
+	DisplayServer.clipboard_set(txt)
+	_set_transfer_status("✅ Текст сохранения скопирован в буфер обмена (%d симв.)." % txt.length(), true)
+
+
+func _on_paste_txt_pressed() -> void:
+	var now_ms: int = Time.get_ticks_msec()
+	if _paste_confirm_deadline_ms == 0 or now_ms > _paste_confirm_deadline_ms:
+		_paste_confirm_deadline_ms = now_ms + 3000
+		paste_txt_button.text = "⚠️ Заменить текущий?"
+		return
+	_paste_confirm_deadline_ms = 0
+	paste_txt_button.text = "📋 Вставить из буфера"
+	var clip: String = DisplayServer.clipboard_get()
+	var res: Dictionary = GameManager.import_save_from_text(clip)
+	_set_transfer_status(str(res.get("message", "")), bool(res.get("success", false)))
 
 
 func _on_reset_button_pressed() -> void:

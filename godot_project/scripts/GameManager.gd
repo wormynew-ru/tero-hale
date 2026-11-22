@@ -30,10 +30,13 @@ signal mine_run_failed(depth_reached: int)
 signal game_reset
 
 const SAVE_PATH: String = "user://save.tres"
+const SAVE_BACKUP_PATH: String = "user://save.bak.tres"
+const SAVE_TEMP_PATH: String = "user://save.tmp.tres"
+const SAVE_SCHEMA_VERSION: int = 1
 const BASE_DAMAGE: float = 6.0
 const BASE_CRIT_CHANCE: float = 0.05
 const CRIT_MULTIPLIER: float = 1.75
-const AUTOSAVE_INTERVAL: float = 60.0
+const AUTOSAVE_INTERVAL: float = 480.0
 const AFK_FPS_LIMIT: int = 2
 const NORMAL_FPS_LIMIT: int = 60
 const AUTO_POTION_HP_THRESHOLD: float = 0.35
@@ -984,8 +987,9 @@ func start_new_run(target_difficulty: int) -> void:
 
 
 func reset_progress() -> void:
-	if FileAccess.file_exists(SAVE_PATH):
-		DirAccess.remove_absolute(SAVE_PATH)
+	for path: String in [SAVE_PATH, SAVE_BACKUP_PATH, SAVE_TEMP_PATH]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(path)
 	set_afk_mode(false)
 	_init_full_reset_state()
 	save_game(true)
@@ -3887,13 +3891,9 @@ func clear_brewing_slot(slot_index: int) -> void:
 	save_game()
 
 
-func save_game(force_immediate: bool = false) -> void:
-	if not force_immediate and _save_throttle_timer > 0.0:
-		_save_pending = true
-		return
-	_save_pending = false
-	_save_throttle_timer = 0.35
+func _build_save_data() -> SaveData:
 	var save_data: SaveData = SaveData.new()
+	save_data.save_version = SAVE_SCHEMA_VERSION
 	save_data.level = level
 	save_data.current_xp = current_xp
 	save_data.gold = gold
@@ -3961,18 +3961,10 @@ func save_game(force_immediate: bool = false) -> void:
 			save_data.inventory_paths.append(item.resource_path)
 			save_data.inventory_counts.append(int(entry["count"]))
 
-	var err: Error = ResourceSaver.save(save_data, SAVE_PATH)
-	if err == OK:
-		save_status_changed.emit("Прогресс сохранён")
+	return save_data
 
 
-func load_game() -> bool:
-	if not ResourceLoader.exists(SAVE_PATH):
-		return false
-	var save_data: SaveData = ResourceLoader.load(SAVE_PATH) as SaveData
-	if save_data == null:
-		return false
-
+func _apply_save_data(save_data: SaveData) -> void:
 	level = maxi(1, save_data.level)
 	current_xp = maxf(0.0, float(save_data.current_xp))
 	gold = maxf(0.0, float(save_data.gold))
@@ -4118,6 +4110,10 @@ func load_game() -> bool:
 				spirit_training_levels[sk] = maxi(0, int(save_data.spirit_training_levels[sk]))
 	_ensure_sanctuary_slots()
 
+	active_buffs.clear()
+	for i: int in range(MAX_ACTIVE_ABILITY_SLOTS):
+		ability_cooldowns[i] = 0.0
+
 	current_hp = clampf(save_data.current_hp, 0.0, get_max_hp())
 	current_mana = clampf(save_data.current_mana, 0.0, get_max_mana())
 	current_location = locations[0] if not locations.is_empty() else null
@@ -4125,5 +4121,294 @@ func load_game() -> bool:
 		if loc.id == save_data.current_location_id and is_location_unlocked(loc):
 			current_location = loc
 			break
+
+
+func _save_data_to_dict(save_data: SaveData) -> Dictionary:
+	return {
+		"save_version": save_data.save_version,
+		"level": save_data.level,
+		"current_xp": save_data.current_xp,
+		"gold": save_data.gold,
+		"skill_points": save_data.skill_points,
+		"enemies_defeated": save_data.enemies_defeated,
+		"kills_in_run": save_data.kills_in_run,
+		"base_strength": save_data.base_strength,
+		"base_agility": save_data.base_agility,
+		"base_endurance": save_data.base_endurance,
+		"current_hp": save_data.current_hp,
+		"current_mana": save_data.current_mana,
+		"melee_level": save_data.melee_level,
+		"melee_xp": save_data.melee_xp,
+		"ranged_level": save_data.ranged_level,
+		"ranged_xp": save_data.ranged_xp,
+		"magic_level": save_data.magic_level,
+		"magic_xp": save_data.magic_xp,
+		"current_location_id": save_data.current_location_id,
+		"equipped_weapon_path": save_data.equipped_weapon_path,
+		"equipped_armor_path": save_data.equipped_armor_path,
+		"equipped_ammo_path": save_data.equipped_ammo_path,
+		"equipped_ammo_count": save_data.equipped_ammo_count,
+		"inventory_paths": save_data.inventory_paths.duplicate(),
+		"inventory_counts": save_data.inventory_counts.duplicate(),
+		"unlocked_skills": save_data.unlocked_skills.duplicate(),
+		"equipped_ability_ids": save_data.equipped_ability_ids.duplicate(),
+		"ability_auto_cast": save_data.ability_auto_cast.duplicate(),
+		"auto_potion_enabled": save_data.auto_potion_enabled,
+		"auto_hp_threshold_pct": save_data.auto_hp_threshold_pct,
+		"auto_hp_condition": save_data.auto_hp_condition,
+		"auto_mana_enabled": save_data.auto_mana_enabled,
+		"auto_mana_threshold_pct": save_data.auto_mana_threshold_pct,
+		"auto_mana_condition": save_data.auto_mana_condition,
+		"auto_buff_enabled": save_data.auto_buff_enabled,
+		"auto_buff_condition": save_data.auto_buff_condition,
+		"auto_buff_whitelist": save_data.auto_buff_whitelist.duplicate(),
+		"weapon_enchant_level": save_data.weapon_enchant_level,
+		"armor_enchant_level": save_data.armor_enchant_level,
+		"dark_weapon_enchant_level": save_data.dark_weapon_enchant_level,
+		"dark_armor_enchant_level": save_data.dark_armor_enchant_level,
+		"mine_locked_this_run": save_data.mine_locked_this_run,
+		"mine_depth": save_data.mine_depth,
+		"difficulty_level": save_data.difficulty_level,
+		"max_unlocked_difficulty": save_data.max_unlocked_difficulty,
+		"boss_defeated_this_run": save_data.boss_defeated_this_run,
+		"dark_points": save_data.dark_points,
+		"dark_points_claimed_difficulties": save_data.dark_points_claimed_difficulties.duplicate(),
+		"unlocked_dark_skills": save_data.unlocked_dark_skills.duplicate(),
+		"difficulty_curses": save_data.difficulty_curses.duplicate(true),
+		"total_runs_completed": save_data.total_runs_completed,
+		"selected_class_id": save_data.selected_class_id,
+		"curse_reroll_tokens": save_data.curse_reroll_tokens,
+		"reroll_boss_kills_in_run": save_data.reroll_boss_kills_in_run,
+		"owned_pet_ids": save_data.owned_pet_ids.duplicate(),
+		"equipped_pet_id": save_data.equipped_pet_id,
+		"garden_plots": save_data.garden_plots.duplicate(true),
+		"light_garden_plots": save_data.light_garden_plots.duplicate(true),
+		"brewing_slots": save_data.brewing_slots.duplicate(true),
+		"alchemist_next_mistake_safe": save_data.alchemist_next_mistake_safe,
+		"pet_training_levels": save_data.pet_training_levels.duplicate(true),
+		"spirit_training_levels": save_data.spirit_training_levels.duplicate(true),
+	}
+
+
+func _dict_to_save_data(data: Dictionary) -> SaveData:
+	var save_data: SaveData = SaveData.new()
+	save_data.save_version = int(data.get("save_version", 1))
+	save_data.level = int(data.get("level", 1))
+	save_data.current_xp = float(data.get("current_xp", 0.0))
+	save_data.gold = float(data.get("gold", 20.0))
+	save_data.skill_points = int(data.get("skill_points", 0))
+	save_data.enemies_defeated = int(data.get("enemies_defeated", 0))
+	save_data.kills_in_run = int(data.get("kills_in_run", 0))
+	save_data.base_strength = int(data.get("base_strength", 5))
+	save_data.base_agility = int(data.get("base_agility", 5))
+	save_data.base_endurance = int(data.get("base_endurance", 5))
+	save_data.current_hp = float(data.get("current_hp", 175.0))
+	save_data.current_mana = float(data.get("current_mana", 55.0))
+	save_data.melee_level = int(data.get("melee_level", 1))
+	save_data.melee_xp = float(data.get("melee_xp", 0.0))
+	save_data.ranged_level = int(data.get("ranged_level", 1))
+	save_data.ranged_xp = float(data.get("ranged_xp", 0.0))
+	save_data.magic_level = int(data.get("magic_level", 1))
+	save_data.magic_xp = float(data.get("magic_xp", 0.0))
+	save_data.current_location_id = str(data.get("current_location_id", "quiet_glade"))
+	save_data.equipped_weapon_path = str(data.get("equipped_weapon_path", ""))
+	save_data.equipped_armor_path = str(data.get("equipped_armor_path", ""))
+	save_data.equipped_ammo_path = str(data.get("equipped_ammo_path", ""))
+	save_data.equipped_ammo_count = int(data.get("equipped_ammo_count", 0))
+
+	if data.get("inventory_paths") is Array:
+		for p: Variant in data["inventory_paths"]:
+			save_data.inventory_paths.append(str(p))
+	if data.get("inventory_counts") is Array:
+		for c: Variant in data["inventory_counts"]:
+			save_data.inventory_counts.append(int(c))
+	if data.get("unlocked_skills") is Array:
+		for s: Variant in data["unlocked_skills"]:
+			save_data.unlocked_skills.append(str(s))
+	if data.get("equipped_ability_ids") is Array:
+		save_data.equipped_ability_ids.clear()
+		for a: Variant in data["equipped_ability_ids"]:
+			save_data.equipped_ability_ids.append(str(a))
+	if data.get("ability_auto_cast") is Array:
+		save_data.ability_auto_cast.clear()
+		for ac: Variant in data["ability_auto_cast"]:
+			save_data.ability_auto_cast.append(bool(ac))
+
+	save_data.auto_potion_enabled = bool(data.get("auto_potion_enabled", false))
+	save_data.auto_hp_threshold_pct = int(data.get("auto_hp_threshold_pct", 35))
+	save_data.auto_hp_condition = str(data.get("auto_hp_condition", "combat"))
+	save_data.auto_mana_enabled = bool(data.get("auto_mana_enabled", false))
+	save_data.auto_mana_threshold_pct = int(data.get("auto_mana_threshold_pct", 30))
+	save_data.auto_mana_condition = str(data.get("auto_mana_condition", "combat"))
+	save_data.auto_buff_enabled = bool(data.get("auto_buff_enabled", false))
+	save_data.auto_buff_condition = str(data.get("auto_buff_condition", "on_expire_combat"))
+	if data.get("auto_buff_whitelist") is Array:
+		for bw: Variant in data["auto_buff_whitelist"]:
+			save_data.auto_buff_whitelist.append(str(bw))
+
+	save_data.weapon_enchant_level = int(data.get("weapon_enchant_level", 0))
+	save_data.armor_enchant_level = int(data.get("armor_enchant_level", 0))
+	save_data.dark_weapon_enchant_level = int(data.get("dark_weapon_enchant_level", 0))
+	save_data.dark_armor_enchant_level = int(data.get("dark_armor_enchant_level", 0))
+	save_data.mine_locked_this_run = bool(data.get("mine_locked_this_run", false))
+	save_data.mine_depth = int(data.get("mine_depth", 0))
+
+	save_data.difficulty_level = int(data.get("difficulty_level", 1))
+	save_data.max_unlocked_difficulty = int(data.get("max_unlocked_difficulty", 1))
+	save_data.boss_defeated_this_run = bool(data.get("boss_defeated_this_run", false))
+	save_data.dark_points = int(data.get("dark_points", 0))
+	if data.get("dark_points_claimed_difficulties") is Array:
+		for d: Variant in data["dark_points_claimed_difficulties"]:
+			save_data.dark_points_claimed_difficulties.append(int(d))
+	if data.get("unlocked_dark_skills") is Array:
+		for ds: Variant in data["unlocked_dark_skills"]:
+			save_data.unlocked_dark_skills.append(str(ds))
+	if data.get("difficulty_curses") is Dictionary:
+		save_data.difficulty_curses = (data["difficulty_curses"] as Dictionary).duplicate(true)
+	save_data.total_runs_completed = int(data.get("total_runs_completed", 0))
+	save_data.selected_class_id = str(data.get("selected_class_id", "wanderer"))
+	save_data.curse_reroll_tokens = int(data.get("curse_reroll_tokens", 0))
+	save_data.reroll_boss_kills_in_run = int(data.get("reroll_boss_kills_in_run", 0))
+	if data.get("owned_pet_ids") is Array:
+		for p: Variant in data["owned_pet_ids"]:
+			save_data.owned_pet_ids.append(str(p))
+	save_data.equipped_pet_id = str(data.get("equipped_pet_id", ""))
+
+	if data.get("garden_plots") is Array:
+		for gp: Variant in data["garden_plots"]:
+			if gp is Dictionary:
+				save_data.garden_plots.append((gp as Dictionary).duplicate(true))
+	if data.get("light_garden_plots") is Array:
+		for lgp: Variant in data["light_garden_plots"]:
+			if lgp is Dictionary:
+				save_data.light_garden_plots.append((lgp as Dictionary).duplicate(true))
+	if data.get("brewing_slots") is Array:
+		for bs: Variant in data["brewing_slots"]:
+			if bs is Dictionary:
+				save_data.brewing_slots.append((bs as Dictionary).duplicate(true))
+	save_data.alchemist_next_mistake_safe = bool(data.get("alchemist_next_mistake_safe", false))
+	if data.get("pet_training_levels") is Dictionary:
+		save_data.pet_training_levels = (data["pet_training_levels"] as Dictionary).duplicate(true)
+	if data.get("spirit_training_levels") is Dictionary:
+		save_data.spirit_training_levels = (data["spirit_training_levels"] as Dictionary).duplicate(true)
+
+	return save_data
+
+
+func export_save_to_text() -> String:
+	var save_data: SaveData = _build_save_data()
+	var payload: Dictionary = {
+		"format": "HERO_TALE_SAVE_TXT",
+		"save_version": SAVE_SCHEMA_VERSION,
+		"exported_at": Time.get_datetime_string_from_system(),
+		"summary": {
+			"level": level,
+			"difficulty": difficulty_level,
+			"max_difficulty": max_unlocked_difficulty,
+			"dark_points": dark_points,
+			"class_id": selected_class_id,
+		},
+		"data": _save_data_to_dict(save_data),
+	}
+	return JSON.stringify(payload, "\t")
+
+
+func export_save_to_txt_file(file_path: String) -> Dictionary:
+	if file_path.is_empty():
+		return {"success": false, "message": "Путь для сохранения не выбран."}
+	var content: String = export_save_to_text()
+	var file: FileAccess = FileAccess.open(file_path, FileAccess.WRITE)
+	if file == null:
+		var err_code: Error = FileAccess.get_open_error()
+		return {"success": false, "message": "Не удалось создать файл (код %d)." % err_code}
+	file.store_string(content)
+	file.flush()
+	file.close()
+	save_status_changed.emit("Экспортировано в .txt")
+	return {"success": true, "message": "✅ Сохранение экспортировано: %s" % file_path}
+
+
+func import_save_from_text(raw_text: String) -> Dictionary:
+	var trimmed: String = raw_text.strip_edges()
+	if trimmed.is_empty():
+		return {"success": false, "message": "Файл или текст сохранения пуст."}
+	var parsed: Variant = JSON.parse_string(trimmed)
+	if not (parsed is Dictionary):
+		return {"success": false, "message": "Неверный формат .txt сохранения (ожидался JSON)."}
+	var root: Dictionary = parsed as Dictionary
+	if str(root.get("format", "")) != "HERO_TALE_SAVE_TXT" or not (root.get("data") is Dictionary):
+		return {"success": false, "message": "Этот .txt файл не является сохранением Hero Tale Idle RPG."}
+	var data_dict: Dictionary = root["data"] as Dictionary
+	var save_data: SaveData = _dict_to_save_data(data_dict)
+	_apply_save_data(save_data)
+	ensure_curses_for_difficulty(difficulty_level)
+	save_game(true)
+	_emit_all_refresh_signals()
+	game_reset.emit()
+	save_status_changed.emit("Импортировано из .txt")
+	return {"success": true, "message": "✅ Прогресс загружен: Ур.%d | Сл.%d (макс. %d) | 🌑 %d" % [level, difficulty_level, max_unlocked_difficulty, dark_points]}
+
+
+func import_save_from_txt_file(file_path: String) -> Dictionary:
+	if file_path.is_empty():
+		return {"success": false, "message": "Файл для импорта не выбран."}
+	var file: FileAccess = FileAccess.open(file_path, FileAccess.READ)
+	if file == null:
+		var err_code: Error = FileAccess.get_open_error()
+		return {"success": false, "message": "Не удалось прочитать файл (код %d)." % err_code}
+	var content: String = file.get_as_text()
+	file.close()
+	return import_save_from_text(content)
+
+
+func save_game(force_immediate: bool = false) -> void:
+	if not force_immediate and _save_throttle_timer > 0.0:
+		_save_pending = true
+		return
+	_save_pending = false
+	_save_throttle_timer = 0.35
+	var save_data: SaveData = _build_save_data()
+
+	var err: Error = ResourceSaver.save(save_data, SAVE_TEMP_PATH)
+	if err != OK or not FileAccess.file_exists(SAVE_TEMP_PATH):
+		return
+	var tmp_file: FileAccess = FileAccess.open(SAVE_TEMP_PATH, FileAccess.READ)
+	if tmp_file == null:
+		return
+	var tmp_len: int = tmp_file.get_length()
+	tmp_file.close()
+	if tmp_len <= 0:
+		return
+
+	if FileAccess.file_exists(SAVE_PATH):
+		if FileAccess.file_exists(SAVE_BACKUP_PATH):
+			DirAccess.remove_absolute(SAVE_BACKUP_PATH)
+		DirAccess.rename_absolute(SAVE_PATH, SAVE_BACKUP_PATH)
+
+	if FileAccess.file_exists(SAVE_PATH):
+		DirAccess.remove_absolute(SAVE_PATH)
+	var rename_err: Error = DirAccess.rename_absolute(SAVE_TEMP_PATH, SAVE_PATH)
+	if rename_err == OK:
+		save_status_changed.emit("Прогресс сохранён")
+
+
+func load_game() -> bool:
+	var save_data: SaveData = null
+	var loaded_from_backup: bool = false
+	for candidate_path: String in [SAVE_PATH, SAVE_BACKUP_PATH, SAVE_TEMP_PATH]:
+		if not ResourceLoader.exists(candidate_path):
+			continue
+		var loaded: SaveData = ResourceLoader.load(candidate_path, "", ResourceLoader.CACHE_MODE_IGNORE) as SaveData
+		if loaded != null:
+			save_data = loaded
+			loaded_from_backup = candidate_path != SAVE_PATH
+			break
+	if save_data == null:
+		return false
+
+	_apply_save_data(save_data)
+
+	if loaded_from_backup:
+		save_game(true)
 
 	return true

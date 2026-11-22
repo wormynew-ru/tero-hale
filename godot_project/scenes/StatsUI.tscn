@@ -233,6 +233,74 @@ custom_minimum_size = Vector2(130, 44)
 layout_mode = 2
 text = "Тренир. (35 з.)"
 
+[node name="SaveTransferSeparator" type="HSeparator" parent="StatsVBox"]
+layout_mode = 2
+
+[node name="SaveTransferCard" type="PanelContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_mastery_card")
+
+[node name="SaveTransferVBox" type="VBoxContainer" parent="StatsVBox/SaveTransferCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SaveTransferTitleLabel" type="Label" parent="StatsVBox/SaveTransferCard/SaveTransferVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.56, 0.88, 0.72, 1)
+theme_override_font_sizes/font_size = 14
+text = "💾 Экспорт и импорт сохранения (.txt)"
+autowrap_mode = 3
+
+[node name="SaveTransferHintLabel" type="Label" parent="StatsVBox/SaveTransferCard/SaveTransferVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.76, 0.84, 1)
+theme_override_font_sizes/font_size = 12
+text = "Сохраните прогресс в .txt файл на телефон/ПК перед обновлением или переносом на другое устройство."
+autowrap_mode = 3
+
+[node name="SaveTransferGrid" type="GridContainer" parent="StatsVBox/SaveTransferCard/SaveTransferVBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="ExportTxtButton" type="Button" parent="StatsVBox/SaveTransferCard/SaveTransferVBox/SaveTransferGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "📤 Экспорт в .txt"
+
+[node name="ImportTxtButton" type="Button" parent="StatsVBox/SaveTransferCard/SaveTransferVBox/SaveTransferGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "📥 Импорт из .txt"
+
+[node name="CopyTxtButton" type="Button" parent="StatsVBox/SaveTransferCard/SaveTransferVBox/SaveTransferGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "📋 Копировать текст"
+
+[node name="PasteTxtButton" type="Button" parent="StatsVBox/SaveTransferCard/SaveTransferVBox/SaveTransferGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "📋 Вставить из буфера"
+
+[node name="SaveTransferStatusLabel" type="Label" parent="StatsVBox/SaveTransferCard/SaveTransferVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.9, 0.72, 1)
+theme_override_font_sizes/font_size = 12
+text = ""
+autowrap_mode = 3
+
 [node name="ResetSeparator" type="HSeparator" parent="StatsVBox"]
 layout_mode = 2
 
@@ -253,3 +321,15 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
 text = "🔄 Сброс"
+
+[node name="ExportTxtDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Экспорт сохранения в .txt"
+ok_button_text = "Сохранить"
+use_native_dialog = true
+
+[node name="ImportTxtDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Импорт сохранения из .txt"
+ok_button_text = "Загрузить"
+use_native_dialog = true
