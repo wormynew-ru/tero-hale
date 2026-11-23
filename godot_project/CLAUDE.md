@@ -196,6 +196,8 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - **🦇 Тёмный магазин (`DarkShopUI.tscn/.gd`, v0.19.0)**:
   - За каждую победу над финальным боссом (`on_final_boss_defeated()`) игрок получает **🪙 Монеты Тёмного магазина (`dark_shop_coins`)** в размере пройденной сложности (`+difficulty_level`, напр. `+5 🪙` за Сл.5 и `+10 🪙` за Сл.10). В отличие от `🌑 Очков Тьмы`, монеты Тёмного магазина можно фармить **бесконечно при повторном прохождении любых сложностей**.
   - `dark_shop_coins` **сохраняются навсегда** между ранами, но купленные в Тёмном магазине ультимативные `%`-расходники (`heal_pct`, `mana_pct`, мощные баффы на сотни %) имеют `is_dark_forged = false` и **НЕ переносятся** в следующий ран при запуске `start_new_run()`.
+- **⏭️ Переход сразу на следующего босса (`advance_to_next_boss_in_run`, v0.20.0)**:
+  - После победы над Вечным титаном на текущей сложности (`boss_defeated_this_run == true`) игрок может сразу нажать **`⏭️ След. босс (Сл. N+1)`** (на боевой арене `BattleArenaUI` или в `DifficultyUI`) либо включить **`🔁 Авто-след. босс` (`auto_advance_next_boss`)**, чтобы без сброса уровня/вещей/талантов сразу перейти на `Сл.+1` и вступить в бой напрямую со следующим Вечным титаном (`_pending_boss_duel` в `CombatSystem`).
 
 ---
 
@@ -216,6 +218,7 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - `difficulty_changed()` — изменение сложности, проклятий, реролл-жетонов или статуса боссов.
 - `enchant_changed()` — улучшение заточки слота оружия или брони.
 - `final_boss_cleared(dark_points_gained: int, unlocked_difficulty: int)` — первая победа над Вечным титаном в текущем ране.
+- `next_boss_advanced(new_difficulty: int, immediate_spawn: bool)` — переход после победы над боссом сразу к следующему Вечному титану на `Сл.+1` без сброса рана.
 - `curse_warden_defeated(tokens_total: int, kills_in_run: int)` — победа над Хранителем Проклятий (+1 жетон реролла).
 - `mastery_changed(skill_id: String, new_level: int, leveled_up: bool)` — получение опыта/уровня в *Learn by Doing* (`melee`, `ranged`, `magic`).
 - `class_changed(class_data: HeroClassData)` — смена класса героя.

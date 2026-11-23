@@ -79,4 +79,4 @@ extends Resource
 
 @export var reflector_kill_hp_stacks: int = 0
 @export var dark_shop_coins: int = 0
-
+@export var auto_advance_next_boss: bool = false

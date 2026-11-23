@@ -29,6 +29,7 @@ const AbilitySlotButtonScript = preload("res://scripts/ui/AbilitySlotButton.gd")
 
 @onready var village_chip_button: Button = %VillageChipButton
 @onready var difficulty_chip_button: Button = %DifficultyChipButton
+@onready var next_boss_button: Button = %NextBossButton
 @onready var state_label: Label = %StateLabel
 @onready var afk_toggle_button: Button = %AfkToggleButton
 @onready var save_button: Button = %SaveButton
@@ -103,6 +104,7 @@ func _ready() -> void:
 	GameManager.buffs_changed.connect(_refresh_active_buffs)
 	GameManager.difficulty_changed.connect(_refresh_difficulty_chip)
 	GameManager.final_boss_cleared.connect(_on_final_boss_cleared)
+	GameManager.next_boss_advanced.connect(_on_next_boss_advanced)
 	GameManager.curse_warden_defeated.connect(_on_curse_warden_defeated)
 	GameManager.mastery_changed.connect(_on_mastery_changed)
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _request_hud_refresh())
@@ -115,6 +117,7 @@ func _ready() -> void:
 	hero_crest_button.pressed.connect(func() -> void: open_menu_requested.emit())
 	village_chip_button.pressed.connect(func() -> void: open_village_requested.emit())
 	difficulty_chip_button.pressed.connect(func() -> void: open_difficulty_requested.emit())
+	next_boss_button.pressed.connect(_on_next_boss_pressed)
 	companion_slot_button.pressed.connect(func() -> void: open_pets_requested.emit())
 	save_button.pressed.connect(func() -> void: GameManager.save_game())
 	afk_toggle_button.pressed.connect(func() -> void: GameManager.set_afk_mode(not GameManager.is_afk_mode))
@@ -294,6 +297,15 @@ func _refresh_difficulty_chip() -> void:
 		difficulty_chip_button.text = "💀 Сл.%d" % GameManager.difficulty_level
 	else:
 		difficulty_chip_button.text = "💀 Сл.%d (☠️%d)" % [GameManager.difficulty_level, curses.size()]
+	if next_boss_button != null:
+		var can_next: bool = GameManager.can_advance_to_next_boss()
+		next_boss_button.visible = can_next
+		if can_next:
+			next_boss_button.text = "⏭️ След. босс (Сл.%d)" % (GameManager.difficulty_level + 1)
+
+
+func _on_next_boss_pressed() -> void:
+	GameManager.advance_to_next_boss_in_run(true)
 
 
 func _refresh_magic_summary() -> void:
@@ -416,6 +428,17 @@ func _on_final_boss_cleared(dark_points_gained: int, unlocked_difficulty: int) -
 		player_avatar_stage,
 		msg,
 		Color(0.84, 0.56, 1.0, 1.0),
+		true
+	)
+
+
+func _on_next_boss_advanced(new_difficulty: int, _immediate_spawn: bool) -> void:
+	if GameManager.is_afk_mode:
+		return
+	_spawn_floating_text(
+		player_avatar_stage,
+		"⏭️ Переход на Сл.%d — Вечный титан!" % new_difficulty,
+		Color(1.0, 0.86, 0.36, 1.0),
 		true
 	)
 

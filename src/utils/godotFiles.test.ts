@@ -982,6 +982,44 @@ test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Sho
   assert.ok(classUiGd.includes('reflector_kill_hp_stacks'), 'ClassUI.gd must show Reflector kill HP stacks');
 });
 
+test('seamless next-boss advance after clearing current difficulty boss works without resetting run and supports optional auto-advance', () => {
+  const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
+  assert.ok(saveTxt.includes('@export var auto_advance_next_boss: bool = false'), 'SaveData must persist auto_advance_next_boss');
+
+  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  for (const sym of [
+    'signal next_boss_advanced(new_difficulty: int, immediate_spawn: bool)',
+    'const FINAL_BOSS_LOCATION_ID: String = "celestial_throne"',
+    'func can_advance_to_next_boss()',
+    'func set_auto_advance_next_boss(',
+    'func advance_to_next_boss_in_run(',
+  ]) {
+    assert.ok(gmTxt.includes(sym), `GameManager.gd must define ${sym}`);
+  }
+
+  const advMatch = /func advance_to_next_boss_in_run\([^)]*\) -> bool:\n([\s\S]*?)\n+func on_curse_warden_defeated/.exec(gmTxt);
+  assert.ok(advMatch, 'GameManager.gd must define advance_to_next_boss_in_run()');
+  assert.ok(!advMatch[1].includes('_init_run_state('), 'advance_to_next_boss_in_run() must NOT reset level/gear via _init_run_state');
+  assert.ok(advMatch[1].includes('difficulty_level += 1') && advMatch[1].includes('boss_defeated_this_run = false'), 'advance_to_next_boss_in_run() must increment difficulty_level and clear boss_defeated_this_run');
+
+  const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  assert.ok(combatTxt.includes('_pending_boss_duel') && combatTxt.includes('_on_next_boss_advanced'), 'CombatSystem must handle next_boss_advanced and prioritize eternal_titan');
+  assert.ok(combatTxt.includes('GameManager.auto_advance_next_boss'), 'CombatSystem must trigger auto-advance when enabled');
+
+  const arenaTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/BattleArenaUI.tscn'), 'utf-8');
+  assert.ok(arenaTscn.includes('NextBossButton'), 'BattleArenaUI.tscn must expose quick NextBossButton');
+  const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
+  assert.ok(arenaGd.includes('advance_to_next_boss_in_run(true)') && arenaGd.includes('next_boss_advanced.connect'), 'BattleArenaUI.gd must wire NextBossButton and next_boss_advanced');
+
+  const diffTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/DifficultyUI.tscn'), 'utf-8');
+  assert.ok(diffTscn.includes('NextBossButton') && diffTscn.includes('AutoAdvanceButton'), 'DifficultyUI.tscn must expose NextBossButton and AutoAdvanceButton');
+  const diffGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/DifficultyUI.gd'), 'utf-8');
+  assert.ok(diffGd.includes('signal next_boss_started') && diffGd.includes('set_auto_advance_next_boss'), 'DifficultyUI.gd must wire next_boss_started and auto-advance toggle');
+
+  const heroMenuGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/HeroMenuUI.gd'), 'utf-8');
+  assert.ok(heroMenuGd.includes('difficulty_ui.next_boss_started.connect(close_menu)'), 'HeroMenuUI.gd must close menu when advancing to next boss');
+});
+
 
 
 

@@ -14,6 +14,7 @@ signal dark_skills_changed
 signal difficulty_changed
 signal enchant_changed
 signal final_boss_cleared(dark_points_gained: int, unlocked_difficulty: int)
+signal next_boss_advanced(new_difficulty: int, immediate_spawn: bool)
 signal curse_warden_defeated(tokens_total: int, kills_in_run: int)
 signal mastery_changed(skill_id: String, new_level: int, leveled_up: bool)
 signal class_changed(class_data: HeroClassData)
@@ -53,6 +54,7 @@ const MAX_ACTIVE_ABILITY_SLOTS: int = 3
 const MAX_PET_TRAINING_LEVEL: int = 10
 const DEFAULT_EQUIPPED_ABILITIES: Array[String] = ["fireball", "nature_mend", "arcane_surge"]
 const FINAL_BOSS_ID: String = "eternal_titan"
+const FINAL_BOSS_LOCATION_ID: String = "celestial_throne"
 const CURSE_WARDEN_ID: String = "curse_warden"
 const SPIRIT_KEYS: Array[String] = ["fire", "wind", "forest", "earth"]
 const SKILL_PRESET_COUNT: int = 3
@@ -653,6 +655,7 @@ var equipped_pet_id: String = ""
 var difficulty_level: int = 1
 var max_unlocked_difficulty: int = 1
 var boss_defeated_this_run: bool = false
+var auto_advance_next_boss: bool = false
 var difficulty_curses: Dictionary = {}
 var total_runs_completed: int = 0
 var curse_reroll_tokens: int = 0
@@ -1008,6 +1011,7 @@ func _ensure_progression_caches() -> void:
 func _init_full_reset_state() -> void:
 	difficulty_level = 1
 	max_unlocked_difficulty = 1
+	auto_advance_next_boss = false
 	dark_points = 0
 	dark_shop_coins = 0
 	dark_points_claimed_difficulties.clear()
@@ -1645,6 +1649,59 @@ func on_final_boss_defeated() -> void:
 	stats_changed.emit()
 	final_boss_cleared.emit(gained, max_unlocked_difficulty)
 	save_game()
+
+
+func can_advance_to_next_boss() -> bool:
+	return boss_defeated_this_run
+
+
+func set_auto_advance_next_boss(enabled: bool) -> void:
+	if auto_advance_next_boss == enabled:
+		return
+	auto_advance_next_boss = enabled
+	difficulty_changed.emit()
+	save_game()
+
+
+func get_location_by_id(location_id: String) -> LocationData:
+	for loc: LocationData in locations:
+		if loc != null and loc.id == location_id:
+			return loc
+	return null
+
+
+func advance_to_next_boss_in_run(immediate_spawn: bool = true) -> bool:
+	if not boss_defeated_this_run:
+		return false
+	total_runs_completed += 1
+	difficulty_level += 1
+	if difficulty_level > max_unlocked_difficulty:
+		max_unlocked_difficulty = difficulty_level
+	boss_defeated_this_run = false
+	ensure_curses_for_difficulty(difficulty_level)
+	_invalidate_progression_caches()
+
+	var throne_loc: LocationData = get_location_by_id(FINAL_BOSS_LOCATION_ID)
+	var loc_changed: bool = false
+	if throne_loc != null and is_location_unlocked(throne_loc) and current_location != throne_loc:
+		current_location = throne_loc
+		loc_changed = true
+
+	var max_hp: float = get_max_hp()
+	var max_mp: float = get_max_mana()
+	current_hp = clampf(current_hp, 0.0, max_hp)
+	current_mana = clampf(current_mana, 0.0, max_mp)
+
+	if loc_changed:
+		location_changed.emit(current_location)
+	difficulty_changed.emit()
+	stats_changed.emit()
+	hp_changed.emit(current_hp, max_hp)
+	mana_changed.emit(current_mana, max_mp)
+	next_boss_advanced.emit(difficulty_level, immediate_spawn)
+	save_game()
+	return true
+
 
 
 func on_curse_warden_defeated() -> void:
@@ -4317,6 +4374,7 @@ func _build_save_data() -> SaveData:
 	save_data.difficulty_level = difficulty_level
 	save_data.max_unlocked_difficulty = max_unlocked_difficulty
 	save_data.boss_defeated_this_run = boss_defeated_this_run
+	save_data.auto_advance_next_boss = auto_advance_next_boss
 	save_data.dark_points = dark_points
 	save_data.dark_shop_coins = dark_shop_coins
 	save_data.dark_points_claimed_difficulties = dark_points_claimed_difficulties.duplicate()
@@ -4382,6 +4440,7 @@ func _apply_save_data(save_data: SaveData) -> void:
 	max_unlocked_difficulty = maxi(1, save_data.max_unlocked_difficulty)
 	difficulty_level = clampi(save_data.difficulty_level, 1, max_unlocked_difficulty)
 	boss_defeated_this_run = save_data.boss_defeated_this_run
+	auto_advance_next_boss = save_data.auto_advance_next_boss
 	dark_points = maxi(0, save_data.dark_points)
 	dark_shop_coins = maxi(0, save_data.dark_shop_coins)
 	dark_points_claimed_difficulties.clear()
@@ -4564,6 +4623,7 @@ func _save_data_to_dict(save_data: SaveData) -> Dictionary:
 		"difficulty_level": save_data.difficulty_level,
 		"max_unlocked_difficulty": save_data.max_unlocked_difficulty,
 		"boss_defeated_this_run": save_data.boss_defeated_this_run,
+		"auto_advance_next_boss": save_data.auto_advance_next_boss,
 		"dark_points": save_data.dark_points,
 		"dark_shop_coins": save_data.dark_shop_coins,
 		"dark_points_claimed_difficulties": save_data.dark_points_claimed_difficulties.duplicate(),
@@ -4658,6 +4718,7 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 	save_data.difficulty_level = int(data.get("difficulty_level", 1))
 	save_data.max_unlocked_difficulty = int(data.get("max_unlocked_difficulty", 1))
 	save_data.boss_defeated_this_run = bool(data.get("boss_defeated_this_run", false))
+	save_data.auto_advance_next_boss = bool(data.get("auto_advance_next_boss", false))
 	save_data.dark_points = int(data.get("dark_points", 0))
 	save_data.dark_shop_coins = int(data.get("dark_shop_coins", 0))
 	if data.get("dark_points_claimed_difficulties") is Array:

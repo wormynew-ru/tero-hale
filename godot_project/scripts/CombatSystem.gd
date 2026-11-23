@@ -83,12 +83,14 @@ var _auto_potion_timer: float = 0.0
 var _enemy_hud_sync_timer: float = 0.0
 var _last_emitted_p_prog: float = -1.0
 var _last_emitted_e_prog: float = -1.0
+var _pending_boss_duel: bool = false
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.abilities_changed.connect(_on_abilities_changed)
+	GameManager.next_boss_advanced.connect(_on_next_boss_advanced)
 	GameManager.game_reset.connect(_on_game_reset)
 
 	is_seeking_battle = false
@@ -985,15 +987,20 @@ func _handle_enemy_defeated() -> void:
 	enemy_defeated_reward.emit(xp_earned, gold_earned)
 	_roll_drops(defeated)
 
+	var auto_advanced: bool = false
 	if defeated.id == GameManager.FINAL_BOSS_ID:
 		GameManager.on_final_boss_defeated()
 		GameManager.on_final_boss_killed_for_garden()
+		if GameManager.auto_advance_next_boss and GameManager.can_advance_to_next_boss():
+			auto_advanced = GameManager.advance_to_next_boss_in_run(false)
 	elif defeated.id == GameManager.CURSE_WARDEN_ID:
 		GameManager.on_curse_warden_defeated()
 
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
 	_spawn_timer = SPAWN_DELAY
+	if auto_advanced:
+		_pending_boss_duel = true
 	_set_state(State.SPAWNING)
 
 
@@ -1012,7 +1019,15 @@ func _spawn_enemy() -> void:
 	var location: LocationData = GameManager.current_location
 	if location == null:
 		return
-	var next_enemy: EnemyData = location.pick_random_enemy()
+	var next_enemy: EnemyData = null
+	if _pending_boss_duel and location.id == GameManager.FINAL_BOSS_LOCATION_ID:
+		for candidate: EnemyData in location.enemies:
+			if candidate != null and candidate.id == GameManager.FINAL_BOSS_ID:
+				next_enemy = candidate
+				break
+	_pending_boss_duel = false
+	if next_enemy == null:
+		next_enemy = location.pick_random_enemy()
 	if next_enemy == null:
 		return
 
@@ -1078,7 +1093,9 @@ func _set_state(new_state: State) -> void:
 	state_changed.emit(int(current_state))
 
 
-func _on_location_changed(_location: LocationData) -> void:
+func _on_location_changed(location: LocationData) -> void:
+	if location == null or location.id != GameManager.FINAL_BOSS_LOCATION_ID:
+		_pending_boss_duel = false
 	_clear_combat_effects()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
@@ -1094,8 +1111,29 @@ func _on_location_changed(_location: LocationData) -> void:
 		_set_state(State.FIGHTING)
 
 
+func _on_next_boss_advanced(_new_difficulty: int, immediate_spawn: bool) -> void:
+	_pending_boss_duel = true
+	if not immediate_spawn:
+		return
+	_clear_combat_effects()
+	_player_attack_timer = 0.0
+	_enemy_attack_timer = 0.0
+	_spawn_timer = 0.0
+	enemy_troll_armor_shred = 0
+	troll_shred_updated.emit(0)
+	if not is_seeking_battle:
+		is_seeking_battle = true
+		battle_search_changed.emit(true)
+	if GameManager.current_hp <= 0.0:
+		_set_state(State.RESTING)
+	else:
+		_spawn_enemy()
+		_set_state(State.FIGHTING)
+
+
 func _on_game_reset() -> void:
 	is_seeking_battle = false
+	_pending_boss_duel = false
 	_clear_combat_effects()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0

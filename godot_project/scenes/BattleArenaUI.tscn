@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/BattleArenaUI.gd" id="1_arena_ui"]
 [ext_resource type="PackedScene" path="res://scenes/AttackDiamond.tscn" id="2_attack_diamond"]
@@ -199,6 +199,22 @@ corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_next_boss_btn"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.24, 0.14, 0.34, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.96, 0.78, 0.32, 0.98)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="BattleArenaUI" type="Control"]
 clip_contents = true
@@ -636,6 +652,27 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_hud_chip")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hud_chip")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_circle_btn_pressed")
 text = "💾"
+
+[node name="NextBossButton" type="Button" parent="ArenaHUDMargin/HUDRoot"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(224, 44)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -224.0
+offset_top = 52.0
+offset_bottom = 96.0
+grow_horizontal = 0
+tooltip_text = "Сразу пойти на босса следующей сложности без сброса прогресса"
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.62, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/normal = SubResource("StyleBoxFlat_next_boss_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_next_boss_btn")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_circle_btn_pressed")
+text = "⏭️ След. босс (Сл.2)"
 
 [node name="BattleStage" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot"]
 layout_mode = 1

@@ -79,6 +79,7 @@ func _ready() -> void:
 
 	stats_ui.reset_triggered.connect(close_menu)
 	difficulty_ui.new_run_started.connect(close_menu)
+	difficulty_ui.next_boss_started.connect(close_menu)
 	village_map_ui.navigate_to_page.connect(open_page)
 	village_map_ui.return_to_battle_requested.connect(close_menu)
 	_refresh_resources()
