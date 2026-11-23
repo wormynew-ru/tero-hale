@@ -89,7 +89,8 @@ func _build_pool_once() -> void:
 
 		var title_lbl: Label = Label.new()
 		title_lbl.add_theme_font_size_override("font_size", 15)
-		title_lbl.text = "%s%s" % [enemy.display_name, " [БОСС]" if enemy.is_boss else ""]
+		var is_boss_enemy: bool = (enemy.id == GameManager.FINAL_BOSS_ID or enemy.id == GameManager.CURSE_WARDEN_ID or enemy.id == "mine_overseer")
+		title_lbl.text = "%s%s" % [enemy.enemy_name, " [БОСС]" if is_boss_enemy else ""]
 		info_vbox.add_child(title_lbl)
 
 		var bonus_lbl: Label = Label.new()

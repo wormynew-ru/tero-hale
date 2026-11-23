@@ -1170,6 +1170,26 @@ test('v0.22.0 gameplay mechanics (Quality/Salvage, Bestiary, Challenges, Loadout
   assert.ok(changelogTxt.includes('## [0.22.0]'), 'CHANGELOG.md must include [0.22.0] entry');
 });
 
+test('GDScripts have zero SHADOWED_GLOBAL_IDENTIFIER, Control SHADOWED_VARIABLE_BASE_CLASS, or invalid EnemyData accesses', () => {
+  const bestiaryGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BestiaryUI.gd'), 'utf-8');
+  assert.ok(bestiaryGd.includes('enemy.enemy_name') && !bestiaryGd.includes('enemy.display_name') && !bestiaryGd.includes('enemy.is_boss'), 'BestiaryUI.gd must use EnemyData.enemy_name and valid boss checks');
+
+  const globalShadowRx = /^\s*(?:var|for)\s+(?:exp|log|pow|sqrt|abs|seed|range|min|max|round|floor|ceil|clamp|lerp|sign|sin|cos|tan|str|int|float|bool|typeof)\b/gm;
+  const controlBaseRx = /^\s*(?:var|for)\s+(?:scale|position|global_position|size|custom_minimum_size|name|visible|modulate|self_modulate|theme|tooltip_text|mouse_filter|focus_mode)\b/gm;
+
+  for (const gdPath of collectFilesRecursive(path.join(GODOT_ROOT, 'scripts'), '.gd')) {
+    const src = fs.readFileSync(gdPath, 'utf-8');
+    const rel = path.relative(GODOT_ROOT, gdPath);
+    const gMatch = src.match(globalShadowRx);
+    assert.ok(!gMatch, `${rel} must not shadow global identifiers: ${gMatch?.[0] ?? ''}`);
+
+    if (/^extends\s+(Control|ColorRect|PanelContainer|ScrollContainer|VBoxContainer|HBoxContainer|Button|Label|ProgressBar|Line2D|Node2D|CanvasItem|AspectRatioContainer|CenterContainer|MarginContainer)/m.test(src)) {
+      const bMatch = src.match(controlBaseRx);
+      assert.ok(!bMatch, `${rel} must not shadow Control/Node2D base properties: ${bMatch?.[0] ?? ''}`);
+    }
+  }
+});
+
 
 
 

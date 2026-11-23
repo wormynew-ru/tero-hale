@@ -575,8 +575,8 @@ func _update_inventory_rows_in_place() -> void:
 		var slot_prefix: String = "[Слот %d] " % (index + 1) if index < 6 else ""
 		var eq_tag: String = " [%d%% ★%d]" % [q_pct, s_lvl] if item.is_equipment() else ""
 		info_label.text = "%s%s%s x%d — %s" % [slot_prefix, item.get_display_name(), eq_tag, count, item.get_summary_text()]
-		var scale: float = (GameManager.get_quality_multiplier(q_pct) * GameManager.get_star_multiplier(s_lvl)) if item.is_equipment() else 1.0
-		var sell_val: float = maxf(1.0, round(GameManager.get_item_sell_value(item) * scale))
+		var gear_scale: float = (GameManager.get_quality_multiplier(q_pct) * GameManager.get_star_multiplier(s_lvl)) if item.is_equipment() else 1.0
+		var sell_val: float = maxf(1.0, round(GameManager.get_item_sell_value(item) * gear_scale))
 		sell_btn.text = "💰 +%s" % NumberFormatter.format_number(sell_val)
 		row_idx += 1
 

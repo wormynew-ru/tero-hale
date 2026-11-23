@@ -392,10 +392,10 @@ func _sync_pet_expeditions(force: bool) -> void:
 		if p == null:
 			continue
 		var owned: int = 1 if GameManager.has_pet_owned(p.id) else 0
-		var exp: Dictionary = GameManager.get_pet_expedition(p.id)
+		var pet_exp: Dictionary = GameManager.get_pet_expedition(p.id)
 		var state_tag: String = "idle"
-		if not exp.is_empty():
-			state_tag = "done" if bool(exp.get("completed", false)) else "run:%s" % str(exp.get("plan_id", ""))
+		if not pet_exp.is_empty():
+			state_tag = "done" if bool(pet_exp.get("completed", false)) else "run:%s" % str(pet_exp.get("plan_id", ""))
 		sig_parts.append("%s:%d:%s" % [p.id, owned, state_tag])
 	var sig: String = "|".join(sig_parts)
 
@@ -418,9 +418,9 @@ func _sync_pet_expeditions(force: bool) -> void:
 		if not owned:
 			continue
 
-		var exp: Dictionary = GameManager.get_pet_expedition(p.id)
+		var pet_exp: Dictionary = GameManager.get_pet_expedition(p.id)
 		var is_eq: bool = GameManager.equipped_pet_id == p.id
-		if exp.is_empty():
+		if pet_exp.is_empty():
 			bar.visible = false
 			claim_btn.visible = false
 			short_btn.visible = true
@@ -433,7 +433,7 @@ func _sync_pet_expeditions(force: bool) -> void:
 			else:
 				lbl.text = "%s %s — Свободен для вылазки (15м / 1ч)" % [p.icon_emoji, p.pet_name]
 				lbl.modulate = Color.WHITE
-		elif bool(exp.get("completed", false)):
+		elif bool(pet_exp.get("completed", false)):
 			bar.visible = true
 			bar.max_value = 100.0
 			bar.value = 100.0
@@ -457,13 +457,13 @@ func _update_expedition_timers() -> void:
 		var p: PetData = w["pet"] as PetData
 		if not GameManager.has_pet_owned(p.id):
 			continue
-		var exp: Dictionary = GameManager.get_pet_expedition(p.id)
-		if exp.is_empty() or bool(exp.get("completed", false)):
+		var pet_exp: Dictionary = GameManager.get_pet_expedition(p.id)
+		if pet_exp.is_empty() or bool(pet_exp.get("completed", false)):
 			continue
 		var lbl: Label = w["lbl"] as Label
 		var bar: ProgressBar = w["bar"] as ProgressBar
-		var elapsed: float = float(exp.get("elapsed", 0.0))
-		var dur: float = maxf(1.0, float(exp.get("duration", 900.0)))
+		var elapsed: float = float(pet_exp.get("elapsed", 0.0))
+		var dur: float = maxf(1.0, float(pet_exp.get("duration", 900.0)))
 		var rem: float = maxf(0.0, dur - elapsed)
 		var rem_min: int = floori(rem / 60.0)
 		var rem_sec: int = floori(fmod(rem, 60.0))

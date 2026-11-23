@@ -1841,16 +1841,16 @@ func unequip_pet() -> void:
 
 
 func is_pet_on_expedition(pet_id: String) -> bool:
-	for exp: Dictionary in pet_expeditions:
-		if str(exp.get("pet_id", "")) == pet_id:
+	for pet_exp: Dictionary in pet_expeditions:
+		if str(pet_exp.get("pet_id", "")) == pet_id:
 			return true
 	return false
 
 
 func get_pet_expedition(pet_id: String) -> Dictionary:
-	for exp: Dictionary in pet_expeditions:
-		if str(exp.get("pet_id", "")) == pet_id:
-			return exp
+	for pet_exp: Dictionary in pet_expeditions:
+		if str(pet_exp.get("pet_id", "")) == pet_id:
+			return pet_exp
 	return {}
 
 
@@ -1891,10 +1891,10 @@ func claim_pet_expedition(pet_id: String) -> Dictionary:
 			break
 	if idx < 0:
 		return {"success": false, "message": "Экспедиция не найдена."}
-	var exp: Dictionary = pet_expeditions[idx]
-	if not bool(exp.get("completed", false)):
+	var pet_exp: Dictionary = pet_expeditions[idx]
+	if not bool(pet_exp.get("completed", false)):
 		return {"success": false, "message": "Экспедиция ещё не завершена."}
-	var plan: Dictionary = get_expedition_plan(str(exp.get("plan_id", "short")))
+	var plan: Dictionary = get_expedition_plan(str(pet_exp.get("plan_id", "short")))
 	var ore_chance: float = float(plan.get("ore_chance", 0.45))
 	var seed_rolls: int = int(plan.get("seed_rolls", 2))
 	var rewards: Array[String] = []
@@ -4780,8 +4780,8 @@ func sell_item(item: ItemData, amount: int = 1, quality_pct: int = -1, star_leve
 				break
 	if not remove_item(item, amount, quality_pct, star_level):
 		return ""
-	var scale: float = (get_quality_multiplier(use_q) * get_star_multiplier(use_s)) if item.is_equipment() else 1.0
-	var total_gold: float = maxf(1.0, round(get_item_sell_value(item) * scale)) * float(amount)
+	var gear_scale: float = (get_quality_multiplier(use_q) * get_star_multiplier(use_s)) if item.is_equipment() else 1.0
+	var total_gold: float = maxf(1.0, round(get_item_sell_value(item) * gear_scale)) * float(amount)
 	add_gold(total_gold)
 	save_game()
 	return "Продано %s x%d (+%s з.)." % [
@@ -5261,18 +5261,18 @@ func _process_sanctuary(delta: float) -> void:
 
 	var exp_dirty: bool = false
 	for i: int in range(pet_expeditions.size()):
-		var exp: Dictionary = pet_expeditions[i]
-		if bool(exp.get("completed", false)):
+		var pet_exp: Dictionary = pet_expeditions[i]
+		if bool(pet_exp.get("completed", false)):
 			continue
 		any_active_timer = true
-		var dur: float = maxf(1.0, float(exp.get("duration", 900.0)))
-		var next_elapsed: float = float(exp.get("elapsed", 0.0)) + delta
+		var dur: float = maxf(1.0, float(pet_exp.get("duration", 900.0)))
+		var next_elapsed: float = float(pet_exp.get("elapsed", 0.0)) + delta
 		if next_elapsed >= dur:
-			exp["elapsed"] = dur
-			exp["completed"] = true
+			pet_exp["elapsed"] = dur
+			pet_exp["completed"] = true
 			exp_dirty = true
 		else:
-			exp["elapsed"] = next_elapsed
+			pet_exp["elapsed"] = next_elapsed
 
 	if garden_dirty:
 		garden_changed.emit()
