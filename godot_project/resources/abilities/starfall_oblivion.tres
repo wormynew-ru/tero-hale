@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "starfall_oblivion"
+title = "Звездопад забвения"
+icon_emoji = "🌌"
+description = "Сокрушительное небесное заклинание для огромного манапула: 1150% чистого урона со 100% игнором брони."
+mana_cost = 260.0
+cooldown = 22.0
+effect_type = "pierce_damage"
+power_multiplier = 11.5
+armor_ignore_pct = 1.0

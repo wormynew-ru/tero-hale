@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "eternal_aegis_node"
+title = "Несокрушимый щит"
+icon_emoji = "💠"
+description = "Мощный защитный талант, усиливающий плоскую броню на +130 ед."
+grid_position = Vector2(5, 6)
+prerequisites = Array[String](["titan_endurance_node"])
+cost_skill_points = 1
+bonus_type = "flat_armor"
+bonus_value = 130.0

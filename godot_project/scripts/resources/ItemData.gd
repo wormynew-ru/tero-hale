@@ -55,8 +55,11 @@ enum AmmoKind {
 @export_group("Consumable & Economy")
 @export var heal_amount: float = 0.0
 @export var mana_amount: float = 0.0
+@export var heal_pct: float = 0.0
+@export var mana_pct: float = 0.0
 @export var buy_price: int = 20
 @export var sell_value: int = 5
+@export var dark_shop_coin_price: int = 0
 @export var icon_color: Color = Color(0.75, 0.78, 0.85, 1.0)
 
 @export_group("Buff Potion")
@@ -155,8 +158,12 @@ func get_summary_text() -> String:
 	if item_type == ItemType.CONSUMABLE:
 		if heal_amount > 0.0:
 			parts.append("+%d HP" % int(heal_amount))
+		if heal_pct > 0.0:
+			parts.append("+%d%% Max HP" % roundi(heal_pct * 100.0))
 		if mana_amount > 0.0:
 			parts.append("+%d MP" % int(mana_amount))
+		if mana_pct > 0.0:
+			parts.append("+%d%% Max MP" % roundi(mana_pct * 100.0))
 		if is_buff_potion():
 			var bparts: Array[String] = []
 			if buff_damage_pct > 0.0:
@@ -165,8 +172,12 @@ func get_summary_text() -> String:
 				bparts.append("+%d%% Скорость" % roundi(buff_attack_speed_pct * 100.0))
 			if buff_armor_pct > 0.0:
 				bparts.append("+%d%% Броня" % roundi(buff_armor_pct * 100.0))
+			if buff_dodge_bonus > 0.0:
+				bparts.append("+%d%% Уклон" % roundi(buff_dodge_bonus * 100.0))
 			if buff_crit_chance_bonus > 0.0:
 				bparts.append("+%d%% Крит" % roundi(buff_crit_chance_bonus * 100.0))
+			if buff_crit_mult_bonus > 0.0:
+				bparts.append("+%d%% Крит.урон" % roundi(buff_crit_mult_bonus * 100.0))
 			if buff_spell_power_pct > 0.0:
 				bparts.append("+%d%% Чары" % roundi(buff_spell_power_pct * 100.0))
 			if buff_mana_regen_pct > 0.0:

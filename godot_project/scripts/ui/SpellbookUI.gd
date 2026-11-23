@@ -99,7 +99,7 @@ func _refresh(force: bool = false) -> void:
 
 	var blood_open: bool = GameManager.has_hero_class("blood_archmage")
 	var is_reflector: bool = GameManager.has_hero_class("reflector")
-	var class_note: String = "🩸 Класс Архимаг Крови активен — все 6 запретных чар доступны!" if blood_open else "🔒 Ещё 6 запретных заклинаний открывает класс «🩸 Архимаг Крови» (Сл.50+)."
+	var class_note: String = "🩸 Класс Архимаг Крови активен — все 7 запретных чар доступны!" if blood_open else "🔒 Ещё 7 запретных заклинаний открывает класс «🩸 Архимаг Крови» (Сл.50+)."
 	if is_reflector:
 		class_note = "🪞 Отражатель: боевые заклинания урона заблокированы — доступны только лечение и баффы."
 	status_label.text = (

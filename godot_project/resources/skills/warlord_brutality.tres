@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "warlord_brutality"
+title = "Натиск полководца"
+icon_emoji = "🪓"
+description = "Тяжелая боевая подготовка, усиливающая урон оружия ближнего боя на +85%."
+grid_position = Vector2(1, 2)
+prerequisites = Array[String](["melee_practice"])
+cost_skill_points = 1
+bonus_type = "melee_dmg"
+bonus_value = 0.85

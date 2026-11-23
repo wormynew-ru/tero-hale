@@ -25,6 +25,7 @@ signal brewing_changed
 signal afk_mode_changed(is_afk: bool)
 signal afk_stats_updated(elapsed_seconds: float, kills: int, gold_earned: float, xp_earned: float)
 signal dark_forge_changed
+signal dark_shop_changed
 signal mine_state_changed
 signal mine_run_failed(depth_reached: int)
 signal game_reset
@@ -54,6 +55,7 @@ const DEFAULT_EQUIPPED_ABILITIES: Array[String] = ["fireball", "nature_mend", "a
 const FINAL_BOSS_ID: String = "eternal_titan"
 const CURSE_WARDEN_ID: String = "curse_warden"
 const SPIRIT_KEYS: Array[String] = ["fire", "wind", "forest", "earth"]
+const SKILL_PRESET_COUNT: int = 3
 const HP_THRESHOLD_PRESETS: Array[int] = [20, 35, 50, 70, 85]
 const MANA_THRESHOLD_PRESETS: Array[int] = [15, 30, 50, 70]
 
@@ -65,6 +67,11 @@ const BUFF_POTION_CATALOG: Array[Dictionary] = [
 	{"id": "titan_blood_brew", "label": "🔥 Кровь титана", "path": "res://resources/items/titan_blood_brew.tres"},
 	{"id": "immortal_dew_potion", "label": "🥛 Роса бессмертия", "path": "res://resources/items/immortal_dew_potion.tres"},
 	{"id": "crimson_petal_elixir", "label": "🌺 Алый лепесток", "path": "res://resources/items/crimson_petal_elixir.tres"},
+	{"id": "void_berserk_draught", "label": "💥 Ярость Бездны", "path": "res://resources/items/void_berserk_draught.tres"},
+	{"id": "abyss_archmage_elixir", "label": "🔮 Эликсир Архимага", "path": "res://resources/items/abyss_archmage_elixir.tres"},
+	{"id": "titan_bastion_serum", "label": "🛡️ Бастион Титана", "path": "res://resources/items/titan_bastion_serum.tres"},
+	{"id": "crimson_immortality_orb", "label": "🫀 Кровавая сфера", "path": "res://resources/items/crimson_immortality_orb.tres"},
+	{"id": "cataclysm_apotheosis_flask", "label": "🌋 Апофеоз Бездны", "path": "res://resources/items/cataclysm_apotheosis_flask.tres"},
 ]
 
 const DARK_FORGE_RECIPES: Array[Dictionary] = [
@@ -389,6 +396,14 @@ const SHOP_ITEM_PATHS: Array[String] = [
 	"res://resources/items/abyss_bolts.tres",
 	"res://resources/items/astral_bow.tres",
 ]
+const DARK_SHOP_ITEM_PATHS: Array[String] = [
+	"res://resources/items/dark_ambrosia_vial.tres",
+	"res://resources/items/void_berserk_draught.tres",
+	"res://resources/items/abyss_archmage_elixir.tres",
+	"res://resources/items/titan_bastion_serum.tres",
+	"res://resources/items/crimson_immortality_orb.tres",
+	"res://resources/items/cataclysm_apotheosis_flask.tres",
+]
 const SKILL_PATHS: Array[String] = [
 	"res://resources/skills/hero_foundation.tres",
 	"res://resources/skills/heavy_strike.tres",
@@ -424,6 +439,16 @@ const SKILL_PATHS: Array[String] = [
 	"res://resources/skills/battle_scholar.tres",
 	"res://resources/skills/ancient_wisdom.tres",
 	"res://resources/skills/cosmic_enlightenment.tres",
+	"res://resources/skills/arcane_mind.tres",
+	"res://resources/skills/sage_insight.tres",
+	"res://resources/skills/astral_conduit.tres",
+	"res://resources/skills/spell_cataclysm.tres",
+	"res://resources/skills/archmage_reserve.tres",
+	"res://resources/skills/warlord_brutality.tres",
+	"res://resources/skills/berserker_edge.tres",
+	"res://resources/skills/wind_grace.tres",
+	"res://resources/skills/titan_endurance_node.tres",
+	"res://resources/skills/eternal_aegis_node.tres",
 ]
 const DARK_SKILL_PATHS: Array[String] = [
 	"res://resources/dark_skills/abyss_awakening.tres",
@@ -452,6 +477,11 @@ const DARK_SKILL_PATHS: Array[String] = [
 	"res://resources/dark_skills/curse_ward.tres",
 	"res://resources/dark_skills/ancient_memory.tres",
 	"res://resources/dark_skills/soul_harvest.tres",
+	"res://resources/dark_skills/abyssal_vitality.tres",
+	"res://resources/dark_skills/void_plating.tres",
+	"res://resources/dark_skills/mirror_carapace.tres",
+	"res://resources/dark_skills/obsidian_bulwark.tres",
+	"res://resources/dark_skills/thorn_apotheosis.tres",
 ]
 const ABILITY_PATHS: Array[String] = [
 	"res://resources/abilities/fireball.tres",
@@ -468,12 +498,18 @@ const ABILITY_PATHS: Array[String] = [
 	"res://resources/abilities/arcane_meditation.tres",
 	"res://resources/abilities/mana_siphon.tres",
 	"res://resources/abilities/execute_sigil.tres",
+	"res://resources/abilities/arcane_cataclysm.tres",
+	"res://resources/abilities/astral_tempest.tres",
+	"res://resources/abilities/starfall_oblivion.tres",
+	"res://resources/abilities/sacred_revival.tres",
+	"res://resources/abilities/archmage_ascension.tres",
 	"res://resources/abilities/crimson_lance.tres",
 	"res://resources/abilities/hemorrhage_curse.tres",
 	"res://resources/abilities/crimson_ward.tres",
 	"res://resources/abilities/blood_frenzy.tres",
 	"res://resources/abilities/crimson_nova.tres",
 	"res://resources/abilities/sanguine_apotheosis.tres",
+	"res://resources/abilities/crimson_apocalypse.tres",
 ]
 const CLASS_PATHS: Array[String] = [
 	"res://resources/classes/wanderer.tres",
@@ -566,8 +602,9 @@ var kills_in_run: int = 0
 var base_strength: int = 5
 var base_agility: int = 5
 var base_endurance: int = 5
-var current_hp: float = 175.0
-var current_mana: float = 55.0
+var base_intellect: int = 5
+var current_hp: float = 400.0
+var current_mana: float = 285.0
 
 var melee_level: int = 1
 var melee_xp: float = 0.0
@@ -587,20 +624,26 @@ var inventory: Array[Dictionary] = []
 var locations: Array[LocationData] = []
 var current_location: LocationData = null
 var shop_items: Array[ItemData] = []
+var dark_shop_items: Array[ItemData] = []
 
 var skill_nodes: Array[SkillNodeData] = []
 var _skills_by_id: Dictionary = {}
 var unlocked_skills: Array[String] = []
+var skill_presets: Array[Dictionary] = []
+var active_skill_preset_index: int = 0
+var skill_auto_upgrade_enabled: bool = false
 
 var dark_skill_nodes: Array[DarkSkillNodeData] = []
 var _dark_skills_by_id: Dictionary = {}
 var dark_points: int = 0
+var dark_shop_coins: int = 0
 var dark_points_claimed_difficulties: Array[int] = []
 var unlocked_dark_skills: Array[String] = []
 
 var hero_classes: Array[HeroClassData] = []
 var _classes_by_id: Dictionary = {}
 var selected_class_id: String = "wanderer"
+var reflector_kill_hp_stacks: int = 0
 
 var all_pets: Array[PetData] = []
 var _pets_by_id: Dictionary = {}
@@ -684,6 +727,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_locations()
 	_load_shop_items()
+	_load_dark_shop_items()
 	_load_skills()
 	_load_dark_skills()
 	_load_abilities()
@@ -693,6 +737,7 @@ func _ready() -> void:
 	if not load_game():
 		_init_full_reset_state()
 	_ensure_sanctuary_slots()
+	ensure_skill_presets()
 	ensure_curses_for_difficulty(difficulty_level)
 	_invalidate_progression_caches()
 	Engine.max_fps = NORMAL_FPS_LIMIT
@@ -800,6 +845,7 @@ func _emit_all_refresh_signals() -> void:
 	garden_changed.emit()
 	brewing_changed.emit()
 	dark_forge_changed.emit()
+	dark_shop_changed.emit()
 	mine_state_changed.emit()
 	mastery_changed.emit("melee", melee_level, false)
 	mastery_changed.emit("ranged", ranged_level, false)
@@ -822,6 +868,14 @@ func _load_shop_items() -> void:
 		var item: ItemData = load(path) as ItemData
 		if item != null:
 			shop_items.append(item)
+
+
+func _load_dark_shop_items() -> void:
+	dark_shop_items.clear()
+	for path: String in DARK_SHOP_ITEM_PATHS:
+		var item: ItemData = load(path) as ItemData
+		if item != null:
+			dark_shop_items.append(item)
 
 
 func _load_skills() -> void:
@@ -955,12 +1009,14 @@ func _init_full_reset_state() -> void:
 	difficulty_level = 1
 	max_unlocked_difficulty = 1
 	dark_points = 0
+	dark_shop_coins = 0
 	dark_points_claimed_difficulties.clear()
 	unlocked_dark_skills.clear()
 	difficulty_curses.clear()
 	total_runs_completed = 0
 	curse_reroll_tokens = 0
 	selected_class_id = "wanderer"
+	reflector_kill_hp_stacks = 0
 	owned_pet_ids.clear()
 	equipped_pet_id = ""
 	auto_potion_enabled = false
@@ -992,6 +1048,10 @@ func _init_full_reset_state() -> void:
 	_sync_equipped_abilities()
 	for i: int in range(MAX_ACTIVE_ABILITY_SLOTS):
 		ability_auto_cast[i] = false
+	skill_presets.clear()
+	active_skill_preset_index = 0
+	skill_auto_upgrade_enabled = false
+	ensure_skill_presets()
 	_invalidate_progression_caches()
 	_init_run_state(1)
 	_ensure_sanctuary_slots()
@@ -1028,6 +1088,7 @@ func _init_run_state(target_difficulty: int) -> void:
 	base_strength = base_start
 	base_agility = base_start
 	base_endurance = base_start
+	base_intellect = base_start
 
 	var start_gold: float = 20.0
 	if has_dark_skill("titan_heritage"):
@@ -1075,6 +1136,9 @@ func _init_run_state(target_difficulty: int) -> void:
 		add_item(g_item, g_cnt, false)
 
 	_ensure_sanctuary_slots()
+	ensure_skill_presets()
+	if skill_auto_upgrade_enabled:
+		try_apply_skill_preset(false)
 
 	current_hp = get_max_hp()
 	current_mana = get_max_mana()
@@ -1507,6 +1571,8 @@ func format_curse_description(def: Dictionary, eff_val: float) -> String:
 
 
 func get_curse_value(curse_id: String) -> float:
+	if curse_id == "greedy_curse" and has_hero_class("alchemist"):
+		return 0.0
 	_ensure_progression_caches()
 	return float(_curse_value_cache.get(curse_id, 0.0))
 
@@ -1567,11 +1633,14 @@ func on_final_boss_defeated() -> void:
 		dark_points_claimed_difficulties.append(difficulty_level)
 		gained = 2
 		dark_points += gained
+	var coins_gained: int = maxi(1, difficulty_level)
+	dark_shop_coins += coins_gained
 	if difficulty_level >= max_unlocked_difficulty:
 		max_unlocked_difficulty = difficulty_level + 1
 	ensure_curses_for_difficulty(max_unlocked_difficulty)
 	_invalidate_progression_caches()
 	dark_skills_changed.emit()
+	dark_shop_changed.emit()
 	difficulty_changed.emit()
 	stats_changed.emit()
 	final_boss_cleared.emit(gained, max_unlocked_difficulty)
@@ -1727,6 +1796,145 @@ func unlock_skill(skill_id: String) -> bool:
 func get_skill_bonus(bonus_type: String) -> float:
 	_ensure_progression_caches()
 	return float(_skill_bonus_cache.get(bonus_type, 0.0))
+
+
+func ensure_skill_presets() -> void:
+	var sanitized: Array[Dictionary] = []
+	for i: int in range(SKILL_PRESET_COUNT):
+		var default_name: String = "Профиль %d" % (i + 1)
+		var preset_name: String = default_name
+		var clean_order: Array[String] = []
+		if i < skill_presets.size() and skill_presets[i] is Dictionary:
+			var raw: Dictionary = skill_presets[i] as Dictionary
+			var candidate_name: String = str(raw.get("name", default_name)).strip_edges()
+			if not candidate_name.is_empty():
+				preset_name = candidate_name
+			if raw.get("order") is Array:
+				for raw_id: Variant in raw["order"]:
+					var sid: String = str(raw_id)
+					if _skills_by_id.has(sid) and not clean_order.has(sid):
+						clean_order.append(sid)
+		sanitized.append({"name": preset_name, "order": clean_order})
+	skill_presets = sanitized
+	active_skill_preset_index = clampi(active_skill_preset_index, 0, SKILL_PRESET_COUNT - 1)
+
+
+func get_skill_preset_name(index: int) -> String:
+	ensure_skill_presets()
+	var idx: int = clampi(index, 0, SKILL_PRESET_COUNT - 1)
+	return str(skill_presets[idx].get("name", "Профиль %d" % (idx + 1)))
+
+
+func get_active_skill_preset_order() -> Array[String]:
+	ensure_skill_presets()
+	var order: Array[String] = []
+	var raw_order: Variant = skill_presets[active_skill_preset_index].get("order", [])
+	if raw_order is Array:
+		for s: Variant in raw_order:
+			order.append(str(s))
+	return order
+
+
+func get_skill_preset_position(skill_id: String) -> int:
+	var order: Array[String] = get_active_skill_preset_order()
+	var idx: int = order.find(skill_id)
+	return (idx + 1) if idx >= 0 else 0
+
+
+func set_active_skill_preset(index: int) -> void:
+	ensure_skill_presets()
+	var next_idx: int = clampi(index, 0, SKILL_PRESET_COUNT - 1)
+	if active_skill_preset_index == next_idx:
+		return
+	active_skill_preset_index = next_idx
+	if skill_auto_upgrade_enabled:
+		try_apply_skill_preset(false)
+	skills_changed.emit()
+	save_game()
+
+
+func set_skill_auto_upgrade_enabled(enabled: bool) -> void:
+	ensure_skill_presets()
+	if skill_auto_upgrade_enabled == enabled:
+		return
+	skill_auto_upgrade_enabled = enabled
+	if skill_auto_upgrade_enabled:
+		try_apply_skill_preset(false)
+	skills_changed.emit()
+	save_game()
+
+
+func toggle_skill_in_active_preset(skill_id: String) -> bool:
+	ensure_skill_presets()
+	if not _skills_by_id.has(skill_id):
+		return false
+	var order: Array[String] = get_active_skill_preset_order()
+	var existing_idx: int = order.find(skill_id)
+	var added: bool = false
+	if existing_idx >= 0:
+		order.remove_at(existing_idx)
+	else:
+		order.append(skill_id)
+		added = true
+	skill_presets[active_skill_preset_index]["order"] = order
+	if added and skill_auto_upgrade_enabled:
+		try_apply_skill_preset(false)
+	skills_changed.emit()
+	save_game()
+	return added
+
+
+func clear_active_skill_preset() -> void:
+	ensure_skill_presets()
+	var empty_order: Array[String] = []
+	skill_presets[active_skill_preset_index]["order"] = empty_order
+	skills_changed.emit()
+	save_game()
+
+
+func try_apply_skill_preset(should_save: bool = true) -> int:
+	ensure_skill_presets()
+	if not skill_auto_upgrade_enabled or skill_points <= 0:
+		return 0
+	var order: Array[String] = get_active_skill_preset_order()
+	if order.is_empty():
+		return 0
+
+	var prev_max_hp: float = get_max_hp()
+	var prev_max_mana: float = get_max_mana()
+	var applied_count: int = 0
+
+	while skill_points > 0:
+		var picked_id: String = ""
+		for sid: String in order:
+			if can_unlock_skill(sid):
+				picked_id = sid
+				break
+		if picked_id.is_empty():
+			break
+		var skill: SkillNodeData = get_skill_by_id(picked_id)
+		if skill == null:
+			break
+		skill_points -= skill.cost_skill_points
+		unlocked_skills.append(picked_id)
+		_invalidate_progression_caches()
+		applied_count += 1
+
+	if applied_count > 0:
+		var new_max_hp: float = get_max_hp()
+		if new_max_hp > prev_max_hp:
+			current_hp = minf(new_max_hp, current_hp + (new_max_hp - prev_max_hp))
+		var new_max_mana: float = get_max_mana()
+		if new_max_mana > prev_max_mana:
+			current_mana = minf(new_max_mana, current_mana + (new_max_mana - prev_max_mana))
+		skills_changed.emit()
+		stats_changed.emit()
+		hp_changed.emit(current_hp, new_max_hp)
+		mana_changed.emit(current_mana, new_max_mana)
+		if should_save:
+			save_game()
+
+	return applied_count
 
 
 # --- Enchanting System (+0 .. +100, or +250 for Alchemist) ---
@@ -2112,12 +2320,12 @@ func get_total_intellect() -> int:
 	var tome_int: int = 0
 	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
 		tome_int = equipped_ammo.bonus_intellect
-	var total: float = float(int(wb["intellect"]) + int(ab["intellect"]) + tome_int)
+	var total: float = float(base_intellect + roundi(get_skill_bonus("intellect")) + int(wb["intellect"]) + int(ab["intellect"]) + tome_int)
 	if has_hero_class("spirit"):
 		total *= 1.35
 	elif has_hero_class("blood_archmage"):
 		total *= 1.20
-	return maxi(0, roundi(total))
+	return maxi(1, roundi(total))
 
 
 func get_equipped_mana_cost_reduction() -> float:
@@ -2160,18 +2368,20 @@ func get_effect_duration_multiplier() -> float:
 
 
 func get_max_hp() -> float:
-	var hp_val: float = 100.0 + float(get_total_endurance()) * 15.0
-	if has_dark_skill("immortal_pact"):
-		hp_val *= (1.0 + get_dark_bonus("immortal_pact"))
+	var hp_val: float = 100.0 + float(get_total_endurance()) * 60.0
+	var dark_hp_mult: float = get_dark_bonus("immortal_pact") + get_dark_bonus("abyssal_vitality") + get_dark_bonus("obsidian_bulwark")
+	if dark_hp_mult > 0.0:
+		hp_val *= (1.0 + dark_hp_mult)
 	if has_hero_class("troll"):
 		hp_val *= 1.25
 	elif has_hero_class("reflector"):
 		hp_val *= 1.30
+		hp_val += float(reflector_kill_hp_stacks)
 	return hp_val
 
 
 func get_max_mana() -> float:
-	return 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 2.0 + float(get_total_intellect()) * 4.0 + get_skill_bonus("max_mana")
+	return 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 16.0 + float(get_total_intellect()) * 32.0 + get_skill_bonus("max_mana")
 
 
 func get_mana_regen_per_sec() -> float:
@@ -2542,7 +2752,10 @@ func get_dodge_chance() -> float:
 
 
 func get_armor_reduction() -> float:
-	var raw_armor: float = float(get_total_endurance()) * 0.6 + get_skill_bonus("flat_armor")
+	var raw_armor: float = float(get_total_endurance()) * 0.6 + get_skill_bonus("flat_armor") + get_dark_bonus("void_plating")
+	var dark_armor_pct: float = (0.25 if has_dark_skill("void_plating") else 0.0) + (0.35 if has_dark_skill("obsidian_bulwark") else 0.0)
+	if dark_armor_pct > 0.0:
+		raw_armor *= (1.0 + dark_armor_pct)
 	if has_hero_class("spirit"):
 		raw_armor *= 1.50
 	elif has_hero_class("reflector"):
@@ -2550,6 +2763,10 @@ func get_armor_reduction() -> float:
 	raw_armor *= (1.0 + get_active_buff_sum("armor_pct"))
 	raw_armor *= maxf(0.15, 1.0 - get_curse_value("brittle_armor"))
 	return raw_armor
+
+
+func get_damage_reflection_pct() -> float:
+	return get_dark_bonus("mirror_carapace") + get_dark_bonus("thorn_apotheosis")
 
 
 func get_crit_chance() -> float:
@@ -2600,6 +2817,8 @@ func get_train_cost(stat_name: String) -> float:
 			stat_val = base_agility
 		"endurance":
 			stat_val = base_endurance
+		"intellect":
+			stat_val = base_intellect
 	return round((10.0 + float(stat_val) * 5.0) * get_difficulty_train_mult())
 
 
@@ -2673,7 +2892,7 @@ func get_total_potion_count() -> int:
 	var total: int = 0
 	for entry: Dictionary in inventory:
 		var item: ItemData = entry["item"] as ItemData
-		if item != null and item.item_type == ItemData.ItemType.CONSUMABLE and item.heal_amount > 0.0:
+		if item != null and item.item_type == ItemData.ItemType.CONSUMABLE and (item.heal_amount > 0.0 or item.heal_pct > 0.0):
 			total += int(entry["count"])
 	return total
 
@@ -2682,7 +2901,7 @@ func get_total_mana_potion_count() -> int:
 	var total: int = 0
 	for entry: Dictionary in inventory:
 		var item: ItemData = entry["item"] as ItemData
-		if item != null and item.item_type == ItemData.ItemType.CONSUMABLE and item.mana_amount > 0.0:
+		if item != null and item.item_type == ItemData.ItemType.CONSUMABLE and (item.mana_amount > 0.0 or item.mana_pct > 0.0):
 			total += int(entry["count"])
 	return total
 
@@ -2700,9 +2919,10 @@ func use_best_healing_potion() -> String:
 		var item: ItemData = entry["item"] as ItemData
 		if item == null or item.item_type != ItemData.ItemType.CONSUMABLE:
 			continue
-		if item.heal_amount <= 0.0:
+		var eff_heal: float = item.heal_amount + max_hp * item.heal_pct
+		if eff_heal <= 0.0:
 			continue
-		var score: float = item.heal_amount - missing_hp if item.heal_amount >= missing_hp else 10000.0 - item.heal_amount
+		var score: float = eff_heal - missing_hp if eff_heal >= missing_hp else 10000.0 - eff_heal
 		if score < best_score:
 			best_score = score
 			best_item = item
@@ -2726,9 +2946,10 @@ func use_best_mana_potion() -> String:
 		var item: ItemData = entry["item"] as ItemData
 		if item == null or item.item_type != ItemData.ItemType.CONSUMABLE:
 			continue
-		if item.mana_amount <= 0.0:
+		var eff_mana: float = item.mana_amount + max_mp * item.mana_pct
+		if eff_mana <= 0.0:
 			continue
-		var score: float = item.mana_amount - missing_mp if item.mana_amount >= missing_mp else 10000.0 - item.mana_amount
+		var score: float = eff_mana - missing_mp if eff_mana >= missing_mp else 10000.0 - eff_mana
 		if score < best_score:
 			best_score = score
 			best_item = item
@@ -2905,13 +3126,17 @@ func add_xp(amount: float) -> void:
 	if amount <= 0.0:
 		return
 	current_xp += amount
+	var leveled_up_any: bool = false
 	while current_xp >= get_xp_to_next_level():
 		current_xp -= get_xp_to_next_level()
 		level += 1
 		skill_points += 1
 		current_hp = get_max_hp()
 		current_mana = get_max_mana()
+		leveled_up_any = true
 		level_up.emit(level)
+	if leveled_up_any and skill_auto_upgrade_enabled:
+		try_apply_skill_preset(false)
 	stats_changed.emit()
 	skills_changed.emit()
 	hp_changed.emit(current_hp, get_max_hp())
@@ -2928,6 +3153,11 @@ func add_gold(amount: float) -> void:
 func record_kill() -> void:
 	enemies_defeated += 1
 	kills_in_run += 1
+	if has_hero_class("reflector"):
+		reflector_kill_hp_stacks += 1
+		var new_max_hp: float = get_max_hp()
+		current_hp = minf(new_max_hp, current_hp + 1.0)
+		hp_changed.emit(current_hp, new_max_hp)
 	stats_changed.emit()
 
 
@@ -2973,16 +3203,21 @@ func heal(amount: float, emit_signal_immediately: bool = true) -> float:
 func upgrade_stat_with_skill_point(stat_name: String) -> bool:
 	if skill_points <= 0:
 		return false
+	var prev_max_hp: float = get_max_hp()
+	var prev_max_mana: float = get_max_mana()
 	if not _increment_base_stat(stat_name):
 		return false
 	skill_points -= 1
-	if stat_name == "endurance":
-		current_hp = minf(get_max_hp(), current_hp + 15.0)
-		current_mana = minf(get_max_mana(), current_mana + 2.0)
+	var new_max_hp: float = get_max_hp()
+	var new_max_mana: float = get_max_mana()
+	if new_max_hp > prev_max_hp:
+		current_hp = minf(new_max_hp, current_hp + (new_max_hp - prev_max_hp))
+	if new_max_mana > prev_max_mana:
+		current_mana = minf(new_max_mana, current_mana + (new_max_mana - prev_max_mana))
 	stats_changed.emit()
 	skills_changed.emit()
-	hp_changed.emit(current_hp, get_max_hp())
-	mana_changed.emit(current_mana, get_max_mana())
+	hp_changed.emit(current_hp, new_max_hp)
+	mana_changed.emit(current_mana, new_max_mana)
 	save_game()
 	return true
 
@@ -2991,15 +3226,20 @@ func train_stat_with_gold(stat_name: String) -> bool:
 	var cost: float = get_train_cost(stat_name)
 	if gold < cost:
 		return false
+	var prev_max_hp: float = get_max_hp()
+	var prev_max_mana: float = get_max_mana()
 	if not _increment_base_stat(stat_name):
 		return false
 	gold -= cost
-	if stat_name == "endurance":
-		current_hp = minf(get_max_hp(), current_hp + 15.0)
-		current_mana = minf(get_max_mana(), current_mana + 2.0)
+	var new_max_hp: float = get_max_hp()
+	var new_max_mana: float = get_max_mana()
+	if new_max_hp > prev_max_hp:
+		current_hp = minf(new_max_hp, current_hp + (new_max_hp - prev_max_hp))
+	if new_max_mana > prev_max_mana:
+		current_mana = minf(new_max_mana, current_mana + (new_max_mana - prev_max_mana))
 	stats_changed.emit()
-	hp_changed.emit(current_hp, get_max_hp())
-	mana_changed.emit(current_mana, get_max_mana())
+	hp_changed.emit(current_hp, new_max_hp)
+	mana_changed.emit(current_mana, new_max_mana)
 	save_game()
 	return true
 
@@ -3014,6 +3254,9 @@ func _increment_base_stat(stat_name: String) -> bool:
 			return true
 		"endurance":
 			base_endurance += 1
+			return true
+		"intellect":
+			base_intellect += 1
 			return true
 	return false
 
@@ -3110,6 +3353,37 @@ func buy_item(item: ItemData) -> String:
 	]
 
 
+func get_dark_shop_item_price(item: ItemData) -> int:
+	if item == null:
+		return 1
+	return maxi(1, item.dark_shop_coin_price)
+
+
+func buy_dark_shop_item(item: ItemData) -> Dictionary:
+	if item == null:
+		return {"success": false, "message": "Товар не найден."}
+	var price: int = get_dark_shop_item_price(item)
+	if dark_shop_coins < price:
+		return {
+			"success": false,
+			"message": "Недостаточно монет Тёмного магазина (нужно %d 🪙, есть %d)." % [price, dark_shop_coins],
+		}
+	dark_shop_coins -= price
+	var pack_amt: int = maxi(1, item.shop_pack_amount)
+	add_item(item, pack_amt, false)
+	dark_shop_changed.emit()
+	stats_changed.emit()
+	save_game()
+	return {
+		"success": true,
+		"message": "✅ Куплено: %s x%d за %d 🪙! (Внимание: неиспользованные расходники пропадут при Новом ране)" % [
+			item.get_display_name(),
+			pack_amt,
+			price,
+		],
+	}
+
+
 func apply_potion_buff(item: ItemData, duration_scale: float = 1.0) -> void:
 	if item == null or not item.is_buff_potion():
 		return
@@ -3149,8 +3423,8 @@ func use_or_equip_item(item: ItemData) -> String:
 		return ""
 	match item.item_type:
 		ItemData.ItemType.CONSUMABLE:
-			var has_heal: bool = item.heal_amount > 0.0
-			var has_mana: bool = item.mana_amount > 0.0
+			var has_heal: bool = item.heal_amount > 0.0 or item.heal_pct > 0.0
+			var has_mana: bool = item.mana_amount > 0.0 or item.mana_pct > 0.0
 			var has_buff: bool = item.is_buff_potion()
 			var need_heal: bool = current_hp < get_max_hp()
 			var need_mana: bool = current_mana < get_max_mana()
@@ -3171,12 +3445,14 @@ func use_or_equip_item(item: ItemData) -> String:
 				var alch_mult: float = 1.60 if has_hero_class("alchemist") else 1.0
 				if has_heal:
 					var heal_mult: float = maxf(0.25, 1.0 - get_curse_value("blood_tax")) * alch_mult * cauldron_bonus
-					var healed: float = heal(item.heal_amount * heal_mult)
+					var raw_heal: float = item.heal_amount * heal_mult + get_max_hp() * item.heal_pct
+					var healed: float = heal(raw_heal)
 					player_healed.emit(healed)
 					parts.append("+%s HP" % NumberFormatter.format_number(healed))
 				if has_mana:
 					var mana_mult: float = alch_mult * cauldron_bonus
-					var restored: float = restore_mana(item.mana_amount * mana_mult)
+					var raw_mana: float = item.mana_amount * mana_mult + get_max_mana() * item.mana_pct
+					var restored: float = restore_mana(raw_mana)
 					parts.append("+%s MP" % NumberFormatter.format_number(restored))
 				if has_buff:
 					var dur_scale: float = cauldron_bonus * (1.30 if has_hero_class("alchemist") else 1.0) * get_effect_duration_multiplier()
@@ -4002,6 +4278,7 @@ func _build_save_data() -> SaveData:
 	save_data.base_strength = base_strength
 	save_data.base_agility = base_agility
 	save_data.base_endurance = base_endurance
+	save_data.base_intellect = base_intellect
 	save_data.current_hp = current_hp
 	save_data.current_mana = current_mana
 	save_data.melee_level = melee_level
@@ -4018,6 +4295,9 @@ func _build_save_data() -> SaveData:
 	save_data.weapon_enchant_level = weapon_enchant_level
 	save_data.armor_enchant_level = armor_enchant_level
 	save_data.unlocked_skills = unlocked_skills.duplicate()
+	save_data.skill_presets = skill_presets.duplicate(true)
+	save_data.active_skill_preset_index = active_skill_preset_index
+	save_data.skill_auto_upgrade_enabled = skill_auto_upgrade_enabled
 	save_data.equipped_ability_ids = equipped_ability_ids.duplicate()
 	save_data.ability_auto_cast = ability_auto_cast.duplicate()
 	save_data.auto_potion_enabled = auto_potion_enabled
@@ -4038,11 +4318,13 @@ func _build_save_data() -> SaveData:
 	save_data.max_unlocked_difficulty = max_unlocked_difficulty
 	save_data.boss_defeated_this_run = boss_defeated_this_run
 	save_data.dark_points = dark_points
+	save_data.dark_shop_coins = dark_shop_coins
 	save_data.dark_points_claimed_difficulties = dark_points_claimed_difficulties.duplicate()
 	save_data.unlocked_dark_skills = unlocked_dark_skills.duplicate()
 	save_data.difficulty_curses = difficulty_curses.duplicate()
 	save_data.total_runs_completed = total_runs_completed
 	save_data.selected_class_id = selected_class_id
+	save_data.reflector_kill_hp_stacks = reflector_kill_hp_stacks
 	save_data.curse_reroll_tokens = curse_reroll_tokens
 	save_data.reroll_boss_kills_in_run = reroll_boss_kills_in_run
 	save_data.owned_pet_ids = owned_pet_ids.duplicate()
@@ -4073,6 +4355,7 @@ func _apply_save_data(save_data: SaveData) -> void:
 	base_strength = maxi(1, save_data.base_strength)
 	base_agility = maxi(1, save_data.base_agility)
 	base_endurance = maxi(1, save_data.base_endurance)
+	base_intellect = maxi(1, save_data.base_intellect)
 	melee_level = maxi(1, save_data.melee_level)
 	melee_xp = maxf(0.0, save_data.melee_xp)
 	ranged_level = maxi(1, save_data.ranged_level)
@@ -4100,6 +4383,7 @@ func _apply_save_data(save_data: SaveData) -> void:
 	difficulty_level = clampi(save_data.difficulty_level, 1, max_unlocked_difficulty)
 	boss_defeated_this_run = save_data.boss_defeated_this_run
 	dark_points = maxi(0, save_data.dark_points)
+	dark_shop_coins = maxi(0, save_data.dark_shop_coins)
 	dark_points_claimed_difficulties.clear()
 	for diff_num: int in save_data.dark_points_claimed_difficulties:
 		if diff_num >= 1 and not dark_points_claimed_difficulties.has(diff_num):
@@ -4112,6 +4396,7 @@ func _apply_save_data(save_data: SaveData) -> void:
 	total_runs_completed = maxi(0, save_data.total_runs_completed)
 	curse_reroll_tokens = maxi(0, save_data.curse_reroll_tokens)
 	reroll_boss_kills_in_run = maxi(0, save_data.reroll_boss_kills_in_run)
+	reflector_kill_hp_stacks = maxi(0, save_data.reflector_kill_hp_stacks)
 
 	if _classes_by_id.has(save_data.selected_class_id) and (is_classes_unlocked() or save_data.selected_class_id == "wanderer"):
 		selected_class_id = save_data.selected_class_id
@@ -4140,6 +4425,11 @@ func _apply_save_data(save_data: SaveData) -> void:
 	for skill_id: String in save_data.unlocked_skills:
 		if _skills_by_id.has(skill_id) and not unlocked_skills.has(skill_id):
 			unlocked_skills.append(skill_id)
+
+	skill_presets = save_data.skill_presets.duplicate(true)
+	active_skill_preset_index = clampi(save_data.active_skill_preset_index, 0, SKILL_PRESET_COUNT - 1)
+	skill_auto_upgrade_enabled = save_data.skill_auto_upgrade_enabled
+	ensure_skill_presets()
 
 	unlocked_dark_skills.clear()
 	for dskill_id: String in save_data.unlocked_dark_skills:
@@ -4234,6 +4524,7 @@ func _save_data_to_dict(save_data: SaveData) -> Dictionary:
 		"base_strength": save_data.base_strength,
 		"base_agility": save_data.base_agility,
 		"base_endurance": save_data.base_endurance,
+		"base_intellect": save_data.base_intellect,
 		"current_hp": save_data.current_hp,
 		"current_mana": save_data.current_mana,
 		"melee_level": save_data.melee_level,
@@ -4250,6 +4541,9 @@ func _save_data_to_dict(save_data: SaveData) -> Dictionary:
 		"inventory_paths": save_data.inventory_paths.duplicate(),
 		"inventory_counts": save_data.inventory_counts.duplicate(),
 		"unlocked_skills": save_data.unlocked_skills.duplicate(),
+		"skill_presets": save_data.skill_presets.duplicate(true),
+		"active_skill_preset_index": save_data.active_skill_preset_index,
+		"skill_auto_upgrade_enabled": save_data.skill_auto_upgrade_enabled,
 		"equipped_ability_ids": save_data.equipped_ability_ids.duplicate(),
 		"ability_auto_cast": save_data.ability_auto_cast.duplicate(),
 		"auto_potion_enabled": save_data.auto_potion_enabled,
@@ -4271,11 +4565,13 @@ func _save_data_to_dict(save_data: SaveData) -> Dictionary:
 		"max_unlocked_difficulty": save_data.max_unlocked_difficulty,
 		"boss_defeated_this_run": save_data.boss_defeated_this_run,
 		"dark_points": save_data.dark_points,
+		"dark_shop_coins": save_data.dark_shop_coins,
 		"dark_points_claimed_difficulties": save_data.dark_points_claimed_difficulties.duplicate(),
 		"unlocked_dark_skills": save_data.unlocked_dark_skills.duplicate(),
 		"difficulty_curses": save_data.difficulty_curses.duplicate(true),
 		"total_runs_completed": save_data.total_runs_completed,
 		"selected_class_id": save_data.selected_class_id,
+		"reflector_kill_hp_stacks": save_data.reflector_kill_hp_stacks,
 		"curse_reroll_tokens": save_data.curse_reroll_tokens,
 		"reroll_boss_kills_in_run": save_data.reroll_boss_kills_in_run,
 		"owned_pet_ids": save_data.owned_pet_ids.duplicate(),
@@ -4301,8 +4597,9 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 	save_data.base_strength = int(data.get("base_strength", 5))
 	save_data.base_agility = int(data.get("base_agility", 5))
 	save_data.base_endurance = int(data.get("base_endurance", 5))
-	save_data.current_hp = float(data.get("current_hp", 175.0))
-	save_data.current_mana = float(data.get("current_mana", 55.0))
+	save_data.base_intellect = int(data.get("base_intellect", 5))
+	save_data.current_hp = float(data.get("current_hp", 400.0))
+	save_data.current_mana = float(data.get("current_mana", 285.0))
 	save_data.melee_level = int(data.get("melee_level", 1))
 	save_data.melee_xp = float(data.get("melee_xp", 0.0))
 	save_data.ranged_level = int(data.get("ranged_level", 1))
@@ -4324,6 +4621,12 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 	if data.get("unlocked_skills") is Array:
 		for s: Variant in data["unlocked_skills"]:
 			save_data.unlocked_skills.append(str(s))
+	if data.get("skill_presets") is Array:
+		for pr: Variant in data["skill_presets"]:
+			if pr is Dictionary:
+				save_data.skill_presets.append((pr as Dictionary).duplicate(true))
+	save_data.active_skill_preset_index = int(data.get("active_skill_preset_index", 0))
+	save_data.skill_auto_upgrade_enabled = bool(data.get("skill_auto_upgrade_enabled", false))
 	if data.get("equipped_ability_ids") is Array:
 		save_data.equipped_ability_ids.clear()
 		for a: Variant in data["equipped_ability_ids"]:
@@ -4356,6 +4659,7 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 	save_data.max_unlocked_difficulty = int(data.get("max_unlocked_difficulty", 1))
 	save_data.boss_defeated_this_run = bool(data.get("boss_defeated_this_run", false))
 	save_data.dark_points = int(data.get("dark_points", 0))
+	save_data.dark_shop_coins = int(data.get("dark_shop_coins", 0))
 	if data.get("dark_points_claimed_difficulties") is Array:
 		for d: Variant in data["dark_points_claimed_difficulties"]:
 			save_data.dark_points_claimed_difficulties.append(int(d))
@@ -4366,6 +4670,7 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 		save_data.difficulty_curses = (data["difficulty_curses"] as Dictionary).duplicate(true)
 	save_data.total_runs_completed = int(data.get("total_runs_completed", 0))
 	save_data.selected_class_id = str(data.get("selected_class_id", "wanderer"))
+	save_data.reflector_kill_hp_stacks = int(data.get("reflector_kill_hp_stacks", 0))
 	save_data.curse_reroll_tokens = int(data.get("curse_reroll_tokens", 0))
 	save_data.reroll_boss_kills_in_run = int(data.get("reroll_boss_kills_in_run", 0))
 	if data.get("owned_pet_ids") is Array:
@@ -4405,7 +4710,9 @@ func export_save_to_text() -> String:
 			"difficulty": difficulty_level,
 			"max_difficulty": max_unlocked_difficulty,
 			"dark_points": dark_points,
+			"dark_shop_coins": dark_shop_coins,
 			"class_id": selected_class_id,
+			"reflector_kill_hp_stacks": reflector_kill_hp_stacks,
 		},
 		"data": _save_data_to_dict(save_data),
 	}

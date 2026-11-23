@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "titan_bastion_serum"
+item_name = "Сыворотка Бастиона Титана"
+icon_emoji = "🛡️"
+description = "Ульт-сыворотка Тёмного магазина: +50% Max HP мгновенно, +250% Брони, +30% Уклона и +25% Вампиризма на 45с."
+item_type = 2
+heal_pct = 0.5
+buy_price = 250
+sell_value = 60
+dark_shop_coin_price = 2
+icon_color = Color(0.35, 0.86, 0.96, 1)
+buff_id = "potion_titan_bastion"
+buff_duration = 45.0
+buff_armor_pct = 2.5
+buff_dodge_bonus = 0.3
+buff_lifesteal_pct = 0.25

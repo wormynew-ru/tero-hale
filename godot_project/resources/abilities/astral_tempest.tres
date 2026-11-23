@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "astral_tempest"
+title = "Астральная буря"
+icon_emoji = "🌩️"
+description = "Обрушивает 5 разрядов чистой бури по 215% урона каждый (всего 1075% урона, 65% пробития брони)."
+mana_cost = 180.0
+cooldown = 18.0
+effect_type = "multi_hit"
+power_multiplier = 2.15
+hit_count = 5
+armor_ignore_pct = 0.65

@@ -13,6 +13,7 @@ signal return_to_battle_requested
 @onready var go_shop_button: Button = %GoShopButton
 @onready var go_enchant_button: Button = %GoEnchantButton
 @onready var go_dark_forge_button: Button = %GoDarkForgeButton
+@onready var go_dark_shop_button: Button = %GoDarkShopButton
 @onready var cancel_choice_button: Button = %CancelChoiceButton
 
 
@@ -49,6 +50,10 @@ func _ready() -> void:
 		shop_choice_overlay.visible = false
 		navigate_to_page.emit("dark_forge")
 	)
+	go_dark_shop_button.pressed.connect(func() -> void:
+		shop_choice_overlay.visible = false
+		navigate_to_page.emit("dark_shop")
+	)
 	cancel_choice_button.pressed.connect(func() -> void:
 		shop_choice_overlay.visible = false
 	)
@@ -65,7 +70,7 @@ func reset_overlay() -> void:
 func _refresh_hint() -> void:
 	if GameManager.is_alchemy_unlocked():
 		house_hotspot.tooltip_text = "🏡 Убежище: Светлый и Тёмный сады, Зелья и Духи (Открыто!)"
-		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (🏡 Убежище — Сады, Зелья и Духи), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня / 🔥 Тёмная кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)."
+		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (🏡 Убежище — Сады, Зелья и Духи), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня / 🔥 Тёмная кузня / 🦇 Тёмный магазин), Щенок (🐾 Путники), Горы (⚔️ Бой)."
 	else:
 		house_hotspot.tooltip_text = "☀️ Светлый сад открыт! (🌑 Тёмный сад и котлы с Сл. %d)" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
-		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (☀️ Светлый сад для приманки путников; 🌑 Тёмный сад с Сл.%d), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня / 🔥 Тёмная кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)." % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
+		map_hint_label.text = "🗺️ Нажмите на объекты на картине: Домик (☀️ Светлый сад для приманки путников; 🌑 Тёмный сад с Сл.%d), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня / 🔥 Тёмная кузня / 🦇 Тёмный магазин), Щенок (🐾 Путники), Горы (⚔️ Бой)." % GameManager.ALCHEMY_UNLOCK_DIFFICULTY

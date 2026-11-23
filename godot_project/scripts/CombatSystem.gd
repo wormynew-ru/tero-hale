@@ -42,6 +42,7 @@ const SPIRIT_EARTH_INTERVAL: float = 2.0
 const OVERCHARGE_TICKS_PER_SECOND: float = 12.0
 const OVERCHARGE_TICK_INTERVAL: float = 1.0 / OVERCHARGE_TICKS_PER_SECOND
 const OVERCHARGE_MAX_TICKS: int = 12
+const BLOOD_ARCHMAGE_QUICK_CAST_CHANCE: float = 0.10
 
 var current_state: State = State.IDLE
 var is_seeking_battle: bool = false
@@ -63,12 +64,14 @@ var _spirit_forest_timer: float = 0.0
 var _spirit_earth_timer: float = 0.0
 
 var _enemy_dots: Array[Dictionary] = []
+var _quick_cast_slots: Array[int] = []
 
 var overcharge_active: bool = false
 var overcharge_slot_index: int = -1
 var overcharge_tick_count: int = 0
 var _overcharge_timer: float = 0.0
 var _overcharge_ability: AbilityData = null
+var _overcharge_trigger_cooldown: bool = true
 
 var _enemy_stun_timer: float = 0.0
 var _pet_stun_used_this_fight: bool = false
@@ -151,7 +154,13 @@ func toggle_battle_search() -> void:
 			_set_state(State.FIGHTING)
 
 
-func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
+func try_cast_ability(
+	slot_index: int,
+	is_auto: bool = false,
+	ignore_cooldown: bool = false,
+	trigger_cooldown: bool = true,
+	power_scale: float = 1.0
+) -> bool:
 	var ability: AbilityData = GameManager.get_ability(slot_index)
 	if ability == null or not GameManager.is_ability_unlocked(ability):
 		return false
@@ -163,7 +172,7 @@ func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
 			return true
 		return false
 
-	if GameManager.get_ability_cooldown(slot_index) > 0.0:
+	if not ignore_cooldown and GameManager.get_ability_cooldown(slot_index) > 0.0:
 		return false
 
 	var mana_cost: float = GameManager.get_ability_mana_cost(ability)
@@ -181,7 +190,7 @@ func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
 			return false
 
 	var cd_duration: float = GameManager.get_ability_cooldown_duration(ability)
-	var power_mult: float = GameManager.get_ability_power_multiplier(ability)
+	var power_mult: float = GameManager.get_ability_power_multiplier(ability) * power_scale
 
 	# 1) Heal Spell
 	if ability.effect_type == "heal":
@@ -193,7 +202,8 @@ func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
-		GameManager.start_ability_cooldown(slot_index, cd_duration)
+		if trigger_cooldown:
+			GameManager.start_ability_cooldown(slot_index, cd_duration)
 		var healed: float = GameManager.heal(max_hp * power_mult)
 		GameManager.player_healed.emit(healed)
 		ability_casted.emit(slot_index, ability)
@@ -206,7 +216,8 @@ func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
-		GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
+		if trigger_cooldown:
+			GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
 		var buff_scale: float = 1.0 + float(maxi(0, GameManager.magic_level - 1)) * 0.012
 		GameManager.apply_ability_buff(ability, buff_scale)
 		ability_casted.emit(slot_index, ability)
@@ -232,6 +243,7 @@ func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
 		overcharge_tick_count = 0
 		_overcharge_timer = 0.0
 		_overcharge_ability = ability
+		_overcharge_trigger_cooldown = trigger_cooldown
 		ability_casted.emit(slot_index, ability)
 		_execute_overcharge_tick()
 		return true
@@ -243,7 +255,8 @@ func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
-		GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
+		if trigger_cooldown:
+			GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
 		_apply_enemy_dot(ability, power_mult)
 		ability_casted.emit(slot_index, ability)
 		return true
@@ -262,7 +275,8 @@ func try_cast_ability(slot_index: int, is_auto: bool = false) -> bool:
 
 	GameManager.add_mastery_xp("magic", mana_cost)
 
-	GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
+	if trigger_cooldown:
+		GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
 
 	var hits: int = maxi(1, ability.hit_count)
 	var total_dealt: float = 0.0
@@ -392,16 +406,18 @@ func _stop_overcharge(trigger_cooldown: bool) -> void:
 	var was_active: bool = overcharge_active
 	var prev_slot: int = overcharge_slot_index
 	var prev_ab: AbilityData = _overcharge_ability
+	var should_cd: bool = trigger_cooldown and _overcharge_trigger_cooldown
 
 	overcharge_active = false
 	overcharge_slot_index = -1
 	overcharge_tick_count = 0
 	_overcharge_timer = 0.0
 	_overcharge_ability = null
+	_overcharge_trigger_cooldown = true
 
 	if was_active:
 		overcharge_state_changed.emit(false, -1, 0)
-		if trigger_cooldown and prev_slot >= 0 and prev_ab != null:
+		if should_cd and prev_slot >= 0 and prev_ab != null:
 			var reset_cd: bool = GameManager.has_dark_skill("spell_overload") and randf() < GameManager.get_dark_bonus("spell_overload")
 			var cd_duration: float = GameManager.get_ability_cooldown_duration(prev_ab)
 			GameManager.start_ability_cooldown(prev_slot, 0.0 if reset_cd else cd_duration)
@@ -821,9 +837,33 @@ func _process_spawning(delta: float) -> void:
 		_set_state(State.FIGHTING)
 
 
+func _try_cast_random_quick_ability(power_scale: float = 1.0) -> bool:
+	_quick_cast_slots.clear()
+	for i: int in range(GameManager.abilities.size()):
+		var ab: AbilityData = GameManager.get_ability(i)
+		if ab != null and GameManager.is_ability_unlocked(ab):
+			_quick_cast_slots.append(i)
+	if _quick_cast_slots.is_empty():
+		return false
+	if _quick_cast_slots.size() > 1:
+		_quick_cast_slots.shuffle()
+	for slot_idx: int in _quick_cast_slots:
+		if try_cast_ability(slot_idx, true, true, false, power_scale):
+			return true
+	return false
+
+
 func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -> void:
 	if current_enemy == null:
 		return
+
+	if GameManager.has_hero_class("blood_archmage") and randf() < BLOOD_ARCHMAGE_QUICK_CAST_CHANCE:
+		if _try_cast_random_quick_ability(power_scale):
+			GameManager.reduce_all_ability_cooldowns(0.5)
+			if allow_echo and current_enemy != null and current_state == State.FIGHTING and enemy_hp > 0.0:
+				if GameManager.has_dark_skill("echo_strike") and randf() < GameManager.get_dark_bonus("echo_strike"):
+					_perform_player_attack(0.75, false)
+			return
 
 	var is_ranged: bool = GameManager.is_using_ranged_weapon()
 	var is_staff: bool = GameManager.is_using_mage_staff()
@@ -901,15 +941,19 @@ func _perform_enemy_attack() -> void:
 	enemy_attack_landed.emit(taken, false)
 
 	var reflector_dmg: float = raw_damage * 0.20 if GameManager.has_hero_class("reflector") else 0.0
+	var dark_reflect_pct: float = GameManager.get_damage_reflection_pct()
+	var dark_reflect_dmg: float = raw_damage * dark_reflect_pct if dark_reflect_pct > 0.0 else 0.0
+	if GameManager.has_dark_skill("thorn_apotheosis"):
+		dark_reflect_dmg += GameManager.get_max_hp() * 0.02
 	var thorns_pct: float = GameManager.get_active_buff_sum("thorns_pct")
 	var thorns_dmg: float = taken * thorns_pct if (thorns_pct > 0.0 and taken > 0.0) else 0.0
-	var total_reflected: float = reflector_dmg + thorns_dmg
+	var total_reflected: float = reflector_dmg + dark_reflect_dmg + thorns_dmg
 
 	if total_reflected > 0.0 and current_enemy != null and GameManager.current_hp > 0.0:
 		var reflected_final: float = maxf(1.0, total_reflected)
 		enemy_hp = maxf(0.0, enemy_hp - reflected_final)
 		enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
-		var ref_emoji: String = "🪞" if reflector_dmg > 0.0 else "🧣"
+		var ref_emoji: String = "🪞" if (reflector_dmg > 0.0 or dark_reflect_dmg > 0.0) else "🧣"
 		dot_tick_landed.emit(ref_emoji, "Отражение", reflected_final)
 		if enemy_hp <= 0.0:
 			_handle_enemy_defeated()

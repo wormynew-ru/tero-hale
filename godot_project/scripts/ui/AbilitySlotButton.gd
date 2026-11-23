@@ -23,6 +23,7 @@ var _last_visual_sig: String = ""
 
 
 func _ready() -> void:
+	set_process(false)
 	_build_styles()
 	button_down.connect(_on_button_down)
 	button_up.connect(_on_button_up)
@@ -52,21 +53,30 @@ func _build_styles() -> void:
 
 
 func _process(delta: float) -> void:
-	if _is_holding and not _hold_triggered:
-		_hold_elapsed += delta
-		hold_progress_bar.visible = true
-		hold_progress_bar.value = clampf((_hold_elapsed / HOLD_THRESHOLD_SEC) * 100.0, 0.0, 100.0)
-		if _hold_elapsed >= HOLD_THRESHOLD_SEC:
-			_hold_triggered = true
-			hold_progress_bar.visible = false
-			hold_progress_bar.value = 0.0
-			auto_cast_toggled.emit(slot_index)
+	if not _is_holding or _hold_triggered or not is_pressed():
+		_is_holding = false
+		_hold_elapsed = 0.0
+		hold_progress_bar.visible = false
+		hold_progress_bar.value = 0.0
+		set_process(false)
+		return
+	_hold_elapsed += delta
+	hold_progress_bar.visible = true
+	hold_progress_bar.value = clampf((_hold_elapsed / HOLD_THRESHOLD_SEC) * 100.0, 0.0, 100.0)
+	if _hold_elapsed >= HOLD_THRESHOLD_SEC:
+		_hold_triggered = true
+		_is_holding = false
+		hold_progress_bar.visible = false
+		hold_progress_bar.value = 0.0
+		set_process(false)
+		auto_cast_toggled.emit(slot_index)
 
 
 func _on_button_down() -> void:
 	_is_holding = true
 	_hold_elapsed = 0.0
 	_hold_triggered = false
+	set_process(true)
 
 
 func _on_button_up() -> void:
@@ -77,6 +87,7 @@ func _on_button_up() -> void:
 	_hold_triggered = false
 	hold_progress_bar.visible = false
 	hold_progress_bar.value = 0.0
+	set_process(false)
 
 
 func _on_mana_changed(_current_mana: float, _max_mana: float) -> void:

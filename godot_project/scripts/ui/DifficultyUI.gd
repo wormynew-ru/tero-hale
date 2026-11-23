@@ -26,6 +26,7 @@ func _ready() -> void:
 	_selected_difficulty = GameManager.difficulty_level
 	GameManager.difficulty_changed.connect(_on_manager_updated)
 	GameManager.dark_skills_changed.connect(_on_state_updated)
+	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_state_updated())
 	GameManager.game_reset.connect(_on_reset)
 
 	diff_minus_button.pressed.connect(func() -> void: _set_selected_difficulty(_selected_difficulty - 1))
@@ -117,17 +118,19 @@ func _refresh() -> void:
 	]
 
 	var already_claimed_diff: bool = GameManager.is_dark_points_claimed_for_difficulty(GameManager.difficulty_level)
+	var coins_reward: int = maxi(1, GameManager.difficulty_level)
 	if GameManager.boss_defeated_this_run:
-		boss_status_label.text = "✅ Вечный титан повержен на Сл.%d! Награда 🌑 за эту сложность учтена (макс. 1 раз на сложность), открыта Сложность %d." % [
+		boss_status_label.text = "✅ Вечный титан повержен на Сл.%d! Получено +%d 🪙 Тёмного магазина (начисляются за каждый ран), открыта Сл.%d." % [
 			GameManager.difficulty_level,
+			coins_reward,
 			GameManager.max_unlocked_difficulty,
 		]
 		boss_status_label.modulate = Color(0.45, 0.96, 0.62, 1.0)
 	elif already_claimed_diff:
-		boss_status_label.text = "⏳ Вечный титан (Сл.%d): +2 🌑 за эту сложность уже были получены ранее — повторная победа 🌑 не даст (макс. 1 раз на Сл.)." % GameManager.difficulty_level
+		boss_status_label.text = "⏳ Вечный титан (Сл.%d): +2 🌑 уже получены ранее, но за победу в этом ране вы снова получите +%d 🪙 Тёмного магазина (можно фармить многократно!)." % [GameManager.difficulty_level, coins_reward]
 		boss_status_label.modulate = Color(0.95, 0.78, 0.42, 1.0)
 	else:
-		boss_status_label.text = "⏳ Победите Вечного титана (Небесный престол, Lv. 50+) — получите +2 🌑 (1 раз за Сл.%d) и откроете следующую сложность." % GameManager.difficulty_level
+		boss_status_label.text = "⏳ Победите Вечного титана (Небесный престол, Lv. 50+) — получите +2 🌑 (1 раз за Сл.%d), +%d 🪙 Тёмного магазина (за каждый ран!) и откроете следующую сложность." % [GameManager.difficulty_level, coins_reward]
 		boss_status_label.modulate = Color(0.84, 0.88, 0.96, 1.0)
 
 	if GameManager.max_unlocked_difficulty >= GameManager.CRUCIBLE_UNLOCK_DIFFICULTY:
@@ -202,6 +205,9 @@ func _refresh_curses_preview() -> void:
 			continue
 		var eff_val: float = float(found_def["base_value"]) * atten
 		var desc: String = GameManager.format_curse_description(found_def, eff_val)
+		var is_alch_immune: bool = str(found_def["id"]) == "greedy_curse" and GameManager.has_hero_class("alchemist")
+		if is_alch_immune:
+			desc += " (🛡️ Иммунитет Алхимика — не действует)"
 
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
@@ -211,6 +217,8 @@ func _refresh_curses_preview() -> void:
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lbl.add_theme_font_size_override("font_size", 13)
 		lbl.text = "• Сл. %d — %s: %s" % [tier, str(found_def["title"]), desc]
+		if is_alch_immune:
+			lbl.modulate = Color(0.45, 0.96, 0.68, 1.0)
 		row.add_child(lbl)
 
 		var reroll_btn: Button = Button.new()

@@ -18,7 +18,7 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.84, 0.88, 0.96, 1)
 theme_override_font_sizes/font_size = 14
-text = "✨ Книга заклинаний: 20 заклинаний (активно максимум 3 слота)."
+text = "✨ Книга заклинаний: 26 заклинаний (активно максимум 3 слота)."
 autowrap_mode = 3
 
 [node name="SpellbookFeedbackLabel" type="Label" parent="SpellbookVBox"]
@@ -44,7 +44,7 @@ theme_override_constants/separation = 10
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 15
-text = "📖 Все заклинания (20 шт. — 14 общих + 6 Архимага Крови):"
+text = "📖 Все заклинания (26 шт. — 19 общих + 7 Архимага Крови):"
 
 [node name="SpellListVBox" type="VBoxContainer" parent="SpellbookVBox"]
 unique_name_in_owner = true

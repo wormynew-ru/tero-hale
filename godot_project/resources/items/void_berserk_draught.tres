@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "void_berserk_draught"
+item_name = "Зелье ярости Бездны"
+icon_emoji = "💥"
+description = "Ульт-настойка Тёмного магазина: +250% Урона, +120% Скорости атаки, +35% Крита и +150% Крит-урона на 45с."
+item_type = 2
+buy_price = 250
+sell_value = 60
+dark_shop_coin_price = 2
+icon_color = Color(1, 0.32, 0.24, 1)
+buff_id = "potion_void_berserk"
+buff_duration = 45.0
+buff_damage_pct = 2.5
+buff_attack_speed_pct = 1.2
+buff_crit_chance_bonus = 0.35
+buff_crit_mult_bonus = 1.5

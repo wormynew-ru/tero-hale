@@ -7,11 +7,13 @@ extends ScrollContainer
 
 var _class_cards: Array[Dictionary] = []
 var _dirty: bool = true
+var _refresh_queued: bool = false
 
 
 func _ready() -> void:
 	GameManager.class_changed.connect(_on_class_changed)
 	GameManager.difficulty_changed.connect(_on_state_updated)
+	GameManager.stats_changed.connect(_on_state_updated)
 	GameManager.game_reset.connect(_on_reset)
 	_build_cards_once()
 	_refresh()
@@ -24,7 +26,10 @@ func _notification(what: int) -> void:
 
 func _on_reset() -> void:
 	class_feedback_label.text = ""
-	_on_state_updated()
+	_dirty = true
+	_refresh_queued = false
+	if is_visible_in_tree():
+		_refresh()
 
 
 func _on_class_changed(_class_data: HeroClassData) -> void:
@@ -35,7 +40,18 @@ func _on_state_updated() -> void:
 	if not is_visible_in_tree():
 		_dirty = true
 		return
-	_refresh()
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_flush_refresh")
+
+
+func _flush_refresh() -> void:
+	_refresh_queued = false
+	if is_visible_in_tree():
+		_refresh()
+	else:
+		_dirty = true
 
 
 func _make_card_style(bg_col: Color, border_col: Color, border_w: int) -> StyleBoxFlat:
@@ -122,6 +138,8 @@ func _build_cards_once() -> void:
 			"req_diff": hc.required_difficulty,
 			"card": card,
 			"btn": select_btn,
+			"passive_lbl": passive_lbl,
+			"base_passive": hc.passive_summary,
 			"active_style": active_style,
 			"inactive_style": inactive_style,
 			"last_state": "",
@@ -138,17 +156,16 @@ func _refresh() -> void:
 	var current_name: String = "%s %s" % [current_class.icon_emoji, current_class.title] if current_class != null else "Странник"
 
 	if unlocked:
-		class_status_label.text = "✅ Классы открыты (достигнута %d/%d сложность). Текущий класс: %s. Смена класса доступна в любой момент." % [
+		class_status_label.text = "✅ Классы открыты (%d/%d). Текущий класс: %s. Классы можно переключать в любой момент, а заработанные бонусы классов (напр., стаки HP 🪞 Отражателя и уровни духов 🌿 Спирита) сохраняются строго за тем классом, который их заработал." % [
 			GameManager.max_unlocked_difficulty,
 			GameManager.CLASSES_UNLOCK_DIFFICULTY,
 			current_name,
 		]
 		class_status_label.modulate = Color(0.55, 0.95, 0.72, 1.0)
 	else:
-		class_status_label.text = "🔒 Классы открываются после достижения %d-й сложности (сейчас открыто до Сл.%d). До 50-й сложности активен базовый класс %s." % [
+		class_status_label.text = "🔒 Классы открываются после достижения %d-й сложности (сейчас открыто до Сл.%d). После открытия классы можно свободно переключать, а их личные бонусы остаются за ними." % [
 			GameManager.CLASSES_UNLOCK_DIFFICULTY,
 			GameManager.max_unlocked_difficulty,
-			current_name,
 		]
 		class_status_label.modulate = Color(0.95, 0.78, 0.42, 1.0)
 
@@ -157,6 +174,24 @@ func _refresh() -> void:
 		var req_diff: int = int(entry["req_diff"])
 		var is_active: bool = GameManager.has_hero_class(cid)
 		var req_met: bool = req_diff <= 1 or unlocked
+
+		var passive_lbl: Label = entry["passive_lbl"] as Label
+		if passive_lbl != null:
+			var base_passive: String = str(entry["base_passive"])
+			if cid == "reflector":
+				passive_lbl.text = "%s\n📊 Заработано Отражателем: +%s Max HP (действует только на Отражателе)" % [
+					base_passive,
+					NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks)),
+				]
+			elif cid == "spirit":
+				passive_lbl.text = "%s\n📊 Уровни духов Спирита: 🔥%d / 🌪️%d / 🌿%d / 🪨%d (действуют только на Спирите)" % [
+					base_passive,
+					GameManager.get_spirit_training_level("fire"),
+					GameManager.get_spirit_training_level("wind"),
+					GameManager.get_spirit_training_level("forest"),
+					GameManager.get_spirit_training_level("earth"),
+				]
+
 		var state_key: String = "active" if is_active else ("locked_%d" % req_diff if not req_met else "ready")
 		if str(entry["last_state"]) == state_key:
 			continue

@@ -50,6 +50,57 @@ theme_override_colors/font_color = Color(0.42, 0.82, 0.98, 1)
 theme_override_font_sizes/font_size = 15
 text = "Доступно очков: 1"
 
+[node name="PresetRow" type="HBoxContainer" parent="RootVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Preset1Button" type="Button" parent="RootVBox/PresetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "П1"
+
+[node name="Preset2Button" type="Button" parent="RootVBox/PresetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "П2"
+
+[node name="Preset3Button" type="Button" parent="RootVBox/PresetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 44)
+layout_mode = 2
+text = "П3"
+
+[node name="PresetAutoButton" type="Button" parent="RootVBox/PresetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(138, 44)
+layout_mode = 2
+text = "🤖 Авто: ВЫКЛ"
+
+[node name="PresetEditButton" type="Button" parent="RootVBox/PresetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(144, 44)
+layout_mode = 2
+text = "📝 Очередь: ВЫКЛ"
+
+[node name="PresetClearButton" type="Button" parent="RootVBox/PresetRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(50, 44)
+layout_mode = 2
+tooltip_text = "Очистить очередь активного профиля"
+text = "🗑️"
+
+[node name="PresetInfoLabel" type="Label" parent="RootVBox/PresetRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.74, 0.84, 0.96, 1)
+theme_override_font_sizes/font_size = 12
+text = "Очередь: 0 ш."
+horizontal_alignment = 2
+clip_text = true
+
 [node name="GraphScroll" type="ScrollContainer" parent="RootVBox"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -125,6 +176,13 @@ theme_override_colors/font_color = Color(0.75, 0.8, 0.88, 1)
 theme_override_font_sizes/font_size = 13
 text = "Описание навыка"
 autowrap_mode = 3
+
+[node name="PresetToggleNodeButton" type="Button" parent="RootVBox/DetailsPanel/DetailsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(136, 46)
+layout_mode = 2
+size_flags_vertical = 4
+text = "+ В пресет"
 
 [node name="LearnButton" type="Button" parent="RootVBox/DetailsPanel/DetailsRow"]
 unique_name_in_owner = true

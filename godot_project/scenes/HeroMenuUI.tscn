@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/HeroMenuUI.gd" id="1_hero_menu"]
 [ext_resource type="PackedScene" path="res://scenes/StatsUI.tscn" id="2_stats_ui"]
@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://scenes/SanctuaryUI.tscn" id="13_sanctuary_ui"]
 [ext_resource type="PackedScene" path="res://scenes/VillageMapUI.tscn" id="14_village_map_ui"]
 [ext_resource type="PackedScene" path="res://scenes/DarkForgeUI.tscn" id="15_dark_forge_ui"]
+[ext_resource type="PackedScene" path="res://scenes/DarkShopUI.tscn" id="16_dark_shop_ui"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 content_margin_left = 16.0
@@ -168,7 +169,7 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 17
 theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
-text = "✨ Заклинания (20)"
+text = "✨ Заклинания (26)"
 
 [node name="OpenPetsButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
 unique_name_in_owner = true
@@ -232,6 +233,15 @@ theme_override_font_sizes/font_size = 17
 theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
 text = "🏪 Лавка"
+
+[node name="OpenDarkShopButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(228, 54)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
+text = "🦇 Тёмный магазин"
 
 [node name="OpenDifficultyButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
 unique_name_in_owner = true
@@ -369,6 +379,16 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="ShopUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("5_shop_ui")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DarkShopUI" parent="MenuMargin/MenuCard/MenuVBox/ContentStack" instance=ExtResource("16_dark_shop_ui")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 1

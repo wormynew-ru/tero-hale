@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "astral_conduit"
+title = "Астральный проводник"
+icon_emoji = "💠"
+description = "Преобразует потоки эфира в постоянное восстановление маны для тяжелых чар."
+grid_position = Vector2(6, 0)
+prerequisites = Array[String](["mana_flow", "sage_insight"])
+cost_skill_points = 1
+bonus_type = "mana_regen"
+bonus_value = 14.0

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "crimson_apocalypse"
+title = "Багровый апокалипсис"
+icon_emoji = "💥"
+description = "Запретный ритуал Архимага Крови: жертвует 14% HP и 240 маны, нанося 1300% чистого урона (100% пробития) и вампиря 35% урона."
+required_class_id = "blood_archmage"
+mana_cost = 240.0
+cooldown = 20.0
+effect_type = "blood_nova"
+power_multiplier = 13.0
+armor_ignore_pct = 1.0
+hp_sacrifice_pct = 0.14
+lifesteal_ratio = 0.35

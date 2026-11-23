@@ -20,6 +20,7 @@ const VillageMapUIScript = preload("res://scripts/ui/VillageMapUI.gd")
 @onready var open_enchant_button: Button = %OpenEnchantButton
 @onready var open_dark_forge_button: Button = %OpenDarkForgeButton
 @onready var open_shop_button: Button = %OpenShopButton
+@onready var open_dark_shop_button: Button = %OpenDarkShopButton
 @onready var open_difficulty_button: Button = %OpenDifficultyButton
 @onready var open_faq_button: Button = %OpenFaqButton
 @onready var open_village_button: Button = %OpenVillageButton
@@ -36,6 +37,7 @@ const VillageMapUIScript = preload("res://scripts/ui/VillageMapUI.gd")
 @onready var enchant_ui: ScrollContainer = %EnchantUI
 @onready var dark_forge_ui: ScrollContainer = %DarkForgeUI
 @onready var shop_ui: ScrollContainer = %ShopUI
+@onready var dark_shop_ui: ScrollContainer = %DarkShopUI
 @onready var difficulty_ui: DifficultyUIScript = %DifficultyUI
 @onready var faq_ui: ScrollContainer = %FaqUI
 @onready var sanctuary_ui: ScrollContainer = %SanctuaryUI
@@ -50,6 +52,7 @@ func _ready() -> void:
 	GameManager.difficulty_changed.connect(_refresh_resources)
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _refresh_resources())
 	GameManager.pets_changed.connect(_refresh_resources)
+	GameManager.dark_shop_changed.connect(_refresh_resources)
 
 	back_button.pressed.connect(open_hub)
 	close_button.pressed.connect(close_menu)
@@ -64,6 +67,7 @@ func _ready() -> void:
 	open_enchant_button.pressed.connect(func() -> void: open_page("enchant"))
 	open_dark_forge_button.pressed.connect(func() -> void: open_page("dark_forge"))
 	open_shop_button.pressed.connect(func() -> void: open_page("shop"))
+	open_dark_shop_button.pressed.connect(func() -> void: open_page("dark_shop"))
 	open_difficulty_button.pressed.connect(func() -> void: open_page("difficulty"))
 	open_faq_button.pressed.connect(func() -> void: open_page("faq"))
 	open_village_button.pressed.connect(func() -> void: open_page("village"))
@@ -83,13 +87,15 @@ func _ready() -> void:
 func _refresh_resources(force: bool = false) -> void:
 	if not visible and not force:
 		return
-	resource_badge_label.text = "💰 %s   |   💎 %d ОН   |   🌑 %d   |   🎲 %d   |   💀 Сл.%d" % [
+	resource_badge_label.text = "💰 %s   |   💎 %d ОН   |   🌑 %d   |   🪙 %d   |   🎲 %d   |   💀 Сл.%d" % [
 		NumberFormatter.format_number(GameManager.gold),
 		GameManager.skill_points,
 		GameManager.dark_points,
+		GameManager.dark_shop_coins,
 		GameManager.curse_reroll_tokens,
 		GameManager.difficulty_level,
 	]
+	open_dark_shop_button.text = "🦇 Тёмный магазин (%d 🪙)" % GameManager.dark_shop_coins
 	if GameManager.is_classes_unlocked():
 		var hc: HeroClassData = GameManager.get_current_class()
 		open_classes_button.text = "%s Класс: %s" % [hc.icon_emoji if hc != null else "🎭", hc.title if hc != null else "Странник"]
@@ -106,6 +112,8 @@ func _refresh_resources(force: bool = false) -> void:
 		open_sanctuary_button.text = "🏡 Убежище (Сады и Зелья)"
 	else:
 		open_sanctuary_button.text = "☀️ Светлый сад (Тёмн.: Сл.%d)" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
+
+	open_spells_button.text = "✨ Заклинания (%d)" % GameManager.all_abilities.size()
 
 
 func open_hub() -> void:
@@ -129,7 +137,7 @@ func open_page(page_id: String) -> void:
 			menu_title_label.text = "🎭 Класс героя"
 			class_ui.visible = true
 		"spells":
-			menu_title_label.text = "✨ Книга заклинаний (20)"
+			menu_title_label.text = "✨ Книга заклинаний (%d)" % GameManager.all_abilities.size()
 			spellbook_ui.visible = true
 		"pets":
 			menu_title_label.text = "🐾 Путники (Слот без HP)"
@@ -152,6 +160,9 @@ func open_page(page_id: String) -> void:
 		"shop":
 			menu_title_label.text = "🏪 Лавка"
 			shop_ui.visible = true
+		"dark_shop":
+			menu_title_label.text = "🦇 Тёмный магазин (ульт-расходники)"
+			dark_shop_ui.visible = true
 		"difficulty":
 			menu_title_label.text = "💀 Сложность и Новый ран"
 			difficulty_ui.visible = true
@@ -187,6 +198,7 @@ func _hide_all_pages() -> void:
 	enchant_ui.visible = false
 	dark_forge_ui.visible = false
 	shop_ui.visible = false
+	dark_shop_ui.visible = false
 	difficulty_ui.visible = false
 	faq_ui.visible = false
 	sanctuary_ui.visible = false

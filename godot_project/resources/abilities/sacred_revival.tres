@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AbilityData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/AbilityData.gd" id="1_ability"]
+
+[resource]
+script = ExtResource("1_ability")
+id = "sacred_revival"
+title = "Великое возрождение"
+icon_emoji = "💖"
+description = "Мощный обряд восстановления: мгновенно исцеляет 75% от Max HP ценой большого расхода маны."
+mana_cost = 110.0
+cooldown = 18.0
+effect_type = "heal"
+power_multiplier = 0.75
+armor_ignore_pct = 0.0

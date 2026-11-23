@@ -7,6 +7,7 @@ signal open_pets_requested
 signal open_village_requested
 
 const AVATAR_BASE_POS: Vector2 = Vector2(2.0, 2.0)
+const AVATAR_TWEEN_MIN_INTERVAL_MS: int = 90
 const AttackDiamondScript = preload("res://scripts/ui/AttackDiamond.gd")
 const AbilitySlotButtonScript = preload("res://scripts/ui/AbilitySlotButton.gd")
 
@@ -22,6 +23,7 @@ const AbilitySlotButtonScript = preload("res://scripts/ui/AbilitySlotButton.gd")
 @onready var str_badge_label: Label = %StrBadgeLabel
 @onready var agi_badge_label: Label = %AgiBadgeLabel
 @onready var end_badge_label: Label = %EndBadgeLabel
+@onready var int_badge_label: Label = %IntBadgeLabel
 @onready var crest_red_label: Label = %CrestRedLabel
 @onready var crest_blue_label: Label = %CrestBlueLabel
 
@@ -82,6 +84,8 @@ var _proj_pool: Array[Dictionary] = []
 var _player_popup_cursor: int = 0
 var _enemy_popup_cursor: int = 0
 var _proj_cursor: int = 0
+var _last_player_anim_ms: int = 0
+var _last_enemy_anim_ms: int = 0
 
 
 func _ready() -> void:
@@ -149,7 +153,7 @@ func _create_popup_slot(stage: Control) -> Dictionary:
 	popup.add_theme_constant_override("outline_size", 4)
 	if stage != null:
 		stage.add_child(popup)
-	return {"label": popup, "tween": null}
+	return {"label": popup, "tween": null, "last_size": -1, "last_color": Color(-1.0, -1.0, -1.0, -1.0)}
 
 
 func _request_hud_refresh() -> void:
@@ -241,10 +245,12 @@ func _refresh_hud() -> void:
 	var total_str: int = GameManager.get_total_strength()
 	var total_agi: int = GameManager.get_total_agility()
 	var total_end: int = GameManager.get_total_endurance()
+	var total_int: int = GameManager.get_total_intellect()
 
 	str_badge_label.text = "⚔️\n%d" % total_str
 	agi_badge_label.text = "⚡\n%d" % total_agi
 	end_badge_label.text = "🛡️\n%d" % total_end
+	int_badge_label.text = "🧠\n%d" % total_int
 
 	if GameManager.is_equipment_disabled():
 		var hc: HeroClassData = GameManager.get_current_class()
@@ -400,11 +406,12 @@ func _on_dot_tick_landed(emoji: String, _title: String, damage: float) -> void:
 func _on_final_boss_cleared(dark_points_gained: int, unlocked_difficulty: int) -> void:
 	if GameManager.is_afk_mode:
 		return
+	var coins_gained: int = maxi(1, GameManager.difficulty_level)
 	var msg: String = ""
 	if dark_points_gained > 0:
-		msg = "🌑 +%d Очка Тьмы! Сл.%d открыта!" % [dark_points_gained, unlocked_difficulty]
+		msg = "🌑 +%d 🌑  |  🪙 +%d Тёмного магазина! Сл.%d открыта!" % [dark_points_gained, coins_gained, unlocked_difficulty]
 	else:
-		msg = "👑 Вечный титан повержен! (🌑 за Сл.%d уже получены)" % GameManager.difficulty_level
+		msg = "👑 Титан повержен! 🪙 +%d Тёмного магазина (🌑 за Сл.%d уже получены)" % [coins_gained, GameManager.difficulty_level]
 	_spawn_floating_text(
 		player_avatar_stage,
 		msg,
@@ -506,6 +513,7 @@ func _on_enemy_spawned(enemy: EnemyData, current_hp: float, max_hp: float, curre
 	_on_enemy_hp_changed(current_hp, max_hp)
 	_on_enemy_mana_changed(current_mana, max_mana)
 
+	_last_enemy_anim_ms = 0
 	if not GameManager.is_afk_mode:
 		_play_enemy_spawn_pop()
 
@@ -657,6 +665,15 @@ func _spawn_ranged_projectile(emoji: String) -> void:
 
 
 func _play_attack_animation(is_player: bool, offset_x: float) -> void:
+	var now_ms: int = Time.get_ticks_msec()
+	var last_ms: int = _last_player_anim_ms if is_player else _last_enemy_anim_ms
+	if last_ms > 0 and (now_ms - last_ms) < AVATAR_TWEEN_MIN_INTERVAL_MS:
+		return
+	if is_player:
+		_last_player_anim_ms = now_ms
+	else:
+		_last_enemy_anim_ms = now_ms
+
 	var panel: PanelContainer = player_avatar_panel if is_player else enemy_avatar_panel
 	var active_tween: Tween = _player_tween if is_player else _enemy_tween
 	if active_tween != null and active_tween.is_valid():
@@ -679,6 +696,15 @@ func _play_attack_animation(is_player: bool, offset_x: float) -> void:
 
 
 func _play_hit_reaction(is_player: bool) -> void:
+	var now_ms: int = Time.get_ticks_msec()
+	var last_ms: int = _last_player_anim_ms if is_player else _last_enemy_anim_ms
+	if last_ms > 0 and (now_ms - last_ms) < AVATAR_TWEEN_MIN_INTERVAL_MS:
+		return
+	if is_player:
+		_last_player_anim_ms = now_ms
+	else:
+		_last_enemy_anim_ms = now_ms
+
 	var panel: PanelContainer = player_avatar_panel if is_player else enemy_avatar_panel
 	var active_tween: Tween = _player_tween if is_player else _enemy_tween
 	if active_tween != null and active_tween.is_valid():
@@ -736,8 +762,14 @@ func _spawn_floating_text(stage: Control, text_value: String, color: Color, is_b
 	popup.text = text_value
 	popup.position = Vector2(-30.0 + randf_range(-8.0, 8.0), -10.0)
 	popup.modulate = Color.WHITE
-	popup.add_theme_font_size_override("font_size", 19 if is_big else 15)
-	popup.add_theme_color_override("font_color", color)
+	var target_size: int = 19 if is_big else 15
+	if int(slot.get("last_size", -1)) != target_size:
+		slot["last_size"] = target_size
+		popup.add_theme_font_size_override("font_size", target_size)
+	var prev_color: Color = slot.get("last_color", Color(-1.0, -1.0, -1.0, -1.0)) as Color
+	if not prev_color.is_equal_approx(color):
+		slot["last_color"] = color
+		popup.add_theme_color_override("font_color", color)
 	popup.visible = true
 
 	var tween: Tween = create_tween()

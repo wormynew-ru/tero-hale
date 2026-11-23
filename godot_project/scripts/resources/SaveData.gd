@@ -10,8 +10,9 @@ extends Resource
 @export var base_strength: int = 5
 @export var base_agility: int = 5
 @export var base_endurance: int = 5
-@export var current_hp: float = 175.0
-@export var current_mana: float = 55.0
+@export var base_intellect: int = 5
+@export var current_hp: float = 400.0
+@export var current_mana: float = 285.0
 
 @export var current_location_id: String = "quiet_glade"
 @export var equipped_weapon_path: String = ""
@@ -71,3 +72,11 @@ extends Resource
 @export var auto_buff_enabled: bool = false
 @export var auto_buff_condition: String = "on_expire_combat"
 @export var auto_buff_whitelist: Array[String] = []
+
+@export var skill_presets: Array[Dictionary] = []
+@export var active_skill_preset_index: int = 0
+@export var skill_auto_upgrade_enabled: bool = false
+
+@export var reflector_kill_hp_stacks: int = 0
+@export var dark_shop_coins: int = 0
+

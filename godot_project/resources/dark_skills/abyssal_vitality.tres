@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "abyssal_vitality"
+title = "Кровь титанов Бездны"
+icon_emoji = "🩸"
+branch_name = "Бастион отражения"
+description = "Насыщает тело вечной силой бездны: +40% к максимальному HP навсегда во всех ранах."
+grid_position = Vector2(3, 3)
+prerequisites = Array[String](["abyss_awakening"])
+cost_dark_points = 1
+effect_type = "abyssal_vitality"
+effect_value = 0.4

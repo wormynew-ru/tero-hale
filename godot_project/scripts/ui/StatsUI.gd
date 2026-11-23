@@ -28,6 +28,11 @@ signal reset_triggered
 @onready var end_value_label: Label = %EndValueLabel
 @onready var end_sp_button: Button = %EndSPButton
 @onready var end_gold_button: Button = %EndGoldButton
+
+@onready var int_value_label: Label = %IntValueLabel
+@onready var int_sp_button: Button = %IntSPButton
+@onready var int_gold_button: Button = %IntGoldButton
+
 @onready var export_txt_button: Button = %ExportTxtButton
 @onready var import_txt_button: Button = %ImportTxtButton
 @onready var copy_txt_button: Button = %CopyTxtButton
@@ -62,17 +67,21 @@ func _ready() -> void:
 	str_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("strength"))
 	agi_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("agility"))
 	end_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("endurance"))
+	int_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("intellect"))
 
 	str_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("strength"))
 	agi_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("agility"))
 	end_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("endurance"))
+	int_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("intellect"))
 
 	HoldAutoClicker.attach(str_sp_button, 50.0)
 	HoldAutoClicker.attach(agi_sp_button, 50.0)
 	HoldAutoClicker.attach(end_sp_button, 50.0)
+	HoldAutoClicker.attach(int_sp_button, 50.0)
 	HoldAutoClicker.attach(str_gold_button, 50.0)
 	HoldAutoClicker.attach(agi_gold_button, 50.0)
 	HoldAutoClicker.attach(end_gold_button, 50.0)
+	HoldAutoClicker.attach(int_gold_button, 50.0)
 
 	export_txt_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	export_txt_dialog.access = FileDialog.ACCESS_FILESYSTEM
@@ -150,7 +159,9 @@ func _refresh() -> void:
 
 	var style_info: String = "Ближний бой"
 	if GameManager.has_hero_class("reflector"):
-		style_info = "🪞 Отражение 20% + 5% HP/с + 0.1% гниение"
+		style_info = "🪞 Отражение 20%% + 5%% HP/с + 0.1%% гниение (стак +%s HP)" % NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks))
+	elif GameManager.has_hero_class("blood_archmage"):
+		style_info = "🩸 10% шанс каста случайных чар вместо тычки"
 	elif GameManager.is_equipment_disabled():
 		style_info = "Духи (🔥%d/🌪️%d/🌿%d/🪨%d)" % [
 			GameManager.get_spirit_training_level("fire"),
@@ -198,27 +209,33 @@ func _refresh() -> void:
 	var bonus_str: int = total_str - GameManager.base_strength
 	var bonus_agi: int = total_agi - GameManager.base_agility
 	var bonus_end: int = total_end - GameManager.base_endurance
+	var bonus_int: int = total_int - GameManager.base_intellect
 
 	str_value_label.text = "💪 Сила: %d (%d + %d)" % [total_str, GameManager.base_strength, bonus_str]
 	agi_value_label.text = "⚡ Ловкость: %d (%d + %d)" % [total_agi, GameManager.base_agility, bonus_agi]
 	end_value_label.text = "🛡️ Выносливость: %d (%d + %d)" % [total_end, GameManager.base_endurance, bonus_end]
+	int_value_label.text = "🧠 Инта: %d (%d + %d)" % [total_int, GameManager.base_intellect, bonus_int]
 
 	var has_sp: bool = GameManager.skill_points > 0
 	str_sp_button.disabled = not has_sp
 	agi_sp_button.disabled = not has_sp
 	end_sp_button.disabled = not has_sp
+	int_sp_button.disabled = not has_sp
 
 	var str_cost: float = GameManager.get_train_cost("strength")
 	var agi_cost: float = GameManager.get_train_cost("agility")
 	var end_cost: float = GameManager.get_train_cost("endurance")
+	var int_cost: float = GameManager.get_train_cost("intellect")
 
 	str_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(str_cost)
 	agi_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(agi_cost)
 	end_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(end_cost)
+	int_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(int_cost)
 
 	str_gold_button.disabled = GameManager.gold < str_cost
 	agi_gold_button.disabled = GameManager.gold < agi_cost
 	end_gold_button.disabled = GameManager.gold < end_cost
+	int_gold_button.disabled = GameManager.gold < int_cost
 
 
 func _refresh_masteries() -> void:

@@ -15,6 +15,7 @@ extends Resource
 	"strength",
 	"agility",
 	"endurance",
+	"intellect",
 	"crit_chance",
 	"gold_mult",
 	"xp_mult",
@@ -44,6 +45,8 @@ func get_bonus_summary() -> String:
 			return "+%d к Ловкости" % int(bonus_value)
 		"endurance":
 			return "+%d к Выносливости" % int(bonus_value)
+		"intellect":
+			return "+%d к Инте" % int(bonus_value)
 		"crit_chance":
 			return "+%d%% к шансу крита" % roundi(bonus_value * 100.0)
 		"gold_mult":

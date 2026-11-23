@@ -38,7 +38,12 @@ extends Resource
 	"ancient_memory",
 	"soul_harvest",
 	"seed_drop_mult",
-	"brew_speed_mult"
+	"brew_speed_mult",
+	"abyssal_vitality",
+	"void_plating",
+	"mirror_carapace",
+	"obsidian_bulwark",
+	"thorn_apotheosis"
 )
 var effect_type: String = "awakening_power"
 @export var effect_value: float = 0.0
@@ -98,4 +103,14 @@ func get_effect_summary() -> String:
 			return "+%d%% шанс выпадения редких семян с врагов навсегда" % roundi(effect_value * 100.0)
 		"brew_speed_mult":
 			return "+%d%% скорость варки зелий в Убежище навсегда" % roundi(effect_value * 100.0)
+		"abyssal_vitality":
+			return "+%d%% Max HP навсегда" % roundi(effect_value * 100.0)
+		"void_plating":
+			return "+%d к плоской броне и +25%% к общей броне навсегда" % int(effect_value)
+		"mirror_carapace":
+			return "Отражает %d%% входящего урона врагу навсегда" % roundi(effect_value * 100.0)
+		"obsidian_bulwark":
+			return "+%d%% Max HP и +35%% к общей броне навсегда" % roundi(effect_value * 100.0)
+		"thorn_apotheosis":
+			return "+%d%% к отражению урона и удар на 2%% от Max HP при получении атаки" % roundi(effect_value * 100.0)
 	return description

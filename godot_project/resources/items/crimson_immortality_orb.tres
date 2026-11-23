@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "crimson_immortality_orb"
+item_name = "Сфера кровавого бессмертия"
+icon_emoji = "🫀"
+description = "Мощнейший расходник выживания: +100% Max HP/MP мгновенно, +150% Брони, +50% Вампиризма, +100% Урона и Чар на 60с."
+item_type = 2
+heal_pct = 1.0
+mana_pct = 1.0
+buy_price = 400
+sell_value = 90
+dark_shop_coin_price = 3
+icon_color = Color(0.96, 0.24, 0.44, 1)
+buff_id = "potion_crimson_immortality"
+buff_duration = 60.0
+buff_damage_pct = 1.0
+buff_armor_pct = 1.5
+buff_spell_power_pct = 1.0
+buff_lifesteal_pct = 0.5

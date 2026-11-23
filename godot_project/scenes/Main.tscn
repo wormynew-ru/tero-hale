@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/MainUI.gd" id="1_main_ui"]
 [ext_resource type="Script" path="res://scripts/CombatSystem.gd" id="2_combat"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/RightSidebarUI.tscn" id="4_right_sidebar"]
 [ext_resource type="PackedScene" path="res://scenes/HeroMenuUI.tscn" id="5_hero_menu"]
 [ext_resource type="PackedScene" path="res://scenes/AfkOverlayUI.tscn" id="6_afk_overlay"]
+[ext_resource type="Theme" path="res://assets/themes/mobile_theme.tres" id="7_mobile_theme"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -14,6 +15,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("7_mobile_theme")
 script = ExtResource("1_main_ui")
 
 [node name="CombatSystem" type="Node" parent="."]

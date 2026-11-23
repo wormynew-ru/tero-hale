@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "obsidian_bulwark"
+title = "Обсидиановый оплот"
+icon_emoji = "🏰"
+branch_name = "Бастион отражения"
+description = "Превращает героя в несокрушимую крепость: +60% к максимальному HP и +35% к общей броне навсегда."
+grid_position = Vector2(2, 5)
+prerequisites = Array[String](["void_plating", "mirror_carapace"])
+cost_dark_points = 2
+effect_type = "obsidian_bulwark"
+effect_value = 0.6

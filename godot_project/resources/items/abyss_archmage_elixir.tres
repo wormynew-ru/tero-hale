@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "abyss_archmage_elixir"
+item_name = "Эликсир Тёмного Архимага"
+icon_emoji = "🔮"
+description = "Ульт-эликсир Тёмного магазина: +50% Max MP мгновенно, +300% Силы чар и +400% Регена маны на 45с."
+item_type = 2
+mana_pct = 0.5
+buy_price = 250
+sell_value = 60
+dark_shop_coin_price = 2
+icon_color = Color(0.68, 0.42, 1, 1)
+buff_id = "potion_abyss_archmage"
+buff_duration = 45.0
+buff_spell_power_pct = 3.0
+buff_mana_regen_pct = 4.0

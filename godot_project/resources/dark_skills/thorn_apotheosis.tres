@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "thorn_apotheosis"
+title = "Шипы Апофеоза"
+icon_emoji = "⚡"
+branch_name = "Бастион отражения"
+description = "Добавляет ещё +35% к отражению входящего урона и наносит ответный удар в 2% от Max HP героя при атаке врага."
+grid_position = Vector2(3, 5)
+prerequisites = Array[String](["void_plating", "mirror_carapace"])
+cost_dark_points = 2
+effect_type = "thorn_apotheosis"
+effect_value = 0.35

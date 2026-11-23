@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "dark_ambrosia_vial"
+item_name = "Багровая амброзия Бездны"
+icon_emoji = "🩸"
+description = "Ультимативный расходник Тёмного магазина: мгновенно восполняет 100% Max HP и 100% Max MP."
+item_type = 2
+heal_pct = 1.0
+mana_pct = 1.0
+buy_price = 100
+sell_value = 25
+dark_shop_coin_price = 1
+icon_color = Color(0.98, 0.28, 0.56, 1)

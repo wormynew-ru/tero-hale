@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "cataclysm_apotheosis_flask"
+item_name = "Флакон Апофеоза Бездны"
+icon_emoji = "🌋"
+description = "Вершина Тёмного магазина: +350% Урона, +350% Чар, +150% Скорости, +200% Брони, +40% Вампиризма, +25% Уклона, +40% Крита и +200% Крит-урона на 60с."
+item_type = 2
+buy_price = 600
+sell_value = 150
+dark_shop_coin_price = 5
+icon_color = Color(1, 0.72, 0.25, 1)
+buff_id = "potion_cataclysm_apotheosis"
+buff_duration = 60.0
+buff_damage_pct = 3.5
+buff_attack_speed_pct = 1.5
+buff_armor_pct = 2.0
+buff_dodge_bonus = 0.25
+buff_crit_chance_bonus = 0.4
+buff_crit_mult_bonus = 2.0
+buff_spell_power_pct = 3.5
+buff_lifesteal_pct = 0.4

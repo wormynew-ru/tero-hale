@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "mirror_carapace"
+title = "Зеркальный панцирь"
+icon_emoji = "🪞"
+branch_name = "Бастион отражения"
+description = "Отражает 25% входящего урона обратно врагу (складывается с классом Отражатель и шипами)."
+grid_position = Vector2(3, 4)
+prerequisites = Array[String](["abyssal_vitality"])
+cost_dark_points = 1
+effect_type = "mirror_carapace"
+effect_value = 0.25

@@ -14,7 +14,16 @@ const GRAPH_PADDING: Vector2 = Vector2(24.0, 24.0)
 @onready var selected_status_label: Label = %SelectedStatusLabel
 @onready var selected_bonus_label: Label = %SelectedBonusLabel
 @onready var selected_desc_label: Label = %SelectedDescLabel
+@onready var preset_toggle_node_button: Button = %PresetToggleNodeButton
 @onready var learn_button: Button = %LearnButton
+
+@onready var preset_1_button: Button = %Preset1Button
+@onready var preset_2_button: Button = %Preset2Button
+@onready var preset_3_button: Button = %Preset3Button
+@onready var preset_auto_button: Button = %PresetAutoButton
+@onready var preset_edit_button: Button = %PresetEditButton
+@onready var preset_clear_button: Button = %PresetClearButton
+@onready var preset_info_label: Label = %PresetInfoLabel
 
 var _selected_skill_id: String = ""
 var _node_buttons: Dictionary = {}
@@ -23,6 +32,8 @@ var _root_center: Vector2 = Vector2.ZERO
 var _style_presets: Dictionary = {}
 var _node_style_cache: Dictionary = {}
 var _node_lock_cache: Dictionary = {}
+var _node_label_cache: Dictionary = {}
+var _preset_edit_mode: bool = false
 var _dirty_tree: bool = true
 var _dirty_details: bool = true
 var _centered_once: bool = false
@@ -34,6 +45,13 @@ func _ready() -> void:
 	GameManager.difficulty_changed.connect(_on_tree_signal)
 	GameManager.stats_changed.connect(_on_details_signal)
 	learn_button.pressed.connect(_on_learn_pressed)
+	preset_toggle_node_button.pressed.connect(_on_toggle_selected_in_preset)
+	preset_1_button.pressed.connect(func() -> void: GameManager.set_active_skill_preset(0))
+	preset_2_button.pressed.connect(func() -> void: GameManager.set_active_skill_preset(1))
+	preset_3_button.pressed.connect(func() -> void: GameManager.set_active_skill_preset(2))
+	preset_auto_button.pressed.connect(_on_toggle_auto_upgrade)
+	preset_edit_button.pressed.connect(_on_toggle_edit_mode)
+	preset_clear_button.pressed.connect(func() -> void: GameManager.clear_active_skill_preset())
 
 	if not GameManager.skill_nodes.is_empty():
 		_selected_skill_id = GameManager.skill_nodes[0].id
@@ -97,6 +115,7 @@ func _build_graph_once() -> void:
 	_lines_info.clear()
 	_node_style_cache.clear()
 	_node_lock_cache.clear()
+	_node_label_cache.clear()
 
 	var max_extent: Vector2 = Vector2(540.0, 340.0)
 	var centers_by_id: Dictionary = {}
@@ -137,11 +156,12 @@ func _build_graph_once() -> void:
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		var diff_locked: bool = skill.requires_alchemy and not GameManager.is_alchemy_unlocked()
 		_node_lock_cache[skill.id] = diff_locked
-		var lock_prefix: String = "🔒 " if diff_locked else ""
-		btn.text = "%s%s %s\n(%d ОН)" % [lock_prefix, skill.icon_emoji, skill.title, skill.cost_skill_points]
+		var node_txt: String = _format_node_button_text(skill, diff_locked)
+		_node_label_cache[skill.id] = node_txt
+		btn.text = node_txt
 		btn.add_theme_font_size_override("font_size", 12)
 		var sid: String = skill.id
-		btn.pressed.connect(func() -> void: _select_skill(sid))
+		btn.pressed.connect(func() -> void: _on_node_pressed(sid))
 		nodes_layer.add_child(btn)
 		_node_buttons[skill.id] = btn
 		_apply_node_style(btn, skill.id)
@@ -171,6 +191,13 @@ func _on_details_signal() -> void:
 	_refresh_header_and_details()
 
 
+func _format_node_button_text(skill: SkillNodeData, diff_locked: bool) -> String:
+	var lock_prefix: String = "🔒 " if diff_locked else ""
+	var pos_num: int = GameManager.get_skill_preset_position(skill.id)
+	var preset_badge: String = "#%d " % pos_num if pos_num > 0 else ""
+	return "%s%s%s %s\n(%d ОН)" % [preset_badge, lock_prefix, skill.icon_emoji, skill.title, skill.cost_skill_points]
+
+
 func _update_graph_states() -> void:
 	_dirty_tree = false
 	for info: Dictionary in _lines_info:
@@ -185,15 +212,41 @@ func _update_graph_states() -> void:
 		if btn == null:
 			continue
 		var diff_locked: bool = skill.requires_alchemy and not GameManager.is_alchemy_unlocked()
-		if bool(_node_lock_cache.get(skill.id, false)) != diff_locked:
-			_node_lock_cache[skill.id] = diff_locked
-			var lock_prefix: String = "🔒 " if diff_locked else ""
-			btn.text = "%s%s %s\n(%d ОН)" % [lock_prefix, skill.icon_emoji, skill.title, skill.cost_skill_points]
+		_node_lock_cache[skill.id] = diff_locked
+		var next_txt: String = _format_node_button_text(skill, diff_locked)
+		if str(_node_label_cache.get(skill.id, "")) != next_txt:
+			_node_label_cache[skill.id] = next_txt
+			btn.text = next_txt
+
+
+func _refresh_preset_bar() -> void:
+	var active_idx: int = GameManager.active_skill_preset_index
+	var btns: Array[Button] = [preset_1_button, preset_2_button, preset_3_button]
+	for i: int in range(btns.size()):
+		var b: Button = btns[i]
+		b.text = "✓ П%d" % (i + 1) if i == active_idx else "П%d" % (i + 1)
+		b.modulate = Color(0.45, 0.92, 1.0, 1.0) if i == active_idx else Color(0.78, 0.82, 0.88, 1.0)
+
+	var auto_on: bool = GameManager.skill_auto_upgrade_enabled
+	preset_auto_button.text = "🤖 Авто: ВКЛ" if auto_on else "🤖 Авто: ВЫКЛ"
+	preset_auto_button.modulate = Color(0.42, 0.96, 0.58, 1.0) if auto_on else Color(0.82, 0.84, 0.88, 1.0)
+
+	preset_edit_button.text = "📝 Очередь: ВКЛ" if _preset_edit_mode else "📝 Очередь: ВЫКЛ"
+	preset_edit_button.modulate = Color(0.98, 0.82, 0.32, 1.0) if _preset_edit_mode else Color(0.82, 0.84, 0.88, 1.0)
+
+	var order: Array[String] = GameManager.get_active_skill_preset_order()
+	preset_clear_button.disabled = order.is_empty()
+	preset_info_label.text = "%s: %d ш.%s" % [
+		GameManager.get_skill_preset_name(active_idx),
+		order.size(),
+		" (нажмите узлы!)" if _preset_edit_mode else "",
+	]
 
 
 func _refresh_header_and_details() -> void:
 	_dirty_details = false
 	available_sp_label.text = "Доступно очков: %d" % GameManager.skill_points
+	_refresh_preset_bar()
 
 	for skill_id: String in _node_buttons.keys():
 		var btn: Button = _node_buttons[skill_id] as Button
@@ -206,9 +259,15 @@ func _refresh_header_and_details() -> void:
 		selected_status_label.text = ""
 		selected_bonus_label.text = ""
 		selected_desc_label.text = "Нажмите на любой узел на графе, чтобы увидеть характеристики и стоимость изучения."
+		preset_toggle_node_button.disabled = true
+		preset_toggle_node_button.text = "+ В пресет"
 		learn_button.disabled = true
 		learn_button.text = "Изучить"
 		return
+
+	var preset_pos: int = GameManager.get_skill_preset_position(skill.id)
+	preset_toggle_node_button.disabled = false
+	preset_toggle_node_button.text = "Убрать (#%d)" % preset_pos if preset_pos > 0 else "+ В пресет"
 
 	selected_title_label.text = "%s %s" % [skill.icon_emoji, skill.title]
 	selected_bonus_label.text = "Бонус: %s" % skill.get_bonus_summary()
@@ -251,9 +310,32 @@ func _refresh_header_and_details() -> void:
 		learn_button.text = "Нужно %d ОН" % skill.cost_skill_points
 
 
+func _on_node_pressed(skill_id: String) -> void:
+	_selected_skill_id = skill_id
+	if _preset_edit_mode:
+		GameManager.toggle_skill_in_active_preset(skill_id)
+	else:
+		_refresh_header_and_details()
+
+
 func _select_skill(skill_id: String) -> void:
 	_selected_skill_id = skill_id
 	_refresh_header_and_details()
+
+
+func _on_toggle_auto_upgrade() -> void:
+	GameManager.set_skill_auto_upgrade_enabled(not GameManager.skill_auto_upgrade_enabled)
+
+
+func _on_toggle_edit_mode() -> void:
+	_preset_edit_mode = not _preset_edit_mode
+	_refresh_header_and_details()
+
+
+func _on_toggle_selected_in_preset() -> void:
+	if _selected_skill_id.is_empty():
+		return
+	GameManager.toggle_skill_in_active_preset(_selected_skill_id)
 
 
 func _on_learn_pressed() -> void:
