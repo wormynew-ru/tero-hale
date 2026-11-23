@@ -1020,6 +1020,36 @@ test('seamless next-boss advance after clearing current difficulty boss works wi
   assert.ok(heroMenuGd.includes('difficulty_ui.next_boss_started.connect(close_menu)'), 'HeroMenuUI.gd must close menu when advancing to next boss');
 });
 
+test('Blood Archmage gets 2x intellect and 3x mana per intellect, and README.md reflects CHANGELOG.md', () => {
+  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  assert.ok(
+    /func get_total_intellect\([\s\S]*?elif has_hero_class\("blood_archmage"\):\s*\n\s*total \*= 2\.0/.test(gmTxt),
+    'get_total_intellect() must double intellect (2x) when Blood Archmage is active',
+  );
+  assert.ok(
+    /func get_max_mana\([\s\S]*?var mana_from_int: float = float\(get_total_intellect\(\)\) \* 32\.0[\s\S]*?if has_hero_class\("blood_archmage"\):\s*\n\s*mana_from_int \*= 3\.0/.test(gmTxt),
+    'get_max_mana() must grant 3x mana from intellect (96 MP/int) when Blood Archmage is active',
+  );
+
+  const archmageTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/classes/blood_archmage.tres'), 'utf-8');
+  assert.ok(archmageTres.includes('2x') && archmageTres.includes('в 3 раза больше') && archmageTres.includes('96 MP'), 'blood_archmage.tres must document 2x intellect and 3x mana from intellect');
+
+  const statsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
+  assert.ok(statsGd.includes('2x Инта') && statsGd.includes('3x MP/Инта'), 'StatsUI.gd must display Blood Archmage 2x Int / 3x MP per Int');
+
+  const faqGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/FaqUI.gd'), 'utf-8');
+  assert.ok(faqGd.includes('2x прирост Инты') && faqGd.includes('3x маны от Инты'), 'FaqUI.gd must document Blood Archmage 2x Int and 3x mana from Int');
+
+  const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
+  assert.ok(changelogTxt.includes('## [0.21.0]'), 'CHANGELOG.md must include [0.21.0] entry');
+
+  const readmeTxt = fs.readFileSync(path.resolve(GODOT_ROOT, '../README.md'), 'utf-8');
+  assert.ok(!readmeTxt.includes('2 FPS') && !readmeTxt.includes('34 узлов'), 'README.md must not contain stale pre-0.17.3 claims');
+  for (const keyFeature of ['0.21.0', '2x прирост интеллекта', 'Тёмный магазин', 'Древняя Шахта', '44 узла', '31 постоянный узел', '26 чар']) {
+    assert.ok(readmeTxt.includes(keyFeature), `README.md must include updated feature "${keyFeature}"`);
+  }
+});
+
 
 
 

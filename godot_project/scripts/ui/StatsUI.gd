@@ -161,7 +161,7 @@ func _refresh() -> void:
 	if GameManager.has_hero_class("reflector"):
 		style_info = "🪞 Отражение 20%% + 5%% HP/с + 0.1%% гниение (стак +%s HP)" % NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks))
 	elif GameManager.has_hero_class("blood_archmage"):
-		style_info = "🩸 10% шанс каста случайных чар вместо тычки"
+		style_info = "🩸 10% шанс каста случайных чар вместо тычки (2x Инта, 3x MP/Инта)"
 	elif GameManager.is_equipment_disabled():
 		style_info = "Духи (🔥%d/🌪️%d/🌿%d/🪨%d)" % [
 			GameManager.get_spirit_training_level("fire"),

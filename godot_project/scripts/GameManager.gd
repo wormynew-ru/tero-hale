@@ -2381,7 +2381,7 @@ func get_total_intellect() -> int:
 	if has_hero_class("spirit"):
 		total *= 1.35
 	elif has_hero_class("blood_archmage"):
-		total *= 1.20
+		total *= 2.0
 	return maxi(1, roundi(total))
 
 
@@ -2438,7 +2438,10 @@ func get_max_hp() -> float:
 
 
 func get_max_mana() -> float:
-	return 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 16.0 + float(get_total_intellect()) * 32.0 + get_skill_bonus("max_mana")
+	var mana_from_int: float = float(get_total_intellect()) * 32.0
+	if has_hero_class("blood_archmage"):
+		mana_from_int *= 3.0
+	return 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 16.0 + mana_from_int + get_skill_bonus("max_mana")
 
 
 func get_mana_regen_per_sec() -> float:
