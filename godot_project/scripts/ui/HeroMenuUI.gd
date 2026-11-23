@@ -25,7 +25,16 @@ const VillageMapUIScript = preload("res://scripts/ui/VillageMapUI.gd")
 @onready var open_faq_button: Button = %OpenFaqButton
 @onready var open_village_button: Button = %OpenVillageButton
 @onready var open_sanctuary_button: Button = %OpenSanctuaryButton
+@onready var open_bestiary_button: Button = %OpenBestiaryButton
 @onready var open_afk_button: Button = %OpenAfkButton
+
+@onready var loadout_status_label: Label = %LoadoutStatusLabel
+@onready var loadout_1_apply_btn: Button = %Loadout1ApplyBtn
+@onready var loadout_1_save_btn: Button = %Loadout1SaveBtn
+@onready var loadout_2_apply_btn: Button = %Loadout2ApplyBtn
+@onready var loadout_2_save_btn: Button = %Loadout2SaveBtn
+@onready var loadout_3_apply_btn: Button = %Loadout3ApplyBtn
+@onready var loadout_3_save_btn: Button = %Loadout3SaveBtn
 
 @onready var stats_ui: StatsUIScript = %StatsUI
 @onready var class_ui: ScrollContainer = %ClassUI
@@ -42,10 +51,12 @@ const VillageMapUIScript = preload("res://scripts/ui/VillageMapUI.gd")
 @onready var faq_ui: ScrollContainer = %FaqUI
 @onready var sanctuary_ui: ScrollContainer = %SanctuaryUI
 @onready var village_map_ui: VillageMapUIScript = %VillageMapUI
+@onready var bestiary_ui: ScrollContainer = %BestiaryUI
 
 
 func _ready() -> void:
 	visible = false
+	GameManager.set_menu_open(false)
 	GameManager.stats_changed.connect(_refresh_resources)
 	GameManager.skills_changed.connect(_refresh_resources)
 	GameManager.dark_skills_changed.connect(_refresh_resources)
@@ -53,6 +64,8 @@ func _ready() -> void:
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _refresh_resources())
 	GameManager.pets_changed.connect(_refresh_resources)
 	GameManager.dark_shop_changed.connect(_refresh_resources)
+	GameManager.loadouts_changed.connect(_refresh_loadouts)
+	GameManager.game_reset.connect(_refresh_loadouts)
 
 	back_button.pressed.connect(open_hub)
 	close_button.pressed.connect(close_menu)
@@ -72,10 +85,24 @@ func _ready() -> void:
 	open_faq_button.pressed.connect(func() -> void: open_page("faq"))
 	open_village_button.pressed.connect(func() -> void: open_page("village"))
 	open_sanctuary_button.pressed.connect(func() -> void: open_page("sanctuary"))
+	open_bestiary_button.pressed.connect(func() -> void: open_page("bestiary"))
 	open_afk_button.pressed.connect(func() -> void:
 		close_menu()
 		GameManager.set_afk_mode(true)
 	)
+
+	var apply_buttons: Array[Button] = [loadout_1_apply_btn, loadout_2_apply_btn, loadout_3_apply_btn]
+	var save_buttons: Array[Button] = [loadout_1_save_btn, loadout_2_save_btn, loadout_3_save_btn]
+	for idx: int in range(3):
+		var slot_idx: int = idx
+		apply_buttons[idx].pressed.connect(func() -> void:
+			var res: Dictionary = GameManager.apply_combat_loadout(slot_idx)
+			loadout_status_label.text = str(res.get("message", ""))
+		)
+		save_buttons[idx].pressed.connect(func() -> void:
+			var res: Dictionary = GameManager.save_combat_loadout(slot_idx)
+			loadout_status_label.text = str(res.get("message", ""))
+		)
 
 	stats_ui.reset_triggered.connect(close_menu)
 	difficulty_ui.new_run_started.connect(close_menu)
@@ -83,6 +110,18 @@ func _ready() -> void:
 	village_map_ui.navigate_to_page.connect(open_page)
 	village_map_ui.return_to_battle_requested.connect(close_menu)
 	_refresh_resources()
+	_refresh_loadouts()
+
+
+func _refresh_loadouts() -> void:
+	if not visible:
+		return
+	var apply_buttons: Array[Button] = [loadout_1_apply_btn, loadout_2_apply_btn, loadout_3_apply_btn]
+	for idx: int in range(3):
+		var btn: Button = apply_buttons[idx]
+		var saved: bool = GameManager.has_combat_loadout_saved(idx)
+		btn.text = "К%d: %s" % [idx + 1, GameManager.get_combat_loadout_summary(idx)]
+		btn.disabled = not saved
 
 
 func _refresh_resources(force: bool = false) -> void:
@@ -115,6 +154,7 @@ func _refresh_resources(force: bool = false) -> void:
 		open_sanctuary_button.text = "☀️ Светлый сад (Тёмн.: Сл.%d)" % GameManager.ALCHEMY_UNLOCK_DIFFICULTY
 
 	open_spells_button.text = "✨ Заклинания (%d)" % GameManager.all_abilities.size()
+	open_bestiary_button.text = "📖 Бестиарий (%d)" % GameManager.all_enemies.size()
 
 
 func open_hub() -> void:
@@ -122,13 +162,17 @@ func open_hub() -> void:
 	menu_hub.visible = true
 	back_button.visible = false
 	menu_title_label.text = "📜 Меню героя"
-	_refresh_resources(true)
 	visible = true
+	GameManager.set_menu_open(true)
+	_refresh_resources(true)
+	_refresh_loadouts()
 
 
 func open_page(page_id: String) -> void:
 	_hide_all_pages()
 	back_button.visible = true
+	visible = true
+	GameManager.set_menu_open(true)
 	_refresh_resources(true)
 	match page_id:
 		"stats":
@@ -177,14 +221,17 @@ func open_page(page_id: String) -> void:
 			menu_title_label.text = "🗺️ Карта деревни"
 			village_map_ui.reset_overlay()
 			village_map_ui.visible = true
+		"bestiary":
+			menu_title_label.text = "📖 Бестиарий (%d)" % GameManager.all_enemies.size()
+			bestiary_ui.visible = true
 		_:
 			open_hub()
 			return
-	visible = true
 
 
 func close_menu() -> void:
 	visible = false
+	GameManager.set_menu_open(false)
 
 
 func _hide_all_pages() -> void:
@@ -204,3 +251,4 @@ func _hide_all_pages() -> void:
 	faq_ui.visible = false
 	sanctuary_ui.visible = false
 	village_map_ui.visible = false
+	bestiary_ui.visible = false

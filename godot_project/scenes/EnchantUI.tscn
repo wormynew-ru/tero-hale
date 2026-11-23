@@ -126,3 +126,70 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(180, 44)
 layout_mode = 2
 text = "⚒️ Зачаровать (+1)"
+
+[node name="OffhandCard" type="PanelContainer" parent="EnchantVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="OffhandVBox" type="VBoxContainer" parent="EnchantVBox/OffhandCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="OffhandHeaderLabel" type="Label" parent="EnchantVBox/OffhandCard/OffhandVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🔰 Слот оффхенда (+0)"
+
+[node name="OffhandStatsLabel" type="Label" parent="EnchantVBox/OffhandCard/OffhandVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.85, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Экипируйте щит или талисман в инвентаре"
+autowrap_mode = 3
+
+[node name="OffhandActionRow" type="HBoxContainer" parent="EnchantVBox/OffhandCard/OffhandVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="OffhandNextLabel" type="Label" parent="EnchantVBox/OffhandCard/OffhandVBox/OffhandActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.8, 0.42, 1)
+theme_override_font_sizes/font_size = 13
+text = "Шанс: 95.00% | Цена: 50 з."
+autowrap_mode = 3
+
+[node name="OffhandEnchantButton" type="Button" parent="EnchantVBox/OffhandCard/OffhandVBox/OffhandActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+text = "⚒️ Зачаровать (+1)"
+
+[node name="MergeCard" type="PanelContainer" parent="EnchantVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="MergeVBox" type="VBoxContainer" parent="EnchantVBox/MergeCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MergeHeaderLabel" type="Label" parent="EnchantVBox/MergeCard/MergeVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.86, 0.42, 1)
+theme_override_font_sizes/font_size = 16
+text = "⭐ Слияние дубликатов (2 одинаковых ★N → ★N+1, макс. ★5)"
+
+[node name="MergeHintLabel" type="Label" parent="EnchantVBox/MergeCard/MergeVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.84, 0.94, 1)
+theme_override_font_sizes/font_size = 12
+text = "Каждая дополнительная ★ даёт +12% к статам предмета и сохраняет наивысшее % качество из пары."
+autowrap_mode = 3
+
+[node name="MergeListVBox" type="VBoxContainer" parent="EnchantVBox/MergeCard/MergeVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6

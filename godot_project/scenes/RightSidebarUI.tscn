@@ -92,6 +92,86 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
+[node name="AutoRouteRow" type="HBoxContainer" parent="SidebarVBox/MapPanel/MapVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AutoRouteToggleButton" type="Button" parent="SidebarVBox/MapPanel/MapVBox/AutoRouteRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 12
+text = "🧭 Маршрут: ВЫКЛ"
+
+[node name="AutoRouteWinsButton" type="Button" parent="SidebarVBox/MapPanel/MapVBox/AutoRouteRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(72, 32)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 12
+text = "5 поб."
+
+[node name="WaveDungeonButton" type="Button" parent="SidebarVBox/MapPanel/MapVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 12
+text = "🏰 Данж 10 волн"
+
+[node name="MineCheckpointsRow" type="HBoxContainer" parent="SidebarVBox/MapPanel/MapVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="MineCp1Button" type="Button" parent="SidebarVBox/MapPanel/MapVBox/MineCheckpointsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "⛏️1"
+
+[node name="MineCp10Button" type="Button" parent="SidebarVBox/MapPanel/MapVBox/MineCheckpointsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "🔒10"
+
+[node name="MineCp25Button" type="Button" parent="SidebarVBox/MapPanel/MapVBox/MineCheckpointsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "🔒25"
+
+[node name="MineCp50Button" type="Button" parent="SidebarVBox/MapPanel/MapVBox/MineCheckpointsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "🔒50"
+
+[node name="SidebarStatusLabel" type="Label" parent="SidebarVBox/MapPanel/MapVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.86, 0.45, 1)
+theme_override_font_sizes/font_size = 11
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
 [node name="SlotsGrid" type="GridContainer" parent="SidebarVBox"]
 layout_mode = 2
 size_flags_vertical = 3

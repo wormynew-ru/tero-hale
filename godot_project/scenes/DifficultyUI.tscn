@@ -59,6 +59,14 @@ theme_override_font_sizes/font_size = 13
 text = "🌀 Горнило Проклятий (от Сл.100): всегда открытая бонус-локация с реролл-боссом."
 autowrap_mode = 3
 
+[node name="ChallengeStatusLabel" type="Label" parent="DiffVBox/StatusCard/StatusVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.86, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = "🏆 Активное испытание: Нет"
+autowrap_mode = 3
+
 [node name="NextBossActionRow" type="HBoxContainer" parent="DiffVBox/StatusCard/StatusVBox"]
 layout_mode = 2
 theme_override_constants/separation = 10
@@ -141,6 +149,37 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(210, 46)
 layout_mode = 2
 text = "🔥 Начать ран (Сл. 1)"
+
+[node name="ChallengesCard" type="PanelContainer" parent="DiffVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_diff_card")
+
+[node name="ChallengesVBox" type="VBoxContainer" parent="DiffVBox/ChallengesCard"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChallengesHeaderRow" type="HBoxContainer" parent="DiffVBox/ChallengesCard/ChallengesVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ChallengesTitleLabel" type="Label" parent="DiffVBox/ChallengesCard/ChallengesVBox/ChallengesHeaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.98, 0.84, 0.4, 1)
+theme_override_font_sizes/font_size = 15
+text = "🏆 Испытания Бездны (выберите перед Новым раном)"
+
+[node name="SelectedChallengeLabel" type="Label" parent="DiffVBox/ChallengesCard/ChallengesVBox/ChallengesHeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.94, 0.82, 1)
+theme_override_font_sizes/font_size = 13
+text = "Режим: Обычный ран"
+
+[node name="ChallengesRowsVBox" type="VBoxContainer" parent="DiffVBox/ChallengesCard/ChallengesVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
 
 [node name="CursesCard" type="PanelContainer" parent="DiffVBox"]
 layout_mode = 2

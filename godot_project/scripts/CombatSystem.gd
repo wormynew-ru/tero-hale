@@ -28,6 +28,7 @@ signal dot_tick_landed(emoji: String, title: String, damage: float)
 signal enemy_stun_changed(remaining_seconds: float)
 signal pet_action_performed(pet_emoji: String, text_value: String, color: Color)
 signal mine_find_triggered(msg: String)
+signal route_event_triggered(msg: String)
 
 const SPAWN_DELAY: float = 1.5
 const REGEN_RATE_PER_SEC: float = 0.15
@@ -81,9 +82,11 @@ var _reflector_pulse_timer: float = 0.0
 var _mine_ambient_timer: float = 0.0
 var _auto_potion_timer: float = 0.0
 var _enemy_hud_sync_timer: float = 0.0
+var _attack_progress_sync_timer: float = 0.0
 var _last_emitted_p_prog: float = -1.0
 var _last_emitted_e_prog: float = -1.0
 var _pending_boss_duel: bool = false
+var _was_wave_dungeon_active: bool = false
 
 
 func _ready() -> void:
@@ -91,6 +94,7 @@ func _ready() -> void:
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.abilities_changed.connect(_on_abilities_changed)
 	GameManager.next_boss_advanced.connect(_on_next_boss_advanced)
+	GameManager.wave_dungeon_changed.connect(_on_wave_dungeon_changed)
 	GameManager.game_reset.connect(_on_game_reset)
 
 	is_seeking_battle = false
@@ -193,6 +197,8 @@ func try_cast_ability(
 
 	var cd_duration: float = GameManager.get_ability_cooldown_duration(ability)
 	var power_mult: float = GameManager.get_ability_power_multiplier(ability) * power_scale
+	var rune_data: Dictionary = GameManager.get_ability_rune_data(ability.id)
+	var rune_barrier_pct: float = float(rune_data.get("shield_barrier_pct", 0.0))
 
 	# 1) Heal Spell
 	if ability.effect_type == "heal":
@@ -204,10 +210,13 @@ func try_cast_ability(
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
+		GameManager.record_ability_cast(ability.id)
 		if trigger_cooldown:
 			GameManager.start_ability_cooldown(slot_index, cd_duration)
 		var healed: float = GameManager.heal(max_hp * power_mult)
 		GameManager.player_healed.emit(healed)
+		if rune_barrier_pct > 0.0:
+			GameManager.add_barrier(max_hp * rune_barrier_pct)
 		ability_casted.emit(slot_index, ability)
 		return true
 
@@ -218,10 +227,13 @@ func try_cast_ability(
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
+		GameManager.record_ability_cast(ability.id)
 		if trigger_cooldown:
 			GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
 		var buff_scale: float = 1.0 + float(maxi(0, GameManager.magic_level - 1)) * 0.012
 		GameManager.apply_ability_buff(ability, buff_scale)
+		if rune_barrier_pct > 0.0:
+			GameManager.add_barrier(GameManager.get_max_hp() * rune_barrier_pct)
 		ability_casted.emit(slot_index, ability)
 		return true
 
@@ -240,6 +252,7 @@ func try_cast_ability(
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
+		GameManager.record_ability_cast(ability.id)
 		overcharge_active = true
 		overcharge_slot_index = slot_index
 		overcharge_tick_count = 0
@@ -257,6 +270,7 @@ func try_cast_ability(
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
+		GameManager.record_ability_cast(ability.id)
 		if trigger_cooldown:
 			GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
 		_apply_enemy_dot(ability, power_mult)
@@ -276,11 +290,18 @@ func try_cast_ability(
 		GameManager.apply_rot_damage(extra_hp_sac)
 
 	GameManager.add_mastery_xp("magic", mana_cost)
+	GameManager.record_ability_cast(ability.id)
 
 	if trigger_cooldown:
 		GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
 
-	var hits: int = maxi(1, ability.hit_count)
+	var rune_double_chance: float = float(rune_data.get("double_cast_chance", 0.0))
+	var cast_mult_count: int = 2 if (rune_double_chance > 0.0 and randf() < rune_double_chance) else 1
+	var rune_crit_bonus: float = float(rune_data.get("crit_bonus", 0.0))
+	var rune_lifesteal_bonus: float = float(rune_data.get("lifesteal_bonus", 0.0))
+	var bestiary_mult: float = 1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id)
+
+	var hits: int = maxi(1, ability.hit_count) * cast_mult_count
 	var total_dealt: float = 0.0
 	for _h: int in range(hits):
 		if current_enemy == null or enemy_hp <= 0.0:
@@ -291,13 +312,13 @@ func try_cast_ability(
 			effective_power *= 2.0
 			ignore_pct = 1.0
 
-		var raw_damage: float = GameManager.get_player_damage() * effective_power
+		var raw_damage: float = GameManager.get_player_damage() * effective_power * bestiary_mult
 		if extra_hp_sac > 0.0:
 			raw_damage += extra_hp_sac * 2.5
 		if GameManager.has_dark_skill("arcane_echo"):
 			raw_damage += GameManager.current_mana * GameManager.get_dark_bonus("arcane_echo")
 
-		var is_crit: bool = randf() < GameManager.get_crit_chance()
+		var is_crit: bool = randf() < (GameManager.get_crit_chance() + rune_crit_bonus)
 		if is_crit:
 			raw_damage *= GameManager.get_crit_multiplier()
 		if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
@@ -312,8 +333,9 @@ func try_cast_ability(
 		player_attack_landed.emit(final_damage, is_crit)
 		_apply_vampirism(final_damage)
 
-	if ability.lifesteal_ratio > 0.0 and total_dealt > 0.0:
-		var spell_heal: float = total_dealt * ability.lifesteal_ratio * maxf(0.25, 1.0 - GameManager.get_curse_value("blood_tax"))
+	var effective_lifesteal: float = ability.lifesteal_ratio + rune_lifesteal_bonus
+	if effective_lifesteal > 0.0 and total_dealt > 0.0:
+		var spell_heal: float = total_dealt * effective_lifesteal * maxf(0.25, 1.0 - GameManager.get_curse_value("blood_tax"))
 		var actual_healed: float = GameManager.heal(spell_heal)
 		if actual_healed > 0.0:
 			GameManager.player_healed.emit(actual_healed)
@@ -377,12 +399,15 @@ func _execute_overcharge_tick() -> void:
 	overcharge_state_changed.emit(true, overcharge_slot_index, overcharge_tick_count)
 
 	var power_mult: float = GameManager.get_ability_power_multiplier(_overcharge_ability)
+	var rune_oc: Dictionary = GameManager.get_ability_rune_data(_overcharge_ability.id)
+	var oc_crit_bonus: float = float(rune_oc.get("crit_bonus", 0.0))
 	var burst_scale: float = pow(1.75, float(next_tick - 1))
 	var raw_damage: float = (GameManager.get_player_damage() * power_mult + (hp_burn + mana_burn) * 4.0) * burst_scale
+	raw_damage *= (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
 	if GameManager.has_dark_skill("arcane_echo"):
 		raw_damage += GameManager.current_mana * GameManager.get_dark_bonus("arcane_echo")
 
-	var is_crit: bool = randf() < GameManager.get_crit_chance()
+	var is_crit: bool = randf() < (GameManager.get_crit_chance() + oc_crit_bonus)
 	if is_crit:
 		raw_damage *= GameManager.get_crit_multiplier()
 	if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
@@ -426,15 +451,17 @@ func _stop_overcharge(trigger_cooldown: bool) -> void:
 
 
 func _apply_enemy_dot(ability: AbilityData, power_mult: float) -> void:
+	var rune_dot: Dictionary = GameManager.get_ability_rune_data(ability.id)
+	var rune_dur_mult: float = float(rune_dot.get("duration_mult", 1.0))
 	var dot_entry: Dictionary = {
 		"id": ability.id,
 		"title": ability.title,
 		"icon_emoji": ability.icon_emoji,
-		"remaining": maxf(1.0, ability.duration * GameManager.get_effect_duration_multiplier()),
+		"remaining": maxf(1.0, ability.duration * GameManager.get_effect_duration_multiplier() * rune_dur_mult),
 		"tick_timer": 0.0,
 		"power_mult": power_mult,
 		"armor_ignore_pct": clampf(ability.armor_ignore_pct, 0.0, 1.0),
-		"lifesteal_ratio": ability.lifesteal_ratio,
+		"lifesteal_ratio": ability.lifesteal_ratio + float(rune_dot.get("lifesteal_bonus", 0.0)),
 	}
 	for i: int in range(_enemy_dots.size()):
 		if str(_enemy_dots[i]["id"]) == ability.id:
@@ -459,7 +486,7 @@ func _process_enemy_dots(delta: float) -> void:
 		d["tick_timer"] = float(d["tick_timer"]) + delta
 		while float(d["tick_timer"]) >= 1.0 and current_enemy != null and current_state == State.FIGHTING:
 			d["tick_timer"] = float(d["tick_timer"]) - 1.0
-			var raw_dmg: float = GameManager.get_player_damage() * float(d["power_mult"])
+			var raw_dmg: float = GameManager.get_player_damage() * float(d["power_mult"]) * (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
 			if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
 				raw_dmg *= (1.0 + GameManager.get_dark_bonus("dark_execution"))
 			var eff_def: float = _get_effective_enemy_defense(false) * (1.0 - float(d["armor_ignore_pct"]))
@@ -512,8 +539,16 @@ func _apply_vampirism(damage_dealt: float) -> void:
 
 
 func _emit_attack_progress(player_progress: float, enemy_progress: float) -> void:
-	if is_equal_approx(player_progress, _last_emitted_p_prog) and is_equal_approx(enemy_progress, _last_emitted_e_prog):
-		return
+	var p_edge: bool = (is_zero_approx(player_progress) and not is_zero_approx(_last_emitted_p_prog)) or (player_progress >= 1.0 and _last_emitted_p_prog < 1.0)
+	var e_edge: bool = (is_zero_approx(enemy_progress) and not is_zero_approx(_last_emitted_e_prog)) or (enemy_progress >= 1.0 and _last_emitted_e_prog < 1.0)
+	var is_edge: bool = p_edge or e_edge or _last_emitted_p_prog < 0.0
+	if not is_edge:
+		if _attack_progress_sync_timer < 0.05:
+			return
+		var delta_ok: bool = absf(player_progress - _last_emitted_p_prog) >= 0.02 or absf(enemy_progress - _last_emitted_e_prog) >= 0.02
+		if not delta_ok:
+			return
+	_attack_progress_sync_timer = 0.0
 	_last_emitted_p_prog = player_progress
 	_last_emitted_e_prog = enemy_progress
 	attack_progress_updated.emit(player_progress, enemy_progress)
@@ -540,6 +575,22 @@ func _handle_player_death() -> void:
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
 	_mine_ambient_timer = 0.0
+	if GameManager.wave_dungeon_active:
+		_was_wave_dungeon_active = false
+		GameManager.abort_wave_dungeon()
+		is_seeking_battle = false
+		_spawn_timer = 0.0
+		current_enemy = null
+		enemy_hp = 0.0
+		enemy_max_hp = 0.0
+		enemy_mana = 0.0
+		enemy_troll_armor_shred = 0
+		troll_shred_updated.emit(0)
+		enemy_cleared.emit()
+		battle_search_changed.emit(false)
+		route_event_triggered.emit("🏰 Поражение в Данже волн — возврат в локацию.")
+		_set_state(State.RESTING)
+		return
 	if GameManager.is_mine_location():
 		is_seeking_battle = false
 		_spawn_timer = 0.0
@@ -655,6 +706,7 @@ func _process_fighting(delta: float) -> void:
 		_enemy_attack_timer += delta
 
 	_enemy_hud_sync_timer += delta
+	_attack_progress_sync_timer += delta
 	var flush_enemy_hud: bool = _enemy_hud_sync_timer >= 0.1 or enemy_mana_full or stun_finished
 	if flush_enemy_hud:
 		_enemy_hud_sync_timer = 0.0
@@ -782,7 +834,7 @@ func _process_spirit_companions(delta: float) -> void:
 func _deal_spirit_damage(spirit_name: String, emoji: String, raw_base: float, def_factor: float, mastery_id: String) -> void:
 	if current_enemy == null:
 		return
-	var raw_damage: float = raw_base
+	var raw_damage: float = raw_base * (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
 	var is_crit: bool = randf() < GameManager.get_crit_chance()
 	if is_crit:
 		raw_damage *= GameManager.get_crit_multiplier()
@@ -893,6 +945,7 @@ func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -
 		enemy_troll_armor_shred += 1
 		troll_shred_updated.emit(enemy_troll_armor_shred)
 
+	raw_damage *= (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
 	var is_crit: bool = randf() < GameManager.get_crit_chance()
 	if is_crit:
 		raw_damage *= GameManager.get_crit_multiplier()
@@ -965,12 +1018,20 @@ func _perform_enemy_attack() -> void:
 		_handle_player_death()
 	else:
 		GameManager.try_auto_use_all_potions(true)
+		var max_hp_now: float = maxf(1.0, GameManager.get_max_hp())
+		if GameManager.auto_route_enabled and not GameManager.wave_dungeon_active and not GameManager.is_mine_location():
+			if (GameManager.current_hp / max_hp_now) < 0.20 and GameManager.get_total_potion_count() <= 0:
+				var retreat_msg: String = GameManager.retreat_to_safer_location()
+				if not retreat_msg.is_empty():
+					route_event_triggered.emit(retreat_msg)
+					return
 
 
 func _handle_enemy_defeated() -> void:
 	var defeated: EnemyData = current_enemy
 	var xp_earned: float = round(float(defeated.xp_reward) * GameManager.get_xp_multiplier())
-	var gold_earned: float = round(float(defeated.gold_reward) * GameManager.get_gold_multiplier())
+	var bestiary_gold_mult: float = 1.0 + GameManager.get_bestiary_gold_bonus(defeated.id)
+	var gold_earned: float = round(float(defeated.gold_reward) * GameManager.get_gold_multiplier() * bestiary_gold_mult)
 
 	var mimic_double_chance: float = GameManager.get_pet_secondary_value("gold_echo")
 	if mimic_double_chance > 0.0 and randf() < mimic_double_chance:
@@ -979,6 +1040,7 @@ func _handle_enemy_defeated() -> void:
 
 	_clear_combat_effects()
 	GameManager.record_kill()
+	GameManager.record_bestiary_kill(defeated.id)
 	if GameManager.is_mine_location():
 		GameManager.record_mine_kill()
 	GameManager.add_gold(gold_earned)
@@ -986,6 +1048,24 @@ func _handle_enemy_defeated() -> void:
 	GameManager.record_afk_rewards(xp_earned, gold_earned)
 	enemy_defeated_reward.emit(xp_earned, gold_earned)
 	_roll_drops(defeated)
+
+	if GameManager.wave_dungeon_active:
+		var wd_res: Dictionary = GameManager.advance_wave_dungeon_on_kill()
+		var wd_msg: String = str(wd_res.get("message", ""))
+		if not wd_msg.is_empty():
+			route_event_triggered.emit(wd_msg)
+		if bool(wd_res.get("completed", false)):
+			_was_wave_dungeon_active = false
+			_player_attack_timer = 0.0
+			_enemy_attack_timer = 0.0
+			_spawn_timer = SPAWN_DELAY
+			_set_state(State.SPAWNING)
+			return
+		_player_attack_timer = 0.0
+		_enemy_attack_timer = 0.0
+		_spawn_timer = 0.8
+		_set_state(State.SPAWNING)
+		return
 
 	var auto_advanced: bool = false
 	if defeated.id == GameManager.FINAL_BOSS_ID:
@@ -995,6 +1075,11 @@ func _handle_enemy_defeated() -> void:
 			auto_advanced = GameManager.advance_to_next_boss_in_run(false)
 	elif defeated.id == GameManager.CURSE_WARDEN_ID:
 		GameManager.on_curse_warden_defeated()
+
+	var route_msg: String = GameManager.record_location_win_for_auto_route()
+	if not route_msg.is_empty():
+		route_event_triggered.emit(route_msg)
+		return
 
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
@@ -1006,31 +1091,36 @@ func _handle_enemy_defeated() -> void:
 
 func _roll_drops(enemy: EnemyData) -> void:
 	var drop_count: int = mini(enemy.drop_items.size(), enemy.drop_chances.size())
+	var bestiary_drop_bonus: float = GameManager.get_bestiary_drop_bonus(enemy.id)
 	for i: int in range(drop_count):
 		var item: ItemData = enemy.drop_items[i]
-		var chance: float = enemy.drop_chances[i]
+		var chance: float = clampf(enemy.drop_chances[i] * (1.0 + bestiary_drop_bonus), 0.0, 1.0)
 		if item != null and randf() <= chance:
 			var amount: int = maxi(1, floori(float(item.shop_pack_amount) / 2.0)) if item.item_type == ItemData.ItemType.AMMO else 1
-			GameManager.add_item(item, amount, true)
+			GameManager.add_item(item, amount, true, 100, 1, true)
 	GameManager.roll_rare_seed_drops(enemy)
 
 
 func _spawn_enemy() -> void:
-	var location: LocationData = GameManager.current_location
-	if location == null:
-		return
 	var next_enemy: EnemyData = null
-	if _pending_boss_duel and location.id == GameManager.FINAL_BOSS_LOCATION_ID:
-		for candidate: EnemyData in location.enemies:
-			if candidate != null and candidate.id == GameManager.FINAL_BOSS_ID:
-				next_enemy = candidate
-				break
-	_pending_boss_duel = false
-	if next_enemy == null:
-		next_enemy = location.pick_random_enemy()
+	if GameManager.wave_dungeon_active:
+		next_enemy = GameManager.get_wave_dungeon_enemy_for_wave(GameManager.wave_dungeon_wave)
+	else:
+		var location: LocationData = GameManager.current_location
+		if location == null:
+			return
+		if _pending_boss_duel and location.id == GameManager.FINAL_BOSS_LOCATION_ID:
+			for candidate: EnemyData in location.enemies:
+				if candidate != null and candidate.id == GameManager.FINAL_BOSS_ID:
+					next_enemy = candidate
+					break
+		_pending_boss_duel = false
+		if next_enemy == null:
+			next_enemy = location.pick_random_enemy()
 	if next_enemy == null:
 		return
 
+	GameManager.restore_barrier_full()
 	_enemy_dots.clear()
 	current_enemy = next_enemy
 	enemy_troll_armor_shred = 0
@@ -1046,7 +1136,13 @@ func _spawn_enemy() -> void:
 	var base_scaled_def: float = current_enemy.defense * GameManager.get_difficulty_enemy_armor_mult() + GameManager.get_difficulty_enemy_flat_armor()
 	enemy_defense = base_scaled_def * (1.0 + GameManager.get_curse_value("stone_skin"))
 
-	if current_enemy.id == GameManager.CURSE_WARDEN_ID and GameManager.reroll_boss_kills_in_run > 0:
+	if GameManager.wave_dungeon_active:
+		var wave_scale: float = 1.0 + float(maxi(0, GameManager.wave_dungeon_wave - 1)) * 0.15
+		enemy_max_hp = round(enemy_max_hp * wave_scale)
+		enemy_hp = enemy_max_hp
+		enemy_attack_damage *= wave_scale
+		enemy_defense *= wave_scale
+	elif current_enemy.id == GameManager.CURSE_WARDEN_ID and GameManager.reroll_boss_kills_in_run > 0:
 		var kills_f: float = float(GameManager.reroll_boss_kills_in_run)
 		enemy_max_hp = round(enemy_max_hp * pow(1.85, kills_f))
 		enemy_hp = enemy_max_hp
@@ -1067,6 +1163,7 @@ func _spawn_enemy() -> void:
 	_pet_lightning_timer = 0.0
 	_reflector_pulse_timer = 0.0
 	_enemy_hud_sync_timer = 0.0
+	_attack_progress_sync_timer = 0.0
 	_reset_spirit_timers()
 
 	enemy_spawned.emit(current_enemy, enemy_hp, enemy_max_hp, enemy_mana, current_enemy.max_mana)
@@ -1131,9 +1228,27 @@ func _on_next_boss_advanced(_new_difficulty: int, immediate_spawn: bool) -> void
 		_set_state(State.FIGHTING)
 
 
+func _on_wave_dungeon_changed() -> void:
+	if GameManager.wave_dungeon_active and not _was_wave_dungeon_active:
+		_was_wave_dungeon_active = true
+		_clear_combat_effects()
+		_player_attack_timer = 0.0
+		_enemy_attack_timer = 0.0
+		_spawn_timer = 0.0
+		enemy_troll_armor_shred = 0
+		troll_shred_updated.emit(0)
+		is_seeking_battle = true
+		battle_search_changed.emit(true)
+		_spawn_enemy()
+		_set_state(State.FIGHTING)
+	elif not GameManager.wave_dungeon_active:
+		_was_wave_dungeon_active = false
+
+
 func _on_game_reset() -> void:
 	is_seeking_battle = false
 	_pending_boss_duel = false
+	_was_wave_dungeon_active = false
 	_clear_combat_effects()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
@@ -1141,6 +1256,7 @@ func _on_game_reset() -> void:
 	_mine_ambient_timer = 0.0
 	_auto_potion_timer = 0.0
 	_enemy_hud_sync_timer = 0.0
+	_attack_progress_sync_timer = 0.0
 	_last_emitted_p_prog = -1.0
 	_last_emitted_e_prog = -1.0
 	_reset_spirit_timers()

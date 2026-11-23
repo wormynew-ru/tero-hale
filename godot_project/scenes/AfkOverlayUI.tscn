@@ -102,6 +102,35 @@ horizontal_alignment = 1
 [node name="AfkSep2" type="HSeparator" parent="AfkCenter/AfkCard/AfkVBox"]
 layout_mode = 2
 
+[node name="FpsRow" type="HBoxContainer" parent="AfkCenter/AfkCard/AfkVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="Fps15Button" type="Button" parent="AfkCenter/AfkCard/AfkVBox/FpsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 36)
+layout_mode = 2
+text = "15 FPS"
+
+[node name="Fps20Button" type="Button" parent="AfkCenter/AfkCard/AfkVBox/FpsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 36)
+layout_mode = 2
+text = "20 FPS"
+
+[node name="Fps30Button" type="Button" parent="AfkCenter/AfkCard/AfkVBox/FpsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 36)
+layout_mode = 2
+text = "30 FPS"
+
+[node name="Fps60Button" type="Button" parent="AfkCenter/AfkCard/AfkVBox/FpsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(76, 36)
+layout_mode = 2
+text = "60 FPS"
+
 [node name="ButtonsRow" type="VBoxContainer" parent="AfkCenter/AfkCard/AfkVBox"]
 layout_mode = 2
 theme_override_constants/separation = 8

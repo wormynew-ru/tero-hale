@@ -6,6 +6,7 @@ signal next_boss_started
 @onready var current_run_label: Label = %CurrentRunLabel
 @onready var boss_status_label: Label = %BossStatusLabel
 @onready var crucible_status_label: Label = %CrucibleStatusLabel
+@onready var challenge_status_label: Label = %ChallengeStatusLabel
 @onready var next_boss_button: Button = %NextBossButton
 @onready var auto_advance_button: Button = %AutoAdvanceButton
 @onready var diff_minus_button: Button = %DiffMinusButton
@@ -14,14 +15,21 @@ signal next_boss_started
 @onready var diff_max_button: Button = %DiffMaxButton
 @onready var multipliers_preview_label: Label = %MultipliersPreviewLabel
 @onready var start_new_run_button: Button = %StartNewRunButton
+@onready var selected_challenge_label: Label = %SelectedChallengeLabel
+@onready var challenges_rows_vbox: VBoxContainer = %ChallengesRowsVBox
 @onready var reroll_tokens_label: Label = %RerollTokensLabel
 @onready var curses_feedback_label: Label = %CursesFeedbackLabel
 @onready var curses_rows_vbox: VBoxContainer = %CursesRowsVBox
 
 var _selected_difficulty: int = 1
+var _selected_challenge_id: String = ""
 var _confirm_deadline_ms: int = 0
 var _dirty: bool = true
 var _refresh_queued: bool = false
+var _challenge_cards: Array[Dictionary] = []
+var _curse_rows: Array[Dictionary] = []
+var _none_curse_label: Label = null
+var _ward_curse_label: Label = null
 
 
 func _ready() -> void:
@@ -29,6 +37,7 @@ func _ready() -> void:
 	_selected_difficulty = GameManager.difficulty_level
 	GameManager.difficulty_changed.connect(_on_manager_updated)
 	GameManager.dark_skills_changed.connect(_on_state_updated)
+	GameManager.challenge_changed.connect(_on_state_updated)
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_state_updated())
 	GameManager.game_reset.connect(_on_reset)
 
@@ -40,11 +49,13 @@ func _ready() -> void:
 	start_new_run_button.pressed.connect(_on_start_new_run_pressed)
 	next_boss_button.pressed.connect(_on_next_boss_pressed)
 	auto_advance_button.pressed.connect(_on_auto_advance_pressed)
+
+	_build_challenge_cards_once()
 	_refresh()
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree() and _dirty:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and is_visible_in_tree():
 		_refresh()
 
 
@@ -75,6 +86,7 @@ func _process(_delta: float) -> void:
 
 func _on_reset() -> void:
 	curses_feedback_label.text = ""
+	_selected_challenge_id = GameManager.active_challenge_id
 	_on_manager_updated()
 
 
@@ -96,16 +108,26 @@ func _set_selected_difficulty(target: int) -> void:
 	_refresh()
 
 
+func _on_toggle_challenge(challenge_id: String) -> void:
+	_selected_challenge_id = "" if _selected_challenge_id == challenge_id else challenge_id
+	_confirm_deadline_ms = 0
+	set_process(false)
+	_refresh()
+
+
 func _on_start_new_run_pressed() -> void:
 	var now_ms: int = Time.get_ticks_msec()
 	if _confirm_deadline_ms == 0 or now_ms > _confirm_deadline_ms:
 		_confirm_deadline_ms = now_ms + 3000
-		start_new_run_button.text = "⚠️ Точно начать (Сл. %d)?" % _selected_difficulty
+		start_new_run_button.text = "⚠️ Точно (Сл.%d%s)?" % [
+			_selected_difficulty,
+			" + 🏆" if not _selected_challenge_id.is_empty() else "",
+		]
 		set_process(true)
 		return
 	_confirm_deadline_ms = 0
 	set_process(false)
-	GameManager.start_new_run(_selected_difficulty)
+	GameManager.start_new_run(_selected_difficulty, _selected_challenge_id)
 	new_run_started.emit()
 
 
@@ -119,7 +141,158 @@ func _on_auto_advance_pressed() -> void:
 
 
 func _refresh_start_button_text() -> void:
-	start_new_run_button.text = "🔥 Начать ран (Сл. %d)" % _selected_difficulty
+	if _selected_challenge_id.is_empty():
+		start_new_run_button.text = "🔥 Начать ран (Сл. %d)" % _selected_difficulty
+	else:
+		start_new_run_button.text = "🏆 Начать испытание (Сл. %d)" % _selected_difficulty
+
+
+func _build_challenge_cards_once() -> void:
+	if challenges_rows_vbox == null or not _challenge_cards.is_empty():
+		return
+	for ch: Dictionary in GameManager.CHALLENGE_CATALOG:
+		var cid: String = str(ch.get("id", ""))
+		var card: PanelContainer = PanelContainer.new()
+		var style: StyleBoxFlat = StyleBoxFlat.new()
+		style.content_margin_left = 10.0
+		style.content_margin_top = 8.0
+		style.content_margin_right = 10.0
+		style.content_margin_bottom = 8.0
+		style.corner_radius_top_left = 6
+		style.corner_radius_top_right = 6
+		style.corner_radius_bottom_right = 6
+		style.corner_radius_bottom_left = 6
+		style.border_width_left = 1
+		style.border_width_top = 1
+		style.border_width_right = 1
+		style.border_width_bottom = 1
+		card.add_theme_stylebox_override("panel", style)
+
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+
+		var info_vbox: VBoxContainer = VBoxContainer.new()
+		info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info_vbox.add_theme_constant_override("separation", 2)
+
+		var title_lbl: Label = Label.new()
+		title_lbl.add_theme_font_size_override("font_size", 14)
+		title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		info_vbox.add_child(title_lbl)
+
+		var desc_lbl: Label = Label.new()
+		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_lbl.text = "%s\n🎁 Награда: %s" % [str(ch.get("desc", "")), str(ch.get("reward_desc", ""))]
+		desc_lbl.modulate = Color(0.80, 0.88, 0.96, 1.0)
+		info_vbox.add_child(desc_lbl)
+
+		row.add_child(info_vbox)
+
+		var toggle_btn: Button = Button.new()
+		toggle_btn.custom_minimum_size = Vector2(140.0, 42.0)
+		toggle_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var target_cid: String = cid
+		toggle_btn.pressed.connect(func() -> void: _on_toggle_challenge(target_cid))
+		row.add_child(toggle_btn)
+
+		card.add_child(row)
+		challenges_rows_vbox.add_child(card)
+		_challenge_cards.append({
+			"id": cid,
+			"base_title": str(ch.get("title", cid)),
+			"style": style,
+			"title_lbl": title_lbl,
+			"btn": toggle_btn,
+		})
+
+
+func _refresh_challenges() -> void:
+	if _challenge_cards.is_empty():
+		_build_challenge_cards_once()
+	if _selected_challenge_id.is_empty():
+		selected_challenge_label.text = "Режим: Обычный ран"
+		selected_challenge_label.modulate = Color(0.76, 0.84, 0.94, 1.0)
+	else:
+		var sel_def: Dictionary = GameManager.get_challenge_def(_selected_challenge_id)
+		selected_challenge_label.text = "Выбрано: %s" % str(sel_def.get("title", _selected_challenge_id))
+		selected_challenge_label.modulate = Color(0.55, 0.98, 0.72, 1.0)
+
+	for entry: Dictionary in _challenge_cards:
+		var cid: String = str(entry["id"])
+		var completed: bool = GameManager.is_challenge_completed(cid)
+		var selected: bool = _selected_challenge_id == cid
+		var style: StyleBoxFlat = entry["style"] as StyleBoxFlat
+		var title_lbl: Label = entry["title_lbl"] as Label
+		var btn: Button = entry["btn"] as Button
+
+		if selected:
+			style.bg_color = Color(0.15, 0.24, 0.19, 1.0)
+			style.border_color = Color(0.45, 0.96, 0.65, 1.0)
+		elif completed:
+			style.bg_color = Color(0.13, 0.17, 0.22, 1.0)
+			style.border_color = Color(0.95, 0.82, 0.38, 0.85)
+		else:
+			style.bg_color = Color(0.10, 0.12, 0.16, 1.0)
+			style.border_color = Color(0.32, 0.36, 0.44, 0.8)
+
+		var status_tag: String = "  ✅ Выполнено навсегда" if completed else ""
+		var active_tag: String = "  🔥 АКТИВНО В РАНЕ" if GameManager.active_challenge_id == cid else ""
+		title_lbl.text = "%s%s%s" % [str(entry["base_title"]), status_tag, active_tag]
+		title_lbl.modulate = Color(0.98, 0.86, 0.42, 1.0) if completed else Color.WHITE
+
+		if selected:
+			btn.text = "☑️ Выбрано"
+			btn.modulate = Color(0.55, 0.98, 0.72, 1.0)
+		else:
+			btn.text = "Выбрать"
+			btn.modulate = Color.WHITE
+
+
+func _get_or_create_curse_row(idx: int) -> Dictionary:
+	while _curse_rows.size() <= idx:
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		var lbl: Label = Label.new()
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.add_theme_font_size_override("font_size", 13)
+		row.add_child(lbl)
+
+		var reroll_btn: Button = Button.new()
+		reroll_btn.custom_minimum_size = Vector2(124.0, 38.0)
+		reroll_btn.text = "🎲 Реролл"
+		var row_entry: Dictionary = {
+			"row": row,
+			"lbl": lbl,
+			"btn": reroll_btn,
+			"tier": 0,
+		}
+		reroll_btn.pressed.connect(func() -> void:
+			var t_tier: int = int(row_entry["tier"])
+			if t_tier > 0:
+				var res: Dictionary = GameManager.reroll_curse_at_tier(t_tier)
+				curses_feedback_label.text = str(res.get("message", ""))
+		)
+		row.add_child(reroll_btn)
+		curses_rows_vbox.add_child(row)
+		_curse_rows.append(row_entry)
+	return _curse_rows[idx]
+
+
+func _ensure_curse_aux_labels() -> void:
+	if _none_curse_label == null:
+		_none_curse_label = Label.new()
+		_none_curse_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_none_curse_label.modulate = Color(0.84, 0.86, 0.92, 1.0)
+		curses_rows_vbox.add_child(_none_curse_label)
+	if _ward_curse_label == null:
+		_ward_curse_label = Label.new()
+		_ward_curse_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_ward_curse_label.modulate = Color(0.75, 0.85, 1.0, 1.0)
+		_ward_curse_label.add_theme_font_size_override("font_size", 12)
+		_ward_curse_label.text = "🕯️ Активно «Очищение скверны»: все проклятия ослаблены на 40%."
+		curses_rows_vbox.add_child(_ward_curse_label)
 
 
 func _refresh() -> void:
@@ -157,6 +330,27 @@ func _refresh() -> void:
 	else:
 		crucible_status_label.text = "🔒 На Сл.%d откроется «Горнило Проклятий» (всегда открытая локация с Хранителем Проклятий — бесконечный фарм 🎲 рероллов проклятий за 1 ран!)." % GameManager.CRUCIBLE_UNLOCK_DIFFICULTY
 		crucible_status_label.modulate = Color(0.72, 0.76, 0.86, 1.0)
+
+	var run_mins: int = floori(GameManager.run_elapsed_seconds / 60.0)
+	var run_secs: int = floori(fmod(GameManager.run_elapsed_seconds, 60.0))
+	if not GameManager.active_challenge_id.is_empty():
+		var active_def: Dictionary = GameManager.get_challenge_def(GameManager.active_challenge_id)
+		challenge_status_label.text = "🏆 Активное испытание: %s (таймер рана: %02d:%02d | %d/%d пройдено)" % [
+			str(active_def.get("title", GameManager.active_challenge_id)),
+			run_mins,
+			run_secs,
+			GameManager.completed_challenges.size(),
+			GameManager.CHALLENGE_CATALOG.size(),
+		]
+		challenge_status_label.modulate = Color(0.98, 0.86, 0.42, 1.0)
+	else:
+		challenge_status_label.text = "🏆 Испытания: не активно в этом ране (таймер рана: %02d:%02d | пройдено %d/%d)" % [
+			run_mins,
+			run_secs,
+			GameManager.completed_challenges.size(),
+			GameManager.CHALLENGE_CATALOG.size(),
+		]
+		challenge_status_label.modulate = Color(0.76, 0.86, 0.94, 1.0)
 
 	var next_diff: int = GameManager.difficulty_level + 1
 	if GameManager.can_advance_to_next_boss():
@@ -207,24 +401,25 @@ func _refresh() -> void:
 	if _confirm_deadline_ms == 0:
 		_refresh_start_button_text()
 
+	_refresh_challenges()
 	_refresh_curses_preview()
 
 
 func _refresh_curses_preview() -> void:
-	for child: Node in curses_rows_vbox.get_children():
-		child.queue_free()
-
+	_ensure_curse_aux_labels()
 	GameManager.ensure_curses_for_difficulty(_selected_difficulty)
 	var max_tier: int = floori(float(_selected_difficulty) / 10.0) * 10
 	if max_tier < 10:
-		var none_lbl: Label = Label.new()
-		none_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		none_lbl.modulate = Color(0.84, 0.86, 0.92, 1.0)
-		none_lbl.text = "На сложности %d проклятий нет. Первое случайное проклятие появится на 10-й сложности, следующее — на 20-й и так каждые +10." % _selected_difficulty
-		curses_rows_vbox.add_child(none_lbl)
+		_none_curse_label.visible = true
+		_none_curse_label.text = "На сложности %d проклятий нет. Первое случайное проклятие появится на 10-й сложности, следующее — на 20-й и так каждые +10." % _selected_difficulty
+		_ward_curse_label.visible = false
+		for row_entry: Dictionary in _curse_rows:
+			(row_entry["row"] as Control).visible = false
 		return
 
+	_none_curse_label.visible = false
 	var atten: float = GameManager.get_curse_attenuation()
+	var row_idx: int = 0
 	for tier: int in range(10, max_tier + 1, 10):
 		var cid: String = str(GameManager.difficulty_curses.get(tier, ""))
 		var found_def: Dictionary = {}
@@ -240,38 +435,23 @@ func _refresh_curses_preview() -> void:
 		if is_alch_immune:
 			desc += " (🛡️ Иммунитет Алхимика — не действует)"
 
-		var row: HBoxContainer = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 10)
-
-		var lbl: Label = Label.new()
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl.add_theme_font_size_override("font_size", 13)
+		var row_entry: Dictionary = _get_or_create_curse_row(row_idx)
+		row_entry["tier"] = tier
+		var row_ctrl: HBoxContainer = row_entry["row"] as HBoxContainer
+		var lbl: Label = row_entry["lbl"] as Label
+		var reroll_btn: Button = row_entry["btn"] as Button
+		row_ctrl.visible = true
 		lbl.text = "• Сл. %d — %s: %s" % [tier, str(found_def["title"]), desc]
-		if is_alch_immune:
-			lbl.modulate = Color(0.45, 0.96, 0.68, 1.0)
-		row.add_child(lbl)
-
-		var reroll_btn: Button = Button.new()
-		reroll_btn.custom_minimum_size = Vector2(124.0, 38.0)
-		reroll_btn.text = "🎲 Реролл"
+		lbl.modulate = Color(0.45, 0.96, 0.68, 1.0) if is_alch_immune else Color.WHITE
 		reroll_btn.disabled = GameManager.curse_reroll_tokens <= 0
-		var target_tier: int = tier
-		reroll_btn.pressed.connect(func() -> void:
-			var res: Dictionary = GameManager.reroll_curse_at_tier(target_tier)
-			curses_feedback_label.text = str(res.get("message", ""))
-		)
-		row.add_child(reroll_btn)
+		row_idx += 1
 
-		curses_rows_vbox.add_child(row)
+	for i: int in range(row_idx, _curse_rows.size()):
+		(_curse_rows[i]["row"] as Control).visible = false
 
-	if GameManager.has_dark_skill("curse_ward"):
-		var ward_lbl: Label = Label.new()
-		ward_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ward_lbl.modulate = Color(0.75, 0.85, 1.0, 1.0)
-		ward_lbl.add_theme_font_size_override("font_size", 12)
-		ward_lbl.text = "🕯️ Активно «Очищение скверны»: все проклятия ослаблены на 40%."
-		curses_rows_vbox.add_child(ward_lbl)
+	_ward_curse_label.visible = GameManager.has_dark_skill("curse_ward")
+	if _ward_curse_label.visible:
+		curses_rows_vbox.move_child(_ward_curse_label, -1)
 
 
 func _fmt_mult(val: float) -> String:

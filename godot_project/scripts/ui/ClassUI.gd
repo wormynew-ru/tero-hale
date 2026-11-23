@@ -14,6 +14,7 @@ func _ready() -> void:
 	GameManager.class_changed.connect(_on_class_changed)
 	GameManager.difficulty_changed.connect(_on_state_updated)
 	GameManager.stats_changed.connect(_on_state_updated)
+	GameManager.challenge_changed.connect(_on_state_updated)
 	GameManager.game_reset.connect(_on_reset)
 	_build_cards_once()
 	_refresh()
@@ -74,11 +75,8 @@ func _make_card_style(bg_col: Color, border_col: Color, border_w: int) -> StyleB
 
 
 func _build_cards_once() -> void:
-	if class_list_vbox == null:
+	if class_list_vbox == null or not _class_cards.is_empty():
 		return
-	for child: Node in class_list_vbox.get_children():
-		child.queue_free()
-	_class_cards.clear()
 
 	for hc: HeroClassData in GameManager.hero_classes:
 		if hc == null:
@@ -154,18 +152,24 @@ func _refresh() -> void:
 	var unlocked: bool = GameManager.is_classes_unlocked()
 	var current_class: HeroClassData = GameManager.get_current_class()
 	var current_name: String = "%s %s" % [current_class.icon_emoji, current_class.title] if current_class != null else "Странник"
+	var trials_note: String = " | 🏆 Пройдено испытаний Бездны: %d/%d" % [
+		GameManager.completed_challenges.size(),
+		GameManager.CHALLENGE_CATALOG.size(),
+	]
 
 	if unlocked:
-		class_status_label.text = "✅ Классы открыты (%d/%d). Текущий класс: %s. Классы можно переключать в любой момент, а заработанные бонусы классов (напр., стаки HP 🪞 Отражателя и уровни духов 🌿 Спирита) сохраняются строго за тем классом, который их заработал." % [
+		class_status_label.text = "✅ Классы открыты (%d/%d). Текущий класс: %s%s. Личные бонусы (стаки HP 🪞 Отражателя и уровни духов 🌿 Спирита) сохраняются строго за своим классом." % [
 			GameManager.max_unlocked_difficulty,
 			GameManager.CLASSES_UNLOCK_DIFFICULTY,
 			current_name,
+			trials_note,
 		]
 		class_status_label.modulate = Color(0.55, 0.95, 0.72, 1.0)
 	else:
-		class_status_label.text = "🔒 Классы открываются после достижения %d-й сложности (сейчас открыто до Сл.%d). После открытия классы можно свободно переключать, а их личные бонусы остаются за ними." % [
+		class_status_label.text = "🔒 Классы открываются после достижения %d-й сложности (сейчас открыто до Сл.%d)%s. После открытия классы можно свободно переключать." % [
 			GameManager.CLASSES_UNLOCK_DIFFICULTY,
 			GameManager.max_unlocked_difficulty,
+			trials_note,
 		]
 		class_status_label.modulate = Color(0.95, 0.78, 0.42, 1.0)
 
@@ -179,9 +183,11 @@ func _refresh() -> void:
 		if passive_lbl != null:
 			var base_passive: String = str(entry["base_passive"])
 			if cid == "reflector":
-				passive_lbl.text = "%s\n📊 Заработано Отражателем: +%s Max HP (действует только на Отражателе)" % [
+				var barrier_hp_conv: float = GameManager.get_raw_max_barrier()
+				passive_lbl.text = "%s\n📊 Стаки убийств: +%s Max HP | 🛡️ Конвертация Барьера 1:1 → +%s Max HP (действует только на Отражателе)" % [
 					base_passive,
 					NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks)),
+					NumberFormatter.format_number(barrier_hp_conv),
 				]
 			elif cid == "spirit":
 				passive_lbl.text = "%s\n📊 Уровни духов Спирита: 🔥%d / 🌪️%d / 🌿%d / 🪨%d (действуют только на Спирите)" % [

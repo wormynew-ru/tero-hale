@@ -5,6 +5,8 @@ extends ScrollContainer
 @onready var unequip_weapon_button: Button = %UnequipWeaponButton
 @onready var armor_slot_label: Label = %ArmorSlotLabel
 @onready var unequip_armor_button: Button = %UnequipArmorButton
+@onready var offhand_slot_label: Label = %OffhandSlotLabel
+@onready var unequip_offhand_button: Button = %UnequipOffhandButton
 @onready var ammo_slot_label: Label = %AmmoSlotLabel
 @onready var unequip_ammo_button: Button = %UnequipAmmoButton
 @onready var pet_slot_label: Label = %PetSlotLabel
@@ -25,11 +27,16 @@ extends ScrollContainer
 @onready var auto_buff_condition_button: Button = %AutoBuffConditionButton
 @onready var buff_whitelist_flow: HFlowContainer = %BuffWhitelistFlow
 
+@onready var auto_salvage_mode_button: Button = %AutoSalvageModeButton
+@onready var auto_salvage_quality_button: Button = %AutoSalvageQualityButton
+@onready var ore_shards_label: Label = %OreShardsLabel
+
 @onready var feedback_label: Label = %FeedbackLabel
 @onready var inventory_list: VBoxContainer = %InventoryList
 
 
 var _inv_rows: Array[Dictionary] = []
+var _empty_label: Label = null
 var _buff_filter_buttons: Dictionary = {}
 var _last_inv_sig: String = ""
 var _dirty_inv: bool = true
@@ -46,6 +53,7 @@ func _ready() -> void:
 	GameManager.difficulty_changed.connect(_on_inventory_updated)
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_inventory_updated())
 	GameManager.pets_changed.connect(_on_inventory_updated)
+	GameManager.challenge_changed.connect(_on_inventory_updated)
 	GameManager.hp_changed.connect(_on_hp_changed)
 	GameManager.mana_changed.connect(_on_mana_changed)
 	GameManager.game_reset.connect(_on_reset)
@@ -57,6 +65,10 @@ func _ready() -> void:
 	unequip_armor_button.pressed.connect(func() -> void:
 		GameManager.unequip_slot(ItemData.ItemType.ARMOR)
 		feedback_label.text = "Броня снята в рюкзак."
+	)
+	unequip_offhand_button.pressed.connect(func() -> void:
+		GameManager.unequip_slot(ItemData.ItemType.OFFHAND)
+		feedback_label.text = "Оффхенд снят в рюкзак."
 	)
 	unequip_ammo_button.pressed.connect(func() -> void:
 		GameManager.unequip_slot(ItemData.ItemType.AMMO)
@@ -96,6 +108,9 @@ func _ready() -> void:
 		GameManager.set_auto_buff_settings(GameManager.auto_buff_enabled, next_cond)
 	)
 
+	auto_salvage_mode_button.pressed.connect(_cycle_auto_salvage_mode)
+	auto_salvage_quality_button.pressed.connect(_cycle_auto_salvage_quality)
+
 	quick_potion_button.pressed.connect(func() -> void:
 		feedback_label.text = GameManager.use_best_healing_potion()
 	)
@@ -106,6 +121,7 @@ func _ready() -> void:
 	HoldAutoClicker.attach(quick_mana_potion_button, 50.0)
 
 	_build_buff_whitelist_buttons()
+	_ensure_empty_label()
 	_rebuild_inventory(true)
 	_refresh_controls()
 
@@ -191,11 +207,24 @@ func _cycle_mana_threshold() -> void:
 	GameManager.set_auto_mana_settings(GameManager.auto_mana_enabled, next_val, GameManager.auto_mana_condition)
 
 
-func _build_buff_whitelist_buttons() -> void:
-	for child: Node in buff_whitelist_flow.get_children():
-		child.queue_free()
-	_buff_filter_buttons.clear()
+func _cycle_auto_salvage_mode() -> void:
+	var modes: Array[String] = ["off", "sell", "salvage"]
+	var idx: int = modes.find(GameManager.auto_salvage_mode)
+	var next_mode: String = modes[(idx + 1) % modes.size()] if idx >= 0 else "sell"
+	GameManager.set_auto_salvage_settings(next_mode, GameManager.auto_salvage_min_quality)
+	feedback_label.text = "Режим авто-разбора лута: %s" % next_mode
 
+
+func _cycle_auto_salvage_quality() -> void:
+	var presets: Array[int] = GameManager.AUTO_SALVAGE_QUALITY_THRESHOLDS
+	var idx: int = presets.find(GameManager.auto_salvage_min_quality)
+	var next_q: int = presets[(idx + 1) % presets.size()] if idx >= 0 else presets[0]
+	GameManager.set_auto_salvage_settings(GameManager.auto_salvage_mode, next_q)
+
+
+func _build_buff_whitelist_buttons() -> void:
+	if not _buff_filter_buttons.is_empty():
+		return
 	for entry: Dictionary in GameManager.BUFF_POTION_CATALOG:
 		var bid: String = str(entry.get("id", ""))
 		var lbl: String = str(entry.get("label", bid))
@@ -209,6 +238,102 @@ func _build_buff_whitelist_buttons() -> void:
 		)
 		buff_whitelist_flow.add_child(btn)
 		_buff_filter_buttons[bid] = btn
+
+
+func _ensure_empty_label() -> void:
+	if _empty_label != null:
+		return
+	_empty_label = Label.new()
+	_empty_label.text = "Рюкзак пуст. Побеждайте врагов, загляните в 🏪 Лавку или спуститесь в ⛏️ Шахту."
+	_empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_empty_label.modulate = Color(0.65, 0.7, 0.78, 1.0)
+	_empty_label.visible = false
+	inventory_list.add_child(_empty_label)
+
+
+func _get_or_create_row(index: int) -> Dictionary:
+	while _inv_rows.size() <= index:
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+
+		var icon_label: Label = Label.new()
+		icon_label.custom_minimum_size = Vector2(36.0, 36.0)
+		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon_label.add_theme_font_size_override("font_size", 24)
+		row.add_child(icon_label)
+
+		var info_label: Label = Label.new()
+		info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(info_label)
+
+		var action_btn: Button = Button.new()
+		action_btn.custom_minimum_size = Vector2(124.0, 44.0)
+		var sell_btn: Button = Button.new()
+		sell_btn.custom_minimum_size = Vector2(106.0, 44.0)
+
+		var row_data: Dictionary = {
+			"row": row,
+			"item": null,
+			"quality": 100,
+			"stars": 1,
+			"expected_id": "",
+			"held_action_id": "",
+			"held_sell_id": "",
+			"icon_label": icon_label,
+			"info_label": info_label,
+			"action_btn": action_btn,
+			"sell_btn": sell_btn,
+		}
+
+		action_btn.button_down.connect(func() -> void:
+			var cur_item: ItemData = row_data["item"] as ItemData
+			row_data["held_action_id"] = cur_item.id if (cur_item != null and cur_item.item_type == ItemData.ItemType.CONSUMABLE) else ""
+		)
+		action_btn.pressed.connect(func() -> void:
+			var cur_item: ItemData = row_data["item"] as ItemData
+			if cur_item != null:
+				var msg: String = GameManager.use_or_equip_item(cur_item, int(row_data["quality"]), int(row_data["stars"]))
+				if not msg.is_empty():
+					feedback_label.text = msg
+		)
+		HoldAutoClicker.attach(
+			action_btn,
+			50.0,
+			0.25,
+			func() -> bool:
+				var cur: ItemData = row_data["item"] as ItemData
+				var hid: String = str(row_data["held_action_id"])
+				return not hid.is_empty() and cur != null and cur.id == hid and cur.item_type == ItemData.ItemType.CONSUMABLE
+		)
+		row.add_child(action_btn)
+
+		sell_btn.button_down.connect(func() -> void:
+			var cur_item: ItemData = row_data["item"] as ItemData
+			row_data["held_sell_id"] = cur_item.id if cur_item != null else ""
+		)
+		sell_btn.pressed.connect(func() -> void:
+			var cur_item: ItemData = row_data["item"] as ItemData
+			if cur_item != null:
+				var msg: String = GameManager.sell_item(cur_item, 1, int(row_data["quality"]), int(row_data["stars"]))
+				if not msg.is_empty():
+					feedback_label.text = msg
+		)
+		HoldAutoClicker.attach(
+			sell_btn,
+			50.0,
+			0.25,
+			func() -> bool:
+				var cur: ItemData = row_data["item"] as ItemData
+				var hsid: String = str(row_data["held_sell_id"])
+				return not hsid.is_empty() and cur != null and cur.id == hsid
+		)
+		row.add_child(sell_btn)
+
+		_inv_rows.append(row_data)
+		inventory_list.add_child(row)
+	return _inv_rows[index]
 
 
 func _refresh_controls() -> void:
@@ -234,43 +359,64 @@ func _refresh_controls() -> void:
 			btn.set_pressed_no_signal(allowed)
 			btn.modulate = Color(0.55, 0.98, 0.72, 1.0) if allowed else Color(0.62, 0.64, 0.7, 0.7)
 
+	match GameManager.auto_salvage_mode:
+		"sell":
+			auto_salvage_mode_button.text = "💰 Авто-продажа дропа"
+			auto_salvage_mode_button.modulate = Color(0.98, 0.85, 0.42, 1.0)
+		"salvage":
+			auto_salvage_mode_button.text = "⛏️ Авто-разбор в осколки"
+			auto_salvage_mode_button.modulate = Color(0.55, 0.96, 0.84, 1.0)
+		_:
+			auto_salvage_mode_button.text = "♻️ Авто-разбор дропа: ВЫКЛ"
+			auto_salvage_mode_button.modulate = Color(0.76, 0.80, 0.88, 0.9)
+	auto_salvage_quality_button.text = "Ниже <%d%%" % GameManager.auto_salvage_min_quality
+	ore_shards_label.text = "⛏️ Осколки: %d/10" % GameManager.abyss_ore_shards
+
 	var potions: int = GameManager.get_total_potion_count()
 	quick_potion_button.text = "🧪 Выпить HP (%d)" % potions
-	quick_potion_button.disabled = potions <= 0 or GameManager.current_hp >= GameManager.get_max_hp()
+	quick_potion_button.disabled = potions <= 0 or GameManager.current_hp >= GameManager.get_max_hp() or GameManager.is_potions_blocked_by_challenge()
 
 	var mana_potions: int = GameManager.get_total_mana_potion_count()
 	quick_mana_potion_button.text = "💧 Выпить MP (%d)" % mana_potions
-	quick_mana_potion_button.disabled = mana_potions <= 0 or GameManager.current_mana >= GameManager.get_max_mana()
+	quick_mana_potion_button.disabled = mana_potions <= 0 or GameManager.current_mana >= GameManager.get_max_mana() or GameManager.is_potions_blocked_by_challenge()
 
 
 func _compute_inventory_sig() -> String:
 	var parts: Array[String] = []
 	parts.append("E:%s" % ("1" if GameManager.is_equipment_disabled() else "0"))
 	parts.append("A:%s" % ("1" if GameManager.is_alchemy_unlocked() else "0"))
+	parts.append("CH:%s" % GameManager.active_challenge_id)
 	for entry: Dictionary in GameManager.inventory:
 		var item: ItemData = entry["item"] as ItemData
 		if item != null:
-			parts.append(item.id)
+			parts.append("%s:%d:%d" % [item.id, GameManager.get_entry_quality(entry), GameManager.get_entry_stars(entry)])
 	return "|".join(parts)
 
 
 func _rebuild_inventory(force: bool = false) -> void:
 	_dirty_inv = false
-	var equip_disabled: bool = GameManager.is_equipment_disabled()
-	spirit_equip_notice.visible = equip_disabled
+	_ensure_empty_label()
+	var equip_disabled: bool = GameManager.is_equipment_disabled() or GameManager.is_gear_blocked_by_challenge()
+	spirit_equip_notice.visible = GameManager.is_equipment_disabled() or GameManager.is_gear_blocked_by_challenge()
+	if GameManager.is_gear_blocked_by_challenge():
+		spirit_equip_notice.text = "🧘 Испытание «Аскет»: экипировка оружия, брони, оффхенда и снарядов заблокирована на весь ран!"
+	elif GameManager.is_equipment_disabled():
+		spirit_equip_notice.text = "🌿 Класс Спирит: экипировка оружия, брони, оффхенда и снарядов отключена — вместо неё сражаются 4 духа природы."
 
 	var w_ench: int = GameManager.weapon_enchant_level
 	var w_dark: int = GameManager.dark_weapon_enchant_level
 	var w_dark_tag: String = " | 🌑+%d" % w_dark if w_dark > 0 else ""
 	if equip_disabled:
-		weapon_slot_label.text = "⚔️ Оружие: [Заблокировано классом Спирит]"
+		weapon_slot_label.text = "⚔️ Оружие: [Заблокировано]"
 		unequip_weapon_button.disabled = true
 	elif GameManager.equipped_weapon != null:
 		var wb: Dictionary = GameManager.get_equipped_stat_bonuses(ItemData.ItemType.WEAPON)
 		var w_int_txt: String = ", +%d Инт" % int(wb["intellect"]) if int(wb["intellect"]) > 0 else ""
-		weapon_slot_label.text = "⚔️ Оружие [+%d%s]: %s (+%d Сил, +%d Лов, +%d Вын%s)" % [
+		weapon_slot_label.text = "⚔️ Оружие [+%d%s | %d%% ★%d]: %s (+%d Сил, +%d Лов, +%d Вын%s)" % [
 			w_ench,
 			w_dark_tag,
+			GameManager.equipped_weapon_quality,
+			GameManager.equipped_weapon_stars,
 			GameManager.equipped_weapon.get_display_name(),
 			int(wb["strength"]),
 			int(wb["agility"]),
@@ -286,14 +432,16 @@ func _rebuild_inventory(force: bool = false) -> void:
 	var a_dark: int = GameManager.dark_armor_enchant_level
 	var a_dark_tag: String = " | 🌑+%d" % a_dark if a_dark > 0 else ""
 	if equip_disabled:
-		armor_slot_label.text = "🛡️ Броня: [Заблокировано классом Спирит]"
+		armor_slot_label.text = "🛡️ Броня: [Заблокировано]"
 		unequip_armor_button.disabled = true
 	elif GameManager.equipped_armor != null:
 		var ab: Dictionary = GameManager.get_equipped_stat_bonuses(ItemData.ItemType.ARMOR)
 		var a_int_txt: String = ", +%d Инт" % int(ab["intellect"]) if int(ab["intellect"]) > 0 else ""
-		armor_slot_label.text = "🛡️ Броня [+%d%s]: %s (+%d Сил, +%d Лов, +%d Вын%s)" % [
+		armor_slot_label.text = "🛡️ Броня [+%d%s | %d%% ★%d]: %s (+%d Сил, +%d Лов, +%d Вын%s)" % [
 			a_ench,
 			a_dark_tag,
+			GameManager.equipped_armor_quality,
+			GameManager.equipped_armor_stars,
 			GameManager.equipped_armor.get_display_name(),
 			int(ab["strength"]),
 			int(ab["agility"]),
@@ -305,8 +453,32 @@ func _rebuild_inventory(force: bool = false) -> void:
 		armor_slot_label.text = "🛡️ Броня [+%d%s]: [Пусто]" % [a_ench, a_dark_tag]
 		unequip_armor_button.disabled = true
 
+	var o_ench: int = GameManager.offhand_enchant_level
+	var o_dark: int = GameManager.dark_offhand_enchant_level
+	var o_dark_tag: String = " | 🌑+%d" % o_dark if o_dark > 0 else ""
 	if equip_disabled:
-		ammo_slot_label.text = "🏹 Снаряды / Книги: [Заблокировано классом Спирит]"
+		offhand_slot_label.text = "🔰 Оффхенд: [Заблокировано]"
+		unequip_offhand_button.disabled = true
+	elif GameManager.equipped_offhand != null:
+		var ob: Dictionary = GameManager.get_equipped_stat_bonuses(ItemData.ItemType.OFFHAND)
+		var o_int_txt: String = ", +%d Инт" % int(ob["intellect"]) if int(ob["intellect"]) > 0 else ""
+		offhand_slot_label.text = "🔰 Оффхенд [+%d%s | %d%% ★%d]: %s (+%s Барьер, +%d Вын%s)" % [
+			o_ench,
+			o_dark_tag,
+			GameManager.equipped_offhand_quality,
+			GameManager.equipped_offhand_stars,
+			GameManager.equipped_offhand.get_display_name(),
+			NumberFormatter.format_number(GameManager.get_raw_max_barrier()),
+			int(ob["endurance"]),
+			o_int_txt,
+		]
+		unequip_offhand_button.disabled = false
+	else:
+		offhand_slot_label.text = "🔰 Оффхенд [+%d%s]: [Пусто]" % [o_ench, o_dark_tag]
+		unequip_offhand_button.disabled = true
+
+	if equip_disabled:
+		ammo_slot_label.text = "🏹 Снаряды / Книги: [Заблокировано]"
 		unequip_ammo_button.disabled = true
 	elif GameManager.equipped_ammo != null and (GameManager.equipped_ammo_count > 0 or GameManager.equipped_ammo.is_dark_forged):
 		var slot_prefix: String = "📚 Книга мага:" if GameManager.equipped_ammo.ammo_kind == ItemData.AmmoKind.TOME else "🏹 Снаряды:"
@@ -338,44 +510,39 @@ func _rebuild_inventory(force: bool = false) -> void:
 		return
 	_last_inv_sig = sig
 
-	for child: Node in inventory_list.get_children():
-		child.queue_free()
-	_inv_rows.clear()
+	_update_inventory_rows_in_place()
 
-	if GameManager.inventory.is_empty():
-		var empty_label: Label = Label.new()
-		empty_label.text = "Рюкзак пуст. Побеждайте врагов, загляните в 🏪 Лавку или спуститесь в ⛏️ Шахту."
-		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		empty_label.modulate = Color(0.65, 0.7, 0.78, 1.0)
-		inventory_list.add_child(empty_label)
-		return
 
+func _update_inventory_rows_in_place() -> void:
+	var equip_disabled: bool = GameManager.is_equipment_disabled() or GameManager.is_gear_blocked_by_challenge()
+	var row_idx: int = 0
 	for index: int in range(GameManager.inventory.size()):
 		var entry: Dictionary = GameManager.inventory[index]
 		var item: ItemData = entry["item"] as ItemData
-		if item == null:
+		var count: int = int(entry["count"])
+		if item == null or count <= 0:
 			continue
 
-		var row: HBoxContainer = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
+		var q_pct: int = GameManager.get_entry_quality(entry)
+		var s_lvl: int = GameManager.get_entry_stars(entry)
+		var row_data: Dictionary = _get_or_create_row(row_idx)
+		var row: HBoxContainer = row_data["row"] as HBoxContainer
+		var icon_label: Label = row_data["icon_label"] as Label
+		var info_label: Label = row_data["info_label"] as Label
+		var action_btn: Button = row_data["action_btn"] as Button
+		var sell_btn: Button = row_data["sell_btn"] as Button
 
-		var icon_label: Label = Label.new()
-		icon_label.custom_minimum_size = Vector2(36.0, 36.0)
-		icon_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		icon_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		icon_label.add_theme_font_size_override("font_size", 24)
+		row.visible = true
+		row_data["item"] = item
+		row_data["quality"] = q_pct
+		row_data["stars"] = s_lvl
+		row_data["expected_id"] = item.id
+
 		icon_label.text = item.icon_emoji
-		row.add_child(icon_label)
 
-		var info_label: Label = Label.new()
-		info_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(info_label)
-
-		var action_btn: Button = Button.new()
-		action_btn.custom_minimum_size = Vector2(124.0, 44.0)
 		if item.item_type == ItemData.ItemType.CONSUMABLE:
 			action_btn.text = "Выпить"
+			action_btn.disabled = GameManager.is_potions_blocked_by_challenge()
 		elif item.item_type == ItemData.ItemType.AMMO:
 			action_btn.text = "В руку (книга)" if item.ammo_kind == ItemData.AmmoKind.TOME else "В колчан"
 			action_btn.disabled = equip_disabled
@@ -405,76 +572,17 @@ func _rebuild_inventory(force: bool = false) -> void:
 			action_btn.text = "Надеть"
 			action_btn.disabled = equip_disabled
 
-		var sell_btn: Button = Button.new()
-		sell_btn.custom_minimum_size = Vector2(106.0, 44.0)
-
-		var row_data: Dictionary = {
-			"item": item,
-			"expected_id": item.id,
-			"info_label": info_label,
-			"action_btn": action_btn,
-			"sell_btn": sell_btn,
-		}
-
-		action_btn.pressed.connect(func() -> void:
-			var cur_item: ItemData = row_data["item"] as ItemData
-			if cur_item != null:
-				var msg: String = GameManager.use_or_equip_item(cur_item)
-				if not msg.is_empty():
-					feedback_label.text = msg
-		)
-		if item.item_type == ItemData.ItemType.CONSUMABLE:
-			var expected_id: String = item.id
-			HoldAutoClicker.attach(
-				action_btn,
-				50.0,
-				0.25,
-				func() -> bool:
-					var cur: ItemData = row_data["item"] as ItemData
-					return cur != null and cur.id == expected_id
-			)
-		row.add_child(action_btn)
-
-		sell_btn.pressed.connect(func() -> void:
-			var cur_item: ItemData = row_data["item"] as ItemData
-			if cur_item != null:
-				var msg: String = GameManager.sell_item(cur_item, 1)
-				if not msg.is_empty():
-					feedback_label.text = msg
-		)
-		var expected_sell_id: String = item.id
-		HoldAutoClicker.attach(
-			sell_btn,
-			50.0,
-			0.25,
-			func() -> bool:
-				var cur: ItemData = row_data["item"] as ItemData
-				return cur != null and cur.id == expected_sell_id
-		)
-		row.add_child(sell_btn)
-
-		_inv_rows.append(row_data)
-		inventory_list.add_child(row)
-
-	_update_inventory_rows_in_place()
-
-
-func _update_inventory_rows_in_place() -> void:
-	var row_idx: int = 0
-	for index: int in range(GameManager.inventory.size()):
-		var entry: Dictionary = GameManager.inventory[index]
-		var item: ItemData = entry["item"] as ItemData
-		var count: int = int(entry["count"])
-		if item == null:
-			continue
-		if row_idx >= _inv_rows.size():
-			break
-		var row_data: Dictionary = _inv_rows[row_idx]
-		row_data["item"] = item
-		var info_label: Label = row_data["info_label"] as Label
-		var sell_btn: Button = row_data["sell_btn"] as Button
 		var slot_prefix: String = "[Слот %d] " % (index + 1) if index < 6 else ""
-		info_label.text = "%s%s x%d — %s" % [slot_prefix, item.get_display_name(), count, item.get_summary_text()]
-		var sell_val: float = GameManager.get_item_sell_value(item)
+		var eq_tag: String = " [%d%% ★%d]" % [q_pct, s_lvl] if item.is_equipment() else ""
+		info_label.text = "%s%s%s x%d — %s" % [slot_prefix, item.get_display_name(), eq_tag, count, item.get_summary_text()]
+		var scale: float = (GameManager.get_quality_multiplier(q_pct) * GameManager.get_star_multiplier(s_lvl)) if item.is_equipment() else 1.0
+		var sell_val: float = maxf(1.0, round(GameManager.get_item_sell_value(item) * scale))
 		sell_btn.text = "💰 +%s" % NumberFormatter.format_number(sell_val)
 		row_idx += 1
+
+	for unused_i: int in range(row_idx, _inv_rows.size()):
+		var unused_row: HBoxContainer = _inv_rows[unused_i]["row"] as HBoxContainer
+		unused_row.visible = false
+		_inv_rows[unused_i]["item"] = null
+
+	_empty_label.visible = (row_idx == 0)

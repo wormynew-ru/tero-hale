@@ -79,11 +79,8 @@ func _get_item_display(item_id: String) -> String:
 
 
 func _build_pet_cards() -> void:
-	if pet_list_vbox == null:
+	if pet_list_vbox == null or not _pet_views.is_empty():
 		return
-	for child: Node in pet_list_vbox.get_children():
-		child.queue_free()
-	_pet_views.clear()
 
 	for pet: PetData in GameManager.all_pets:
 		if pet == null:
@@ -183,11 +180,11 @@ func _refresh() -> void:
 	_dirty = false
 	if pet_list_vbox == null:
 		return
-	if _pet_views.size() != GameManager.all_pets.size():
+	if _pet_views.is_empty():
 		_build_pet_cards()
 
 	var active_pet: PetData = GameManager.get_equipped_pet()
-	pet_status_label.text = "🐾 Приручено путников: %d / %d. Путников нельзя купить за золото — только приманить высадкой в ☀️ Светлом саду (повторки вянут) и дрессировать пряниками (удержание кнопки — автокормление 50/с)!" % [
+	pet_status_label.text = "🐾 Приручено путников: %d / %d. Путников нельзя купить за золото — только приманить высадкой в ☀️ Светлом саду (повторки вянут), дрессировать пряниками (удержание 50/с) и отправлять в экспедиции из Убежища!" % [
 		GameManager.owned_pet_ids.size(),
 		GameManager.all_pets.size(),
 	]
@@ -225,6 +222,9 @@ func _refresh() -> void:
 
 		var owned: bool = GameManager.has_pet_owned(pet.id)
 		var equipped: bool = GameManager.equipped_pet_id == pet.id
+		var exp_data: Dictionary = GameManager.get_pet_expedition(pet.id)
+		var on_expedition: bool = not exp_data.is_empty()
+		var exp_done: bool = on_expedition and bool(exp_data.get("completed", false))
 		var train_lvl: int = GameManager.get_pet_training_level(pet.id)
 
 		var bw: int = 2 if equipped else 1
@@ -235,6 +235,9 @@ func _refresh() -> void:
 		if equipped:
 			style.bg_color = pet.accent_color.darkened(0.74)
 			style.border_color = pet.accent_color
+		elif on_expedition:
+			style.bg_color = Color(0.12, 0.16, 0.19, 1.0)
+			style.border_color = Color(0.35, 0.85, 0.78, 0.9)
 		elif owned:
 			style.bg_color = Color(0.12, 0.16, 0.21, 1.0)
 			style.border_color = Color(0.42, 0.56, 0.72, 0.9)
@@ -242,7 +245,8 @@ func _refresh() -> void:
 			style.bg_color = Color(0.11, 0.13, 0.17, 1.0)
 			style.border_color = Color(0.32, 0.36, 0.44, 1.0)
 
-		var lvl_badge: String = " • Дресс. Ур.%d/%d (+%d%%)" % [train_lvl, GameManager.MAX_PET_TRAINING_LEVEL, train_lvl * 12] if owned else " • Не приручён"
+		var exp_tag: String = " • 🧭 В экспедиции" if on_expedition else ""
+		var lvl_badge: String = " • Дресс. Ур.%d/%d (+%d%%)%s" % [train_lvl, GameManager.MAX_PET_TRAINING_LEVEL, train_lvl * 12, exp_tag] if owned else " • Не приручён"
 		title_lbl.text = "%s %s (%s)%s" % [pet.icon_emoji, pet.pet_name, pet.subtitle, lvl_badge]
 
 		if owned:
@@ -258,6 +262,9 @@ func _refresh() -> void:
 		if equipped:
 			action_btn.text = "✅ В слоте"
 			action_btn.disabled = true
+		elif on_expedition:
+			action_btn.text = "🎁 Готово (Убежище)" if exp_done else "🧭 В экспедиции"
+			action_btn.disabled = true
 		elif owned:
 			action_btn.text = "Взять с собой"
 			action_btn.disabled = false
@@ -267,6 +274,11 @@ func _refresh() -> void:
 
 		if not owned:
 			status_note_lbl.visible = false
+			treat_flow.visible = false
+		elif on_expedition:
+			status_note_lbl.visible = true
+			status_note_lbl.add_theme_color_override("font_color", Color(0.45, 0.92, 0.95, 1.0))
+			status_note_lbl.text = "🎁 Экспедиция завершена — заберите награду в Убежище!" if exp_done else "🧭 Путник в экспедиции — управление доступно во вкладке «Убежище»."
 			treat_flow.visible = false
 		elif train_lvl >= GameManager.MAX_PET_TRAINING_LEVEL:
 			status_note_lbl.visible = true

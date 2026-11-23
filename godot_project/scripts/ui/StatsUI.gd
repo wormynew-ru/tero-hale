@@ -63,6 +63,9 @@ func _ready() -> void:
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _on_state_updated())
 	GameManager.pets_changed.connect(_on_state_updated)
 	GameManager.dark_forge_changed.connect(_on_state_updated)
+	GameManager.barrier_changed.connect(func(_cur: float, _mx: float) -> void: _on_state_updated())
+	GameManager.challenge_changed.connect(_on_state_updated)
+	GameManager.wave_dungeon_changed.connect(_on_state_updated)
 
 	str_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("strength"))
 	agi_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("agility"))
@@ -180,8 +183,24 @@ func _refresh() -> void:
 	var mana_red_pct: int = roundi(GameManager.get_equipped_mana_cost_reduction() * 100.0)
 	var dur_bonus_pct: int = roundi((GameManager.get_effect_duration_multiplier() - 1.0) * 100.0)
 
+	var max_bar: float = GameManager.get_max_barrier()
+	var barrier_str: String = "%s/%s" % [NumberFormatter.format_number(GameManager.current_barrier), NumberFormatter.format_number(max_bar)]
+	if GameManager.has_hero_class("reflector"):
+		barrier_str = "→ Max HP (+%s)" % NumberFormatter.format_number(GameManager.get_raw_max_barrier())
+	var ch_def: Dictionary = GameManager.get_challenge_def(GameManager.active_challenge_id)
+	var extra_tags: Array[String] = []
+	if not ch_def.is_empty():
+		var r_min: int = floori(GameManager.run_elapsed_seconds / 60.0)
+		var r_sec: int = floori(fmod(GameManager.run_elapsed_seconds, 60.0))
+		extra_tags.append("🔥 %s (%d:%02d)" % [str(ch_def.get("title", "")), r_min, r_sec])
+	if not GameManager.well_run_blessing.is_empty():
+		extra_tags.append("⛲ %s" % GameManager.get_well_blessing_label())
+	if GameManager.wave_dungeon_clears > 0:
+		extra_tags.append("🏰 Данжей: %d" % GameManager.wave_dungeon_clears)
+	var extra_suffix: String = ("  |  " + "  |  ".join(extra_tags)) if not extra_tags.is_empty() else ""
+
 	computed_stats_label.text = (
-		"⚔️ Урон: %s (DPS: %s, %s)  |  ⚡ Атака: %.2fс  |  🎯 Крит: %.0f%% (x%.2f)  |  💨 Уклон: %.1f%%  |  🛡️ Броня: %s  |  🧠 Инта: %d (✨+%d%%, -%d%% МП, +%d%% длит.)  |  💧 Мана: %s (+%.1f/с)  |  💰 Золото x%.2f  |  ✨ XP x%.2f  |  💀 Сл.%d  |  Побед: %d"
+		"⚔️ Урон: %s (DPS: %s, %s)  |  ⚡ Атака: %.2fс  |  🎯 Крит: %.0f%% (x%.2f)  |  💨 Уклон: %.1f%%  |  🛡️ Броня: %s  |  🛡️ Барьер: %s  |  🧠 Инта: %d (✨+%d%%, -%d%% МП, +%d%% длит.)  |  💧 Мана: %s (+%.1f/с)  |  💰 Золото x%.2f  |  ✨ XP x%.2f  |  💀 Сл.%d  |  Побед: %d%s"
 		% [
 			NumberFormatter.format_number(dmg),
 			NumberFormatter.format_number(dps),
@@ -191,6 +210,7 @@ func _refresh() -> void:
 			GameManager.get_crit_multiplier(),
 			GameManager.get_dodge_chance() * 100.0,
 			NumberFormatter.format_number(armor),
+			barrier_str,
 			total_int,
 			spell_power_bonus,
 			mana_red_pct,
@@ -201,6 +221,7 @@ func _refresh() -> void:
 			GameManager.get_xp_multiplier(),
 			GameManager.difficulty_level,
 			GameManager.enemies_defeated,
+			extra_suffix,
 		]
 	)
 

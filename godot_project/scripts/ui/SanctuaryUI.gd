@@ -8,6 +8,7 @@ extends ScrollContainer
 @onready var lure_pet_button: Button = %LurePetButton
 @onready var spirit_training_status_label: Label = %SpiritTrainingStatusLabel
 @onready var spirit_training_box: VBoxContainer = %SpiritTrainingBox
+@onready var expeditions_box: VBoxContainer = %ExpeditionsBox
 @onready var garden_plots_box: VBoxContainer = %GardenPlotsBox
 @onready var brew_cauldrons_box: VBoxContainer = %BrewCauldronsBox
 @onready var recipe_guide_label: RichTextLabel = %RecipeGuideLabel
@@ -16,12 +17,15 @@ var _last_light_sig: String = ""
 var _last_dark_sig: String = ""
 var _last_spirit_sig: String = ""
 var _last_brew_sig: String = ""
+var _last_exp_sig: String = ""
 
 var _light_plot_widgets: Array[Dictionary] = []
 var _dark_plot_widgets: Array[Dictionary] = []
 var _brew_widgets: Array[Dictionary] = []
 var _spirit_widgets: Array[Dictionary] = []
+var _pet_exp_widgets: Array[Dictionary] = []
 var _rebuild_queued: bool = false
+var _timer_accum: float = 0.0
 
 
 func _ready() -> void:
@@ -41,18 +45,37 @@ func _ready() -> void:
 		feedback_label.text = str(res.get("message", ""))
 	)
 
+	set_process(false)
+	_build_pet_expeditions()
 	_rebuild_sanctuary(true)
 
 
 func _on_reset() -> void:
 	feedback_label.text = ""
+	_last_exp_sig = ""
 	_rebuild_queued = false
 	_rebuild_sanctuary(true)
 
 
 func _on_visibility_changed() -> void:
-	if is_visible_in_tree():
+	var vis: bool = is_visible_in_tree()
+	set_process(vis)
+	if vis:
 		_rebuild_sanctuary(false)
+
+
+func _process(delta: float) -> void:
+	if not is_visible_in_tree():
+		set_process(false)
+		return
+	_timer_accum += delta
+	if _timer_accum < 0.5:
+		return
+	_timer_accum = 0.0
+	_update_light_garden_timers()
+	_update_dark_garden_timers()
+	_update_brew_timers()
+	_update_expedition_timers()
 
 
 func _on_state_updated() -> void:
@@ -95,6 +118,7 @@ func _rebuild_sanctuary(force: bool = false) -> void:
 
 	_sync_light_garden_plots(force)
 	_refresh_lure_bar()
+	_sync_pet_expeditions(force)
 	_sync_spirit_training(force)
 	_sync_dark_garden_plots(unlocked, force)
 	_sync_brew_cauldrons(unlocked, force)
@@ -279,6 +303,174 @@ func _refresh_lure_bar() -> void:
 		" + ".join(slot_tokens),
 		"✅ Все 3 грядки готовы — можно приманивать путника!" if can_lure else "Дождитесь созревания всех 3 грядок для приманки (при ошибке или повторке растения завянут).",
 	]
+
+
+func _build_pet_expeditions() -> void:
+	if expeditions_box == null:
+		return
+	for child: Node in expeditions_box.get_children():
+		child.queue_free()
+	_pet_exp_widgets.clear()
+
+	for p: PetData in GameManager.all_pets:
+		if p == null:
+			continue
+		var pid: String = p.id
+		var card: PanelContainer = PanelContainer.new()
+		var card_box: VBoxContainer = VBoxContainer.new()
+		card_box.add_theme_constant_override("separation", 6)
+		card.add_child(card_box)
+
+		var top_row: HBoxContainer = HBoxContainer.new()
+		top_row.add_theme_constant_override("separation", 8)
+
+		var lbl: Label = Label.new()
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.add_theme_font_size_override("font_size", 13)
+		top_row.add_child(lbl)
+
+		var short_btn: Button = Button.new()
+		short_btn.custom_minimum_size = Vector2(118.0, 40.0)
+		short_btn.focus_mode = Control.FOCUS_NONE
+		short_btn.text = "🌿 15м"
+		short_btn.pressed.connect(func() -> void:
+			var res: Dictionary = GameManager.start_pet_expedition(pid, "short")
+			feedback_label.text = str(res.get("message", ""))
+		)
+		top_row.add_child(short_btn)
+
+		var long_btn: Button = Button.new()
+		long_btn.custom_minimum_size = Vector2(118.0, 40.0)
+		long_btn.focus_mode = Control.FOCUS_NONE
+		long_btn.text = "🗺️ 1ч"
+		long_btn.pressed.connect(func() -> void:
+			var res: Dictionary = GameManager.start_pet_expedition(pid, "long")
+			feedback_label.text = str(res.get("message", ""))
+		)
+		top_row.add_child(long_btn)
+
+		var claim_btn: Button = Button.new()
+		claim_btn.custom_minimum_size = Vector2(150.0, 40.0)
+		claim_btn.focus_mode = Control.FOCUS_NONE
+		claim_btn.text = "🎁 Забрать"
+		claim_btn.pressed.connect(func() -> void:
+			var res: Dictionary = GameManager.claim_pet_expedition(pid)
+			feedback_label.text = str(res.get("message", ""))
+		)
+		top_row.add_child(claim_btn)
+
+		card_box.add_child(top_row)
+
+		var bar: ProgressBar = ProgressBar.new()
+		bar.custom_minimum_size = Vector2(0.0, 14.0)
+		bar.show_percentage = true
+		card_box.add_child(bar)
+
+		expeditions_box.add_child(card)
+		_pet_exp_widgets.append({
+			"pet": p,
+			"card": card,
+			"lbl": lbl,
+			"short_btn": short_btn,
+			"long_btn": long_btn,
+			"claim_btn": claim_btn,
+			"bar": bar,
+		})
+
+
+func _sync_pet_expeditions(force: bool) -> void:
+	if expeditions_box == null:
+		return
+	if _pet_exp_widgets.size() != GameManager.all_pets.size():
+		_build_pet_expeditions()
+		force = true
+
+	var sig_parts: Array[String] = []
+	sig_parts.append(GameManager.equipped_pet_id)
+	for p: PetData in GameManager.all_pets:
+		if p == null:
+			continue
+		var owned: int = 1 if GameManager.has_pet_owned(p.id) else 0
+		var exp: Dictionary = GameManager.get_pet_expedition(p.id)
+		var state_tag: String = "idle"
+		if not exp.is_empty():
+			state_tag = "done" if bool(exp.get("completed", false)) else "run:%s" % str(exp.get("plan_id", ""))
+		sig_parts.append("%s:%d:%s" % [p.id, owned, state_tag])
+	var sig: String = "|".join(sig_parts)
+
+	if not force and sig == _last_exp_sig:
+		_update_expedition_timers()
+		return
+	_last_exp_sig = sig
+
+	for w: Dictionary in _pet_exp_widgets:
+		var p: PetData = w["pet"] as PetData
+		var card: PanelContainer = w["card"] as PanelContainer
+		var lbl: Label = w["lbl"] as Label
+		var short_btn: Button = w["short_btn"] as Button
+		var long_btn: Button = w["long_btn"] as Button
+		var claim_btn: Button = w["claim_btn"] as Button
+		var bar: ProgressBar = w["bar"] as ProgressBar
+
+		var owned: bool = GameManager.has_pet_owned(p.id)
+		card.visible = owned
+		if not owned:
+			continue
+
+		var exp: Dictionary = GameManager.get_pet_expedition(p.id)
+		var is_eq: bool = GameManager.equipped_pet_id == p.id
+		if exp.is_empty():
+			bar.visible = false
+			claim_btn.visible = false
+			short_btn.visible = true
+			long_btn.visible = true
+			short_btn.disabled = is_eq
+			long_btn.disabled = is_eq
+			if is_eq:
+				lbl.text = "%s %s — В бою с героем (снимите для отправки)" % [p.icon_emoji, p.pet_name]
+				lbl.modulate = Color(0.84, 0.88, 0.96, 1.0)
+			else:
+				lbl.text = "%s %s — Свободен для вылазки (15м / 1ч)" % [p.icon_emoji, p.pet_name]
+				lbl.modulate = Color.WHITE
+		elif bool(exp.get("completed", false)):
+			bar.visible = true
+			bar.max_value = 100.0
+			bar.value = 100.0
+			short_btn.visible = false
+			long_btn.visible = false
+			claim_btn.visible = true
+			claim_btn.disabled = false
+			claim_btn.modulate = Color(0.45, 0.98, 0.72, 1.0)
+			lbl.text = "🎁 %s %s вернулся из экспедиции! Заберите награду." % [p.icon_emoji, p.pet_name]
+			lbl.modulate = Color(0.45, 0.98, 0.72, 1.0)
+		else:
+			bar.visible = true
+			short_btn.visible = false
+			long_btn.visible = false
+			claim_btn.visible = false
+	_update_expedition_timers()
+
+
+func _update_expedition_timers() -> void:
+	for w: Dictionary in _pet_exp_widgets:
+		var p: PetData = w["pet"] as PetData
+		if not GameManager.has_pet_owned(p.id):
+			continue
+		var exp: Dictionary = GameManager.get_pet_expedition(p.id)
+		if exp.is_empty() or bool(exp.get("completed", false)):
+			continue
+		var lbl: Label = w["lbl"] as Label
+		var bar: ProgressBar = w["bar"] as ProgressBar
+		var elapsed: float = float(exp.get("elapsed", 0.0))
+		var dur: float = maxf(1.0, float(exp.get("duration", 900.0)))
+		var rem: float = maxf(0.0, dur - elapsed)
+		var rem_min: int = floori(rem / 60.0)
+		var rem_sec: int = floori(fmod(rem, 60.0))
+		lbl.text = "🧭 %s %s в экспедиции — осталось %d:%02d" % [p.icon_emoji, p.pet_name, rem_min, rem_sec]
+		lbl.modulate = Color(0.45, 0.92, 1.0, 1.0)
+		bar.max_value = dur
+		bar.value = minf(elapsed, dur)
 
 
 func _build_spirit_training() -> void:

@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="EnemyData" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="EnemyData" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="1_enemy"]
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="2_item_script"]
@@ -6,6 +6,7 @@
 [ext_resource type="Resource" path="res://resources/items/elixir_of_life.tres" id="4_elixir"]
 [ext_resource type="Resource" path="res://resources/items/dragon_crossbow.tres" id="5_dxbow"]
 [ext_resource type="Resource" path="res://resources/items/mithril_bolts.tres" id="6_mbolts"]
+[ext_resource type="Resource" path="res://resources/items/aegis_bulwark_shield.tres" id="7_bulwark"]
 
 [resource]
 script = ExtResource("1_enemy")
@@ -20,6 +21,6 @@ defense = 30.0
 xp_reward = 1420
 gold_reward = 840
 spawn_weight = 0.35
-drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_dragonscale"), ExtResource("4_elixir"), ExtResource("5_dxbow"), ExtResource("6_mbolts")])
-drop_chances = Array[float]([0.2, 0.45, 0.15, 0.25])
+drop_items = Array[ExtResource("2_item_script")]([ExtResource("3_dragonscale"), ExtResource("4_elixir"), ExtResource("5_dxbow"), ExtResource("6_mbolts"), ExtResource("7_bulwark")])
+drop_chances = Array[float]([0.2, 0.45, 0.15, 0.25, 0.12])
 sprite_color = Color(0.84, 0.34, 0.24, 1)

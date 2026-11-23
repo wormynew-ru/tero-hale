@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "astral_arcane_talisman"
+item_name = "Астральный талисман"
+icon_emoji = "🔮"
+description = "Древний кристалл Престола: даёт мощный барьер от Интеллекта и усиливает все чары."
+item_type = 7
+bonus_intellect = 22
+offhand_kind = 2
+bonus_barrier = 320.0
+bonus_barrier_scale = 5.0
+bonus_spell_power_pct = 0.14
+buy_price = 4800
+sell_value = 2100
+icon_color = Color(0.56, 0.72, 1, 1)

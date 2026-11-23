@@ -161,6 +161,47 @@ custom_minimum_size = Vector2(196, 44)
 layout_mode = 2
 text = "🔥 Закалить (4 🌑)"
 
+[node name="DarkOffhandCard" type="PanelContainer" parent="DarkForgeVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dark_card")
+
+[node name="DarkOffhandVBox" type="VBoxContainer" parent="DarkForgeVBox/DarkOffhandCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DarkOffhandHeaderLabel" type="Label" parent="DarkForgeVBox/DarkOffhandCard/DarkOffhandVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🔰 Тёмная заточка оффхенда (🌑+0)"
+
+[node name="DarkOffhandStatsLabel" type="Label" parent="DarkForgeVBox/DarkOffhandCard/DarkOffhandVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.84, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Суммируется с обычной заточкой (+15% мощи барьера и +2 Выносливости / +3 Инты за уровень)."
+autowrap_mode = 3
+
+[node name="DarkOffhandActionRow" type="HBoxContainer" parent="DarkForgeVBox/DarkOffhandCard/DarkOffhandVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DarkOffhandNextLabel" type="Label" parent="DarkForgeVBox/DarkOffhandCard/DarkOffhandVBox/DarkOffhandActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.96, 0.78, 0.44, 1)
+theme_override_font_sizes/font_size = 13
+text = "🌑+0 → 🌑+1 | Шанс: 25% | Цена: 4 🌑"
+autowrap_mode = 3
+
+[node name="DarkOffhandEnchantButton" type="Button" parent="DarkForgeVBox/DarkOffhandCard/DarkOffhandVBox/DarkOffhandActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(196, 44)
+layout_mode = 2
+text = "🔥 Закалить (4 🌑)"
+
 [node name="CraftSeparator" type="HSeparator" parent="DarkForgeVBox"]
 layout_mode = 2
 

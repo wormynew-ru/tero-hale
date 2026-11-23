@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "eternal_archon_talisman"
+item_name = "Вечный Гримуар Архонта"
+icon_emoji = "🧿"
+description = "Ультимативный талисман из Тёмной кузни (слияние Скипетра лича и Астрального посоха). НЕ сбрасывается в новом ране!"
+item_type = 7
+bonus_intellect = 46
+bonus_endurance = 18
+offhand_kind = 2
+bonus_barrier = 820.0
+bonus_barrier_scale = 8.5
+bonus_spell_power_pct = 0.24
+is_dark_forged = true
+buy_price = 12000
+sell_value = 5000
+icon_color = Color(0.54, 0.84, 1, 1)

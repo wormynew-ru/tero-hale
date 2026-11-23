@@ -350,7 +350,7 @@ test('all 44 regular skills cost 1 SP with empowered bonuses, XP curve is steepe
 
 test('mana potions, buff potions, village map hotspots, Diff-10 Sanctuary garden/brewing, scarlet petal (2000 boss kills), and deterministic Alchemist safety flag are implemented', () => {
   const itemFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/items'), '.tres');
-  assert.equal(itemFiles.length, 88, 'Expected 88 item resources (including mage gear, mine materials, eternal dark-forged gear, and 6 Dark Shop ultimate consumables)');
+  assert.equal(itemFiles.length, 96, 'Expected 96 item resources (including mage gear, offhand shields/talismans, mine materials, eternal dark-forged gear + 3 ultimates, and 6 Dark Shop ultimate consumables)');
 
   const cropFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/crops'), '.tres');
   assert.equal(cropFiles.length, 10, 'Expected 10 Sanctuary crop resources (4 light + 6 dark)');
@@ -1045,10 +1045,131 @@ test('Blood Archmage gets 2x intellect and 3x mana per intellect, and README.md 
 
   const readmeTxt = fs.readFileSync(path.resolve(GODOT_ROOT, '../README.md'), 'utf-8');
   assert.ok(!readmeTxt.includes('2 FPS') && !readmeTxt.includes('34 узлов'), 'README.md must not contain stale pre-0.17.3 claims');
-  for (const keyFeature of ['0.21.0', '2x прирост интеллекта', 'Тёмный магазин', 'Древняя Шахта', '44 узла', '31 постоянный узел', '26 чар']) {
+  for (const keyFeature of ['0.22.0', '2x прирост интеллекта', 'Тёмный магазин', 'Древняя Шахта', '44 узла', '31 постоянный узел', '26 чар', '96 предметов', 'Бестиарий']) {
     assert.ok(readmeTxt.includes(keyFeature), `README.md must include updated feature "${keyFeature}"`);
   }
 });
+
+test('v0.22.0 performance optimizations (AFK HUD skip, FPS selector, 20Hz AttackDiamond, stats cache, pooled UIs, menu pause) are wired', () => {
+  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  for (const sym of ['_stats_cache_dirty', 'func mark_stats_dirty()', 'var afk_target_fps: int', 'const AFK_FPS_OPTIONS', 'func set_afk_fps_limit(', 'func set_menu_open(']) {
+    assert.ok(gmTxt.includes(sym), `GameManager.gd must implement ${sym}`);
+  }
+
+  const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
+  assert.ok(saveTxt.includes('@export var afk_target_fps: int = 20'), 'SaveData.gd must persist afk_target_fps');
+
+  const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
+  assert.ok(arenaGd.includes('GameManager.is_afk_mode') && arenaGd.includes('GameManager.is_menu_open'), 'BattleArenaUI.gd must skip HUD updates in AFK and pause heavy updates when HeroMenu is open');
+
+  const heroMenuGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/HeroMenuUI.gd'), 'utf-8');
+  assert.ok(heroMenuGd.includes('set_menu_open(true)') && heroMenuGd.includes('set_menu_open(false)'), 'HeroMenuUI.gd must toggle arena menu pause state');
+
+  const abilityBtnGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/AbilitySlotButton.gd'), 'utf-8');
+  assert.ok(abilityBtnGd.includes('GameManager.is_afk_mode'), 'AbilitySlotButton.gd must skip continuous button repaints while in AFK');
+
+  const afkTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/AfkOverlayUI.tscn'), 'utf-8');
+  for (const btn of ['Fps15Button', 'Fps20Button', 'Fps30Button', 'Fps60Button']) {
+    assert.ok(afkTscn.includes(btn), `AfkOverlayUI.tscn must expose ${btn}`);
+  }
+  const afkGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/AfkOverlayUI.gd'), 'utf-8');
+  assert.ok(afkGd.includes('set_afk_fps_limit'), 'AfkOverlayUI.gd must wire set_afk_fps_limit');
+
+  const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  assert.ok(combatTxt.includes('_attack_progress_sync_timer < 0.05'), 'CombatSystem.gd must throttle AttackDiamond sync to 20Hz');
+
+  // Pooled UI scripts refactored in v0.22.0 must never use queue_free() in refresh loops.
+  for (const pooledRel of [
+    'scripts/ui/InventoryUI.gd',
+    'scripts/ui/EnchantUI.gd',
+    'scripts/ui/DarkForgeUI.gd',
+    'scripts/ui/ClassUI.gd',
+    'scripts/ui/PetUI.gd',
+    'scripts/ui/DifficultyUI.gd',
+    'scripts/ui/RightSidebarUI.gd',
+    'scripts/ui/BestiaryUI.gd',
+  ]) {
+    const pGd = fs.readFileSync(path.join(GODOT_ROOT, pooledRel), 'utf-8');
+    assert.ok(!pGd.includes('queue_free('), `${pooledRel} must pool/reuse UI nodes instead of calling queue_free()`);
+  }
+});
+
+test('v0.22.0 gameplay mechanics (Quality/Salvage, Bestiary, Challenges, Loadouts, Merge/Ultimates, Offhand/Barrier, Auto-Route, Well of Greed, Spell Level/Runes, Expeditions/WaveDungeon/Checkpoints) are wired', () => {
+  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
+  const itemDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/ItemData.gd'), 'utf-8');
+  const abilityDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/AbilityData.gd'), 'utf-8');
+
+  // 1. Quality rolls, Auto-Salvage & Ore Shards
+  for (const field of ['auto_salvage_mode', 'auto_salvage_min_quality', 'abyss_ore_shards', 'inventory_qualities', 'inventory_stars', 'equipped_weapon_quality', 'equipped_weapon_stars']) {
+    assert.ok(saveTxt.includes(field), `SaveData must persist ${field}`);
+  }
+  assert.ok(gmTxt.includes('func set_auto_salvage_settings(') && gmTxt.includes('var forged_ores: int = floori(float(abyss_ore_shards) / 10.0)'), 'GameManager must implement auto-salvage & shard smelting');
+
+  // 2. Bestiary (26 enemies)
+  assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'scenes/BestiaryUI.tscn')), 'BestiaryUI.tscn must exist');
+  assert.ok(gmTxt.includes('const BESTIARY_MILESTONES') && gmTxt.includes('func record_bestiary_kill('), 'GameManager must track Bestiary milestones');
+  const bestiaryGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BestiaryUI.gd'), 'utf-8');
+  assert.ok(bestiaryGd.includes('get_bestiary_kills') && bestiaryGd.includes('get_bestiary_damage_bonus'), 'BestiaryUI must display enemy kill milestones');
+
+  // 3. 4 Abyss Challenges
+  assert.ok(gmTxt.includes('const CHALLENGE_CATALOG') && gmTxt.includes('speedrun_titan') && gmTxt.includes('no_potions_titan') && gmTxt.includes('staff_master') && gmTxt.includes('naked_ascetic'), 'GameManager must define all 4 Abyss Challenges');
+  const diffGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/DifficultyUI.gd'), 'utf-8');
+  assert.ok(diffGd.includes('CHALLENGE_CATALOG') && diffGd.includes('_selected_challenge_id'), 'DifficultyUI must allow selecting Challenges before start_new_run');
+
+  // 4. 3 Combat Loadouts
+  assert.ok(gmTxt.includes('const LOADOUT_COUNT: int = 3') && gmTxt.includes('func save_combat_loadout(') && gmTxt.includes('func apply_combat_loadout('), 'GameManager must support 3 combat loadouts');
+  const heroMenuTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/HeroMenuUI.tscn'), 'utf-8');
+  for (const btnName of ['Loadout1ApplyBtn', 'Loadout1SaveBtn', 'Loadout2ApplyBtn', 'Loadout2SaveBtn', 'Loadout3ApplyBtn', 'Loadout3SaveBtn', 'OpenBestiaryButton']) {
+    assert.ok(heroMenuTscn.includes(btnName), `HeroMenuUI.tscn must include ${btnName}`);
+  }
+
+  // 5. Duplicate Merge & 3 Ultimate Dark Forge items
+  assert.ok(gmTxt.includes('func merge_duplicate_item('), 'GameManager must implement merge_duplicate_item');
+  const enchantGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/EnchantUI.gd'), 'utf-8');
+  assert.ok(enchantGd.includes('merge_duplicate_item') && enchantGd.includes('ItemData.ItemType.OFFHAND'), 'EnchantUI must support duplicate merge and offhand enchanting');
+  for (const ultFile of ['eternal_cataclysm_reaver.tres', 'eternal_eclipse_aegis.tres', 'eternal_archon_talisman.tres']) {
+    assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items', ultFile)), `Ultimate item ${ultFile} must exist`);
+    assert.ok(gmTxt.includes(ultFile), `GameManager must register ultimate recipe for ${ultFile}`);
+  }
+
+  // 6. Offhand (Shields/Talismans) + Barrier + Reflector 1:1 Max HP conversion
+  assert.ok(itemDataTxt.includes('OFFHAND') && itemDataTxt.includes('OffhandKind') && itemDataTxt.includes('bonus_barrier'), 'ItemData.gd must define OFFHAND and barrier stats');
+  for (const offFile of ['wooden_buckler.tres', 'iron_tower_shield.tres', 'aegis_bulwark_shield.tres', 'apprentice_talisman.tres', 'astral_arcane_talisman.tres']) {
+    assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items', offFile)), `Offhand item ${offFile} must exist`);
+  }
+  assert.ok(gmTxt.includes('func get_max_barrier(') && gmTxt.includes('get_raw_max_barrier()'), 'GameManager must compute Barrier and convert 1:1 to Max HP for Reflector');
+  const reflectorTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/classes/reflector.tres'), 'utf-8');
+  assert.ok(reflectorTres.includes('1:1'), 'reflector.tres must document 1:1 Barrier -> Max HP conversion');
+
+  // 7. Smart Auto-Route
+  assert.ok(gmTxt.includes('func set_auto_route_settings(') && gmTxt.includes('func record_location_win_for_auto_route('), 'GameManager must implement Smart Auto-Route');
+  const sidebarGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/RightSidebarUI.gd'), 'utf-8');
+  assert.ok(sidebarGd.includes('set_auto_route_settings'), 'RightSidebarUI must wire Auto-Route controls');
+
+  // 8. Well of Greed
+  assert.ok(gmTxt.includes('func sacrifice_all_gold_to_well(') && gmTxt.includes('func can_sacrifice_to_well('), 'GameManager must implement Well of Greed sacrifice');
+  const villageTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/VillageMapUI.tscn'), 'utf-8');
+  assert.ok(villageTscn.includes('WellHotspot') && villageTscn.includes('WellOverlay'), 'VillageMapUI.tscn must expose WellHotspot & WellOverlay');
+
+  // 9. Spell Leveling (1..5) & 26 Spell Runes
+  assert.ok(abilityDataTxt.includes('const MAX_SPELL_LEVEL: int = 5') && abilityDataTxt.includes('static func get_level_multiplier('), 'AbilityData must define MAX_SPELL_LEVEL = 5');
+  assert.ok(gmTxt.includes('const SPELL_RUNES_CATALOG') && gmTxt.includes('func upgrade_ability_with_page(') && gmTxt.includes('func set_ability_rune('), 'GameManager must implement Spell Leveling and Runes');
+  const spellbookGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SpellbookUI.gd'), 'utf-8');
+  assert.ok(spellbookGd.includes('upgrade_ability_with_page') && spellbookGd.includes('set_ability_rune') && spellbookGd.includes('SPELL_RUNES_CATALOG'), 'SpellbookUI must expose spell leveling and A/B rune toggles');
+
+  // 10. Pet Expeditions, 10-Wave Dungeon & Mine Checkpoints
+  assert.ok(gmTxt.includes('const PET_EXPEDITION_PLANS') && gmTxt.includes('func start_pet_expedition(') && gmTxt.includes('func claim_pet_expedition('), 'GameManager must implement Pet Expeditions');
+  assert.ok(gmTxt.includes('const WAVE_DUNGEON_TOTAL_WAVES: int = 10') && gmTxt.includes('func start_wave_dungeon('), 'GameManager must implement 10-Wave Dungeon');
+  assert.ok(gmTxt.includes('const MINE_CHECKPOINT_DEPTHS: Array[int] = [10, 25, 50]') && gmTxt.includes('func buy_mine_checkpoint('), 'GameManager must implement Mine Checkpoints [10, 25, 50]');
+  const sanctuaryGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SanctuaryUI.gd'), 'utf-8');
+  assert.ok(sanctuaryGd.includes('start_pet_expedition') && sanctuaryGd.includes('claim_pet_expedition'), 'SanctuaryUI must wire Pet Expeditions');
+  assert.ok(sidebarGd.includes('start_wave_dungeon') && sidebarGd.includes('buy_mine_checkpoint'), 'RightSidebarUI must wire Wave Dungeon and Mine Checkpoints');
+
+  const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
+  assert.ok(changelogTxt.includes('## [0.22.0]'), 'CHANGELOG.md must include [0.22.0] entry');
+});
+
 
 
 

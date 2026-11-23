@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "eternal_cataclysm_reaver"
+item_name = "Вечный Рассекатель Катаклизма"
+icon_emoji = "⚔️"
+description = "Ультимативное оружие из Тёмной кузни (слияние Драконокостного клинка и Астрального двуручника). НЕ сбрасывается в новом ране!"
+item_type = 0
+bonus_strength = 76
+bonus_agility = 42
+bonus_endurance = 38
+bonus_intellect = 0
+weapon_style = 0
+required_ammo = 0
+ammo_kind = 0
+bonus_damage = 245.0
+bonus_crit_chance = 0.14
+armor_penetration = 42.0
+shop_pack_amount = 1
+is_dark_forged = true
+heal_amount = 0.0
+buy_price = 14000
+sell_value = 5500
+icon_color = Color(0.98, 0.36, 0.56, 1)

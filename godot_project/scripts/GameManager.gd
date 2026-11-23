@@ -29,6 +29,11 @@ signal dark_forge_changed
 signal dark_shop_changed
 signal mine_state_changed
 signal mine_run_failed(depth_reached: int)
+signal barrier_changed(current_barrier: float, max_barrier: float)
+signal bestiary_changed
+signal challenge_changed
+signal loadouts_changed
+signal wave_dungeon_changed
 signal game_reset
 
 const SAVE_PATH: String = "user://save.tres"
@@ -41,6 +46,8 @@ const CRIT_MULTIPLIER: float = 1.75
 const AUTOSAVE_INTERVAL: float = 480.0
 const SAVE_THROTTLE_INTERVAL: float = 120.0
 const NORMAL_FPS_LIMIT: int = 60
+const DEFAULT_AFK_MAX_FPS: int = 20
+const AFK_FPS_OPTIONS: Array[int] = [15, 20, 30, 60]
 const AUTO_POTION_HP_THRESHOLD: float = 0.35
 const MAX_ENCHANT_LEVEL: int = 100
 const ALCHEMIST_MAX_ENCHANT_LEVEL: int = 250
@@ -58,8 +65,165 @@ const FINAL_BOSS_LOCATION_ID: String = "celestial_throne"
 const CURSE_WARDEN_ID: String = "curse_warden"
 const SPIRIT_KEYS: Array[String] = ["fire", "wind", "forest", "earth"]
 const SKILL_PRESET_COUNT: int = 3
+const LOADOUT_COUNT: int = 3
+const AUTO_SALVAGE_QUALITY_THRESHOLDS: Array[int] = [85, 95, 105, 115, 125]
+const WELL_OF_GREED_COOLDOWN: float = 3600.0
+const WAVE_DUNGEON_TOTAL_WAVES: int = 10
+const MINE_CHECKPOINT_DEPTHS: Array[int] = [10, 25, 50]
+const MINE_CHECKPOINT_COSTS: Dictionary = {10: 5, 25: 14, 50: 30}
 const HP_THRESHOLD_PRESETS: Array[int] = [20, 35, 50, 70, 85]
 const MANA_THRESHOLD_PRESETS: Array[int] = [15, 30, 50, 70]
+
+const BESTIARY_MILESTONES: Array[Dictionary] = [
+	{"kills": 100, "dmg_bonus": 0.02, "label": "I (100 уб.): +2% урона по виду"},
+	{"kills": 1000, "dmg_bonus": 0.04, "label": "II (1000 уб.): +4% урона по виду +3% золота с вида"},
+	{"kills": 10000, "dmg_bonus": 0.05, "label": "III (10000 уб.): +5% урона по виду +10% шанса дропа с вида"},
+]
+
+const CHALLENGE_CATALOG: Array[Dictionary] = [
+	{
+		"id": "no_potions_titan",
+		"title": "🚱 Без зелий до Титана",
+		"desc": "Зелья HP, MP и бафф-эликсиры заблокированы до победы над Вечным титаном.",
+		"reward_desc": "+15% эффективности лечения способностей (навсегда)",
+		"class_id": "alchemist",
+	},
+	{
+		"id": "staff_master",
+		"title": "🪄 Путь Арканы",
+		"desc": "Разрешены только магические посохи и талисманы; мечи/луки/арбалеты заблокированы.",
+		"reward_desc": "+12% силы заклинаний (навсегда)",
+		"class_id": "blood_archmage",
+	},
+	{
+		"id": "naked_ascetic",
+		"title": "🧘 Испытание аскета",
+		"desc": "Вся экипировка (оружие, броня, оффхенд, снаряды) запрещена на весь ран.",
+		"reward_desc": "+10% ко всем 4 базовым статам (навсегда)",
+		"class_id": "spirit",
+	},
+	{
+		"id": "speedrun_titan",
+		"title": "⏱️ Молниеносный Титан",
+		"desc": "Одолейте Вечного титана менее чем за 300 секунд (5 минут) с начала рана.",
+		"reward_desc": "+8% скорости атаки и -8% перезарядки чар (навсегда)",
+		"class_id": "abyss_ranger",
+	},
+]
+
+const SPELL_LEVEL_CAST_THRESHOLDS: Array[int] = [0, 25, 100, 300, 750]
+
+const SPELL_RUNES_CATALOG: Dictionary = {
+	"fireball": {
+		"a": {"title": "🔥 Взрывное пламя", "desc": "+25% урона, +20% КД", "power_mult": 1.25, "cd_mult": 1.20, "cost_mult": 1.0},
+		"b": {"title": "💨 Беглый огонь", "desc": "-30% манакоста, -20% КД", "power_mult": 0.95, "cd_mult": 0.80, "cost_mult": 0.70},
+	},
+	"nature_mend": {
+		"a": {"title": "🌿 Глубокий корень", "desc": "+30% лечения, +25% манакоста", "power_mult": 1.30, "cd_mult": 1.0, "cost_mult": 1.25},
+		"b": {"title": "🛡️ Барьерный росток", "desc": "+15% лечения +20% барьера", "power_mult": 1.15, "cd_mult": 0.90, "cost_mult": 1.0, "shield_barrier_pct": 0.20},
+	},
+	"arcane_surge": {
+		"a": {"title": "✨ Перегрузка маны", "desc": "+25% длит. и силы баффа, +25% КД", "power_mult": 1.25, "cd_mult": 1.25, "cost_mult": 1.10, "duration_mult": 1.25},
+		"b": {"title": "🪶 Экономичный поток", "desc": "-35% манакоста и -15% КД", "power_mult": 1.0, "cd_mult": 0.85, "cost_mult": 0.65},
+	},
+	"ice_lance": {
+		"a": {"title": "❄️ Хрупкий лёд", "desc": "+20% шанса крита и +15% урона", "power_mult": 1.15, "cd_mult": 1.0, "cost_mult": 1.10, "crit_bonus": 0.20},
+		"b": {"title": "🧊 Пронзающий осколок", "desc": "Ускоренный каст -25% КД", "power_mult": 1.0, "cd_mult": 0.75, "cost_mult": 0.85},
+	},
+	"chain_thunder": {
+		"a": {"title": "⚡ Двойная дуга", "desc": "35% шанс повторного каста", "power_mult": 1.0, "cd_mult": 1.10, "cost_mult": 1.10, "double_cast_chance": 0.35},
+		"b": {"title": "🌩️ Сверхток", "desc": "+30% урона молнией", "power_mult": 1.30, "cd_mult": 1.0, "cost_mult": 1.15},
+	},
+	"meteor_strike": {
+		"a": {"title": "☄️ Массивный метеор", "desc": "+40% урона, +30% манакоста", "power_mult": 1.40, "cd_mult": 1.15, "cost_mult": 1.30},
+		"b": {"title": "🌋 Пылающие обломки", "desc": "-25% КД и +15% урона", "power_mult": 1.15, "cd_mult": 0.75, "cost_mult": 1.0},
+	},
+	"poison_cloud": {
+		"a": {"title": "☠️ Едкий яд", "desc": "+40% урона DoT, +20% длит.", "power_mult": 1.40, "cd_mult": 1.0, "cost_mult": 1.10, "duration_mult": 1.20},
+		"b": {"title": "🧪 Дешёвые пары", "desc": "-35% манакоста, -20% КД", "power_mult": 1.05, "cd_mult": 0.80, "cost_mult": 0.65},
+	},
+	"soul_overload": {
+		"a": {"title": "💥 Взрыв души", "desc": "+30% урона от маны", "power_mult": 1.30, "cd_mult": 1.10, "cost_mult": 1.0},
+		"b": {"title": "🔮 Резонанс духа", "desc": "-25% КД, +15% крита", "power_mult": 1.05, "cd_mult": 0.75, "cost_mult": 0.90, "crit_bonus": 0.15},
+	},
+	"battle_frenzy": {
+		"a": {"title": "💢 Ярость титана", "desc": "+35% силы баффа урона/скорости", "power_mult": 1.35, "cd_mult": 1.15, "cost_mult": 1.15, "duration_mult": 1.15},
+		"b": {"title": "🩸 Боевой азарт", "desc": "-25% КД и -25% манакоста", "power_mult": 1.0, "cd_mult": 0.75, "cost_mult": 0.75},
+	},
+	"stone_aegis": {
+		"a": {"title": "🛡️ Гранитная стена", "desc": "+30% длительности и +25% щита/барьера", "power_mult": 1.25, "cd_mult": 1.0, "cost_mult": 1.10, "duration_mult": 1.30, "shield_barrier_pct": 0.30},
+		"b": {"title": "🪨 Рефлекс камня", "desc": "-30% КД, -20% манакоста", "power_mult": 1.0, "cd_mult": 0.70, "cost_mult": 0.80},
+	},
+	"eagle_focus": {
+		"a": {"title": "🦅 Орлиный взор", "desc": "+30% баффа крита и точности", "power_mult": 1.30, "cd_mult": 1.0, "cost_mult": 1.10, "duration_mult": 1.20},
+		"b": {"title": "🎯 Быстрый прицел", "desc": "-30% КД, -30% манакоста", "power_mult": 1.0, "cd_mult": 0.70, "cost_mult": 0.70},
+	},
+	"arcane_meditation": {
+		"a": {"title": "🧘 Глубокий транс", "desc": "+35% длительности медитации", "power_mult": 1.20, "cd_mult": 1.0, "cost_mult": 0.90, "duration_mult": 1.35},
+		"b": {"title": "💫 Ясный разум", "desc": "-30% КД и +15% силы", "power_mult": 1.15, "cd_mult": 0.70, "cost_mult": 0.80},
+	},
+	"mana_siphon": {
+		"a": {"title": "🌀 Жадное поглощение", "desc": "+35% урона и вытяжки маны", "power_mult": 1.35, "cd_mult": 1.10, "cost_mult": 0.85},
+		"b": {"title": "⚡ Сифон молнии", "desc": "-25% КД, 25% шанс двойного каста", "power_mult": 1.0, "cd_mult": 0.75, "cost_mult": 0.90, "double_cast_chance": 0.25},
+	},
+	"execute_sigil": {
+		"a": {"title": "⚔️ Печать палача", "desc": "+35% казнящего урона", "power_mult": 1.35, "cd_mult": 1.15, "cost_mult": 1.15},
+		"b": {"title": "💀 Быстрый приговор", "desc": "-25% КД, +15% шанса крита", "power_mult": 1.05, "cd_mult": 0.75, "cost_mult": 0.85, "crit_bonus": 0.15},
+	},
+	"arcane_cataclysm": {
+		"a": {"title": "☄️ Аннигиляция", "desc": "+35% урона катаклизма", "power_mult": 1.35, "cd_mult": 1.15, "cost_mult": 1.15},
+		"b": {"title": "🌀 Искажение времени", "desc": "-25% КД и -20% манакоста", "power_mult": 1.05, "cd_mult": 0.75, "cost_mult": 0.80},
+	},
+	"astral_tempest": {
+		"a": {"title": "🌌 Звёздный вихрь", "desc": "30% шанс двойного шторма", "power_mult": 1.05, "cd_mult": 1.05, "cost_mult": 1.10, "double_cast_chance": 0.30},
+		"b": {"title": "🌠 Плотный град", "desc": "+30% урона, -15% манакоста", "power_mult": 1.30, "cd_mult": 1.0, "cost_mult": 0.85},
+	},
+	"starfall_oblivion": {
+		"a": {"title": "🌠 Забвение звёзд", "desc": "+40% урона, +20% крита", "power_mult": 1.40, "cd_mult": 1.20, "cost_mult": 1.15, "crit_bonus": 0.20},
+		"b": {"title": "✨ Сияющий поток", "desc": "-25% КД и -25% манакоста", "power_mult": 1.0, "cd_mult": 0.75, "cost_mult": 0.75},
+	},
+	"sacred_revival": {
+		"a": {"title": "💖 Свет спасения", "desc": "+35% лечения +30% барьера", "power_mult": 1.35, "cd_mult": 1.05, "cost_mult": 1.10, "shield_barrier_pct": 0.30},
+		"b": {"title": "🕊️ Частая милость", "desc": "-30% КД и -25% манакоста", "power_mult": 1.0, "cd_mult": 0.70, "cost_mult": 0.75},
+	},
+	"archmage_ascension": {
+		"a": {"title": "👑 Вознесение мага", "desc": "+30% длит. и +25% мощи баффа", "power_mult": 1.25, "cd_mult": 1.10, "cost_mult": 1.10, "duration_mult": 1.30},
+		"b": {"title": "🧙 Поток архимага", "desc": "-25% КД, -30% манакоста", "power_mult": 1.05, "cd_mult": 0.75, "cost_mult": 0.70},
+	},
+	"crimson_lance": {
+		"a": {"title": "🩸 Вампиризм копья", "desc": "+25% вампиризма от урона", "power_mult": 1.10, "cd_mult": 1.0, "cost_mult": 1.0, "lifesteal_bonus": 0.25},
+		"b": {"title": "🗡️ Багровый натиск", "desc": "+30% урона, -15% КД", "power_mult": 1.30, "cd_mult": 0.85, "cost_mult": 1.10},
+	},
+	"hemorrhage_curse": {
+		"a": {"title": "🩸 Глубокая рана", "desc": "+35% кровотечения, +25% длит.", "power_mult": 1.35, "cd_mult": 1.05, "cost_mult": 1.0, "duration_mult": 1.25},
+		"b": {"title": "🥀 Быстрое проклятие", "desc": "-25% КД, -25% манакоста", "power_mult": 1.05, "cd_mult": 0.75, "cost_mult": 0.75},
+	},
+	"crimson_ward": {
+		"a": {"title": "🛡️ Кровавый щит", "desc": "+25% эффекта и +30% барьера", "power_mult": 1.25, "cd_mult": 1.0, "cost_mult": 1.05, "duration_mult": 1.20, "shield_barrier_pct": 0.30},
+		"b": {"title": "🩸 Очищение кровью", "desc": "-30% КД, -25% манакоста", "power_mult": 1.0, "cd_mult": 0.70, "cost_mult": 0.75},
+	},
+	"blood_frenzy": {
+		"a": {"title": "🔥 Кровавое бешенство", "desc": "+35% баффа и +20% длит.", "power_mult": 1.35, "cd_mult": 1.10, "cost_mult": 1.10, "duration_mult": 1.20},
+		"b": {"title": "⚡ Безудержная кровь", "desc": "-25% КД, -25% манакоста", "power_mult": 1.05, "cd_mult": 0.75, "cost_mult": 0.75},
+	},
+	"crimson_nova": {
+		"a": {"title": "💥 Багровый взрыв", "desc": "+35% урона и 25% двойного каста", "power_mult": 1.35, "cd_mult": 1.15, "cost_mult": 1.15, "double_cast_chance": 0.25},
+		"b": {"title": "🩸 Жатва крови", "desc": "+25% вампиризма, -20% КД", "power_mult": 1.10, "cd_mult": 0.80, "cost_mult": 0.90, "lifesteal_bonus": 0.25},
+	},
+	"sanguine_apotheosis": {
+		"a": {"title": "🧛 Апофеоз вампира", "desc": "+30% силы и +25% длит.", "power_mult": 1.30, "cd_mult": 1.10, "cost_mult": 1.10, "duration_mult": 1.25},
+		"b": {"title": "🩸 Дешевая жертва", "desc": "-25% КД и -30% манакоста", "power_mult": 1.05, "cd_mult": 0.75, "cost_mult": 0.70},
+	},
+	"crimson_apocalypse": {
+		"a": {"title": "🌑 Конец времён", "desc": "+40% урона, +20% крита", "power_mult": 1.40, "cd_mult": 1.15, "cost_mult": 1.20, "crit_bonus": 0.20},
+		"b": {"title": "🩸 Вечное эхо крови", "desc": "-25% КД, +20% вампиризма", "power_mult": 1.10, "cd_mult": 0.75, "cost_mult": 0.85, "lifesteal_bonus": 0.20},
+	},
+}
+
+const PET_EXPEDITION_PLANS: Array[Dictionary] = [
+	{"id": "short", "title": "🌿 Короткая (15 мин)", "duration": 900.0, "ore_chance": 0.45, "seed_rolls": 2},
+	{"id": "long", "title": "🗺️ Долгая (1 час)", "duration": 3600.0, "ore_chance": 1.0, "seed_rolls": 5},
+]
 
 const BUFF_POTION_CATALOG: Array[Dictionary] = [
 	{"id": "fury_potion", "label": "💢 Ярость", "path": "res://resources/items/fury_potion.tres"},
@@ -164,6 +328,42 @@ const DARK_FORGE_RECIPES: Array[Dictionary] = [
 		"result_path": "res://resources/items/tome_primordial_grimoire.tres",
 		"amount": 50,
 		"eternal": false,
+	},
+	{
+		"id": "ultimate_cataclysm_reaver",
+		"title": "⚔️ УЛЬТ: Вечный Рассекатель Катаклизма",
+		"desc": "Сплав редкого дропа (+245 урон, +76 Сила, +14% крит). Нужны Клинок дракона + Астральный двуручник.",
+		"dark_points": 6,
+		"abyss_ore": 10,
+		"ancient_page": 2,
+		"required_items": {"dragonbone_blade": 1, "astral_greatsword": 1},
+		"result_path": "res://resources/items/eternal_cataclysm_reaver.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "ultimate_eclipse_aegis",
+		"title": "🛡️ УЛЬТ: Вечная Эгида Затмения",
+		"desc": "Ультимативный щит (+950 Барьер, +8/Вын, +48 Вын). Нужны Доспех небесного стража + Эгида бастиона.",
+		"dark_points": 6,
+		"abyss_ore": 10,
+		"ancient_page": 2,
+		"required_items": {"celestial_aegis": 1, "aegis_bulwark_shield": 1},
+		"result_path": "res://resources/items/eternal_eclipse_aegis.tres",
+		"amount": 1,
+		"eternal": true,
+	},
+	{
+		"id": "ultimate_archon_talisman",
+		"title": "🧿 УЛЬТ: Вечный Гримуар Архонта",
+		"desc": "Ультимативный талисман (+820 Барьер, +8.5/Инт, +46 Инт, +24% Чар). Нужны Скипетр лича + Астральный посох.",
+		"dark_points": 6,
+		"abyss_ore": 8,
+		"ancient_page": 6,
+		"required_items": {"lich_scepter": 1, "astral_staff": 1},
+		"result_path": "res://resources/items/eternal_archon_talisman.tres",
+		"amount": 1,
+		"eternal": true,
 	},
 ]
 
@@ -397,6 +597,8 @@ const SHOP_ITEM_PATHS: Array[String] = [
 	"res://resources/items/astral_arrows.tres",
 	"res://resources/items/abyss_bolts.tres",
 	"res://resources/items/astral_bow.tres",
+	"res://resources/items/wooden_buckler.tres",
+	"res://resources/items/apprentice_talisman.tres",
 ]
 const DARK_SHOP_ITEM_PATHS: Array[String] = [
 	"res://resources/items/dark_ambrosia_vial.tres",
@@ -530,6 +732,34 @@ const PET_PATHS: Array[String] = [
 	"res://resources/pets/chrono_owl.tres",
 	"res://resources/pets/thunder_griffin.tres",
 ]
+const ENEMY_PATHS: Array[String] = [
+	"res://resources/enemies/slime.tres",
+	"res://resources/enemies/wolf.tres",
+	"res://resources/enemies/goblin.tres",
+	"res://resources/enemies/bandit.tres",
+	"res://resources/enemies/skeleton.tres",
+	"res://resources/enemies/bog_toad.tres",
+	"res://resources/enemies/swamp_witch.tres",
+	"res://resources/enemies/rock_golem.tres",
+	"res://resources/enemies/crystal_spider.tres",
+	"res://resources/enemies/mine_kobold.tres",
+	"res://resources/enemies/mine_overseer.tres",
+	"res://resources/enemies/orc_warlord.tres",
+	"res://resources/enemies/dark_mage.tres",
+	"res://resources/enemies/ice_golem.tres",
+	"res://resources/enemies/frost_wyvern.tres",
+	"res://resources/enemies/ember_knight.tres",
+	"res://resources/enemies/fire_elemental.tres",
+	"res://resources/enemies/ancient_dragon.tres",
+	"res://resources/enemies/abyssal_naga.tres",
+	"res://resources/enemies/krakens_spawn.tres",
+	"res://resources/enemies/astral_archon.tres",
+	"res://resources/enemies/void_stalker.tres",
+	"res://resources/enemies/shadow_lich.tres",
+	"res://resources/enemies/fallen_seraph.tres",
+	"res://resources/enemies/curse_warden.tres",
+	"res://resources/enemies/eternal_titan.tres",
+]
 
 const CURSE_CATALOG: Array[Dictionary] = [
 	{
@@ -616,12 +846,23 @@ var magic_level: int = 1
 var magic_xp: float = 0.0
 
 var equipped_weapon: ItemData = null
+var equipped_weapon_quality: int = 100
+var equipped_weapon_stars: int = 1
 var equipped_armor: ItemData = null
+var equipped_armor_quality: int = 100
+var equipped_armor_stars: int = 1
+var equipped_offhand: ItemData = null
+var equipped_offhand_quality: int = 100
+var equipped_offhand_stars: int = 1
 var equipped_ammo: ItemData = null
 var equipped_ammo_count: int = 0
 var weapon_enchant_level: int = 0
 var armor_enchant_level: int = 0
+var offhand_enchant_level: int = 0
 var inventory: Array[Dictionary] = []
+var auto_salvage_mode: String = "off" # "off" | "sell" | "salvage"
+var auto_salvage_min_quality: int = 95
+var abyss_ore_shards: int = 0
 
 var locations: Array[LocationData] = []
 var current_location: LocationData = null
@@ -667,6 +908,9 @@ var equipped_ability_ids: Array[String] = ["fireball", "nature_mend", "arcane_su
 var abilities: Array[AbilityData] = []
 var ability_cooldowns: Array[float] = [0.0, 0.0, 0.0]
 var ability_auto_cast: Array[bool] = [false, false, false]
+var ability_casts: Dictionary = {}
+var ability_levels: Dictionary = {}
+var ability_runes: Dictionary = {}
 var active_buffs: Array[Dictionary] = []
 
 var auto_potion_enabled: bool = false
@@ -681,14 +925,36 @@ var auto_buff_whitelist: Array[String] = []
 
 var dark_weapon_enchant_level: int = 0
 var dark_armor_enchant_level: int = 0
+var dark_offhand_enchant_level: int = 0
 var mine_locked_this_run: bool = false
 var mine_depth: int = 0
+var unlocked_mine_checkpoints: Array[int] = []
+var mine_start_depth: int = 1
 
 var is_afk_mode: bool = false
+var afk_target_fps: int = DEFAULT_AFK_MAX_FPS
+var is_menu_open: bool = false
 var afk_elapsed_seconds: float = 0.0
 var afk_kills: int = 0
 var afk_gold_earned: float = 0.0
 var afk_xp_earned: float = 0.0
+
+var current_barrier: float = 0.0
+var bestiary_kills: Dictionary = {}
+var active_challenge_id: String = ""
+var completed_challenges: Array[String] = []
+var run_elapsed_seconds: float = 0.0
+var combat_loadouts: Array[Dictionary] = []
+var auto_route_enabled: bool = false
+var auto_route_wins_threshold: int = 5
+var consecutive_location_wins: int = 0
+var well_greed_cooldown_remaining: float = 0.0
+var well_run_blessing: String = ""
+var pet_expeditions: Array[Dictionary] = []
+var wave_dungeon_active: bool = false
+var wave_dungeon_wave: int = 0
+var wave_dungeon_clears: int = 0
+var _wave_dungeon_return_location_id: String = ""
 
 var crops: Array[CropData] = []
 var _crops_by_id: Dictionary = {}
@@ -724,11 +990,18 @@ var _curse_value_cache: Dictionary = {}
 var _active_curses_cache: Array[Dictionary] = []
 var _progression_caches_dirty: bool = true
 var _cached_curse_difficulty: int = -1
+var _stats_cache: Dictionary = {}
+var _stats_cache_dirty: bool = true
+
+
+var all_enemies: Array[EnemyData] = []
+var _enemies_by_id: Dictionary = {}
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_load_locations()
+	_load_enemies()
 	_load_shop_items()
 	_load_dark_shop_items()
 	_load_skills()
@@ -741,6 +1014,7 @@ func _ready() -> void:
 		_init_full_reset_state()
 	_ensure_sanctuary_slots()
 	ensure_skill_presets()
+	_ensure_loadouts()
 	ensure_curses_for_difficulty(difficulty_level)
 	_invalidate_progression_caches()
 	Engine.max_fps = NORMAL_FPS_LIMIT
@@ -796,6 +1070,10 @@ func _process(delta: float) -> void:
 		_abilities_ui_dirty = false
 		abilities_changed.emit()
 
+	run_elapsed_seconds += delta
+	if well_greed_cooldown_remaining > 0.0:
+		well_greed_cooldown_remaining = maxf(0.0, well_greed_cooldown_remaining - delta)
+
 	if not active_buffs.is_empty():
 		var expired_any: bool = false
 		for i: int in range(active_buffs.size() - 1, -1, -1):
@@ -806,6 +1084,7 @@ func _process(delta: float) -> void:
 		_buff_ui_sync_timer += delta
 		if expired_any:
 			_buff_ui_sync_timer = 0.0
+			mark_stats_dirty()
 			buffs_changed.emit()
 			stats_changed.emit()
 		elif _buff_ui_sync_timer >= 0.25:
@@ -850,6 +1129,11 @@ func _emit_all_refresh_signals() -> void:
 	dark_forge_changed.emit()
 	dark_shop_changed.emit()
 	mine_state_changed.emit()
+	barrier_changed.emit(current_barrier, get_max_barrier())
+	bestiary_changed.emit()
+	challenge_changed.emit()
+	loadouts_changed.emit()
+	wave_dungeon_changed.emit()
 	mastery_changed.emit("melee", melee_level, false)
 	mastery_changed.emit("ranged", ranged_level, false)
 	mastery_changed.emit("magic", magic_level, false)
@@ -863,6 +1147,16 @@ func _load_locations() -> void:
 		var loc: LocationData = load(path) as LocationData
 		if loc != null:
 			locations.append(loc)
+
+
+func _load_enemies() -> void:
+	all_enemies.clear()
+	_enemies_by_id.clear()
+	for path: String in ENEMY_PATHS:
+		var enemy: EnemyData = load(path) as EnemyData
+		if enemy != null and not enemy.id.is_empty():
+			all_enemies.append(enemy)
+			_enemies_by_id[enemy.id] = enemy
 
 
 func _load_shop_items() -> void:
@@ -960,8 +1254,28 @@ func get_cached_item(path: String) -> ItemData:
 	return item
 
 
+func mark_stats_dirty() -> void:
+	_stats_cache_dirty = true
+	_stats_cache.clear()
+
+
+func set_menu_open(open: bool) -> void:
+	is_menu_open = open
+
+
+func set_afk_fps_limit(fps: int) -> void:
+	if fps != 15 and fps != 20 and fps != 30 and fps != 60:
+		return
+	afk_target_fps = fps
+	if is_afk_mode:
+		Engine.max_fps = afk_target_fps
+	afk_stats_updated.emit(afk_elapsed_seconds, afk_kills, afk_gold_earned, afk_xp_earned)
+	save_game()
+
+
 func _invalidate_progression_caches() -> void:
 	_progression_caches_dirty = true
+	mark_stats_dirty()
 
 
 func _ensure_progression_caches() -> void:
@@ -1012,6 +1326,7 @@ func _init_full_reset_state() -> void:
 	difficulty_level = 1
 	max_unlocked_difficulty = 1
 	auto_advance_next_boss = false
+	afk_target_fps = DEFAULT_AFK_MAX_FPS
 	dark_points = 0
 	dark_shop_coins = 0
 	dark_points_claimed_difficulties.clear()
@@ -1023,6 +1338,7 @@ func _init_full_reset_state() -> void:
 	reflector_kill_hp_stacks = 0
 	owned_pet_ids.clear()
 	equipped_pet_id = ""
+	pet_expeditions.clear()
 	auto_potion_enabled = false
 	auto_hp_threshold_pct = 35
 	auto_hp_condition = "combat"
@@ -1032,16 +1348,43 @@ func _init_full_reset_state() -> void:
 	auto_buff_enabled = false
 	auto_buff_condition = "on_expire_combat"
 	auto_buff_whitelist.clear()
+	auto_salvage_mode = "off"
+	auto_salvage_min_quality = 95
+	abyss_ore_shards = 0
 	dark_weapon_enchant_level = 0
 	dark_armor_enchant_level = 0
+	dark_offhand_enchant_level = 0
 	mine_locked_this_run = false
 	mine_depth = 0
+	unlocked_mine_checkpoints.clear()
+	mine_start_depth = 1
 	equipped_weapon = null
+	equipped_weapon_quality = 100
+	equipped_weapon_stars = 1
 	equipped_armor = null
+	equipped_armor_quality = 100
+	equipped_armor_stars = 1
+	equipped_offhand = null
+	equipped_offhand_quality = 100
+	equipped_offhand_stars = 1
 	equipped_ammo = null
 	equipped_ammo_count = 0
 	inventory.clear()
 	enemies_defeated = 0
+	bestiary_kills.clear()
+	active_challenge_id = ""
+	completed_challenges.clear()
+	run_elapsed_seconds = 0.0
+	combat_loadouts.clear()
+	auto_route_enabled = false
+	auto_route_wins_threshold = 5
+	consecutive_location_wins = 0
+	well_greed_cooldown_remaining = 0.0
+	well_run_blessing = ""
+	wave_dungeon_active = false
+	wave_dungeon_wave = 0
+	wave_dungeon_clears = 0
+	_wave_dungeon_return_location_id = ""
 	garden_plots.clear()
 	light_garden_plots.clear()
 	brewing_slots.clear()
@@ -1049,6 +1392,9 @@ func _init_full_reset_state() -> void:
 	pet_training_levels.clear()
 	spirit_training_levels = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}
 	equipped_ability_ids = DEFAULT_EQUIPPED_ABILITIES.duplicate()
+	ability_casts.clear()
+	ability_levels.clear()
+	ability_runes.clear()
 	_sync_equipped_abilities()
 	for i: int in range(MAX_ACTIVE_ABILITY_SLOTS):
 		ability_auto_cast[i] = false
@@ -1056,14 +1402,23 @@ func _init_full_reset_state() -> void:
 	active_skill_preset_index = 0
 	skill_auto_upgrade_enabled = false
 	ensure_skill_presets()
+	_ensure_loadouts()
 	_invalidate_progression_caches()
-	_init_run_state(1)
+	_init_run_state(1, "")
 	_ensure_sanctuary_slots()
 
 
-func _init_run_state(target_difficulty: int) -> void:
+func _init_run_state(target_difficulty: int, challenge_id: String = "") -> void:
 	difficulty_level = clampi(target_difficulty, 1, maxi(1, max_unlocked_difficulty))
 	ensure_curses_for_difficulty(difficulty_level)
+	active_challenge_id = challenge_id if not get_challenge_def(challenge_id).is_empty() else ""
+	run_elapsed_seconds = 0.0
+	consecutive_location_wins = 0
+	well_greed_cooldown_remaining = 0.0
+	well_run_blessing = ""
+	wave_dungeon_active = false
+	wave_dungeon_wave = 0
+	_wave_dungeon_return_location_id = ""
 	_invalidate_progression_caches()
 
 	level = 1
@@ -1109,19 +1464,76 @@ func _init_run_state(target_difficulty: int) -> void:
 			or existing_item.item_type == ItemData.ItemType.MATERIAL
 			or existing_item.is_dark_forged
 		):
-			preserved_garden_items.append({"item": existing_item, "count": existing_cnt})
+			preserved_garden_items.append({
+				"item": existing_item,
+				"count": existing_cnt,
+				"quality_pct": int(entry.get("quality_pct", 100)),
+				"star_level": int(entry.get("star_level", 1)),
+			})
 
+	var gear_blocked: bool = is_gear_blocked_by_challenge() or is_equipment_disabled()
 	var preserved_weapon: ItemData = equipped_weapon if (equipped_weapon != null and equipped_weapon.is_dark_forged) else null
+	var preserved_weapon_q: int = equipped_weapon_quality
+	var preserved_weapon_s: int = equipped_weapon_stars
 	var preserved_armor: ItemData = equipped_armor if (equipped_armor != null and equipped_armor.is_dark_forged) else null
+	var preserved_armor_q: int = equipped_armor_quality
+	var preserved_armor_s: int = equipped_armor_stars
+	var preserved_offhand: ItemData = equipped_offhand if (equipped_offhand != null and equipped_offhand.is_dark_forged) else null
+	var preserved_offhand_q: int = equipped_offhand_quality
+	var preserved_offhand_s: int = equipped_offhand_stars
 	var preserved_ammo: ItemData = equipped_ammo if (equipped_ammo != null and equipped_ammo.is_dark_forged) else null
 	var preserved_ammo_cnt: int = equipped_ammo_count if preserved_ammo != null else 0
 
-	equipped_weapon = preserved_weapon
-	equipped_armor = preserved_armor
-	equipped_ammo = preserved_ammo
-	equipped_ammo_count = maxi(1, preserved_ammo_cnt) if preserved_ammo != null else 0
+	equipped_weapon = null
+	equipped_weapon_quality = 100
+	equipped_weapon_stars = 1
+	equipped_armor = null
+	equipped_armor_quality = 100
+	equipped_armor_stars = 1
+	equipped_offhand = null
+	equipped_offhand_quality = 100
+	equipped_offhand_stars = 1
+	equipped_ammo = null
+	equipped_ammo_count = 0
+
+	if not gear_blocked:
+		if preserved_weapon != null:
+			if is_non_staff_blocked_by_challenge() and not preserved_weapon.is_mage_staff():
+				preserved_garden_items.append({"item": preserved_weapon, "count": 1, "quality_pct": preserved_weapon_q, "star_level": preserved_weapon_s})
+			else:
+				equipped_weapon = preserved_weapon
+				equipped_weapon_quality = preserved_weapon_q
+				equipped_weapon_stars = preserved_weapon_s
+		if preserved_armor != null:
+			equipped_armor = preserved_armor
+			equipped_armor_quality = preserved_armor_q
+			equipped_armor_stars = preserved_armor_s
+		if preserved_offhand != null:
+			if is_non_staff_blocked_by_challenge() and preserved_offhand.offhand_kind != ItemData.OffhandKind.TALISMAN:
+				preserved_garden_items.append({"item": preserved_offhand, "count": 1, "quality_pct": preserved_offhand_q, "star_level": preserved_offhand_s})
+			else:
+				equipped_offhand = preserved_offhand
+				equipped_offhand_quality = preserved_offhand_q
+				equipped_offhand_stars = preserved_offhand_s
+		if preserved_ammo != null:
+			if is_non_staff_blocked_by_challenge() and preserved_ammo.ammo_kind != ItemData.AmmoKind.TOME:
+				preserved_garden_items.append({"item": preserved_ammo, "count": maxi(1, preserved_ammo_cnt), "quality_pct": 100, "star_level": 1})
+			else:
+				equipped_ammo = preserved_ammo
+				equipped_ammo_count = maxi(1, preserved_ammo_cnt)
+	else:
+		if preserved_weapon != null:
+			preserved_garden_items.append({"item": preserved_weapon, "count": 1, "quality_pct": preserved_weapon_q, "star_level": preserved_weapon_s})
+		if preserved_armor != null:
+			preserved_garden_items.append({"item": preserved_armor, "count": 1, "quality_pct": preserved_armor_q, "star_level": preserved_armor_s})
+		if preserved_offhand != null:
+			preserved_garden_items.append({"item": preserved_offhand, "count": 1, "quality_pct": preserved_offhand_q, "star_level": preserved_offhand_s})
+		if preserved_ammo != null:
+			preserved_garden_items.append({"item": preserved_ammo, "count": maxi(1, preserved_ammo_cnt), "quality_pct": 100, "star_level": 1})
+
 	weapon_enchant_level = 0
 	armor_enchant_level = 0
+	offhand_enchant_level = 0
 	inventory.clear()
 	unlocked_skills.clear()
 	_invalidate_progression_caches()
@@ -1137,25 +1549,30 @@ func _init_run_state(target_difficulty: int) -> void:
 	for saved_garden: Dictionary in preserved_garden_items:
 		var g_item: ItemData = saved_garden["item"] as ItemData
 		var g_cnt: int = int(saved_garden["count"])
-		add_item(g_item, g_cnt, false)
+		var g_q: int = int(saved_garden.get("quality_pct", 100))
+		var g_s: int = int(saved_garden.get("star_level", 1))
+		add_item(g_item, g_cnt, false, g_q, g_s, false)
 
 	_ensure_sanctuary_slots()
 	ensure_skill_presets()
+	_ensure_loadouts()
 	if skill_auto_upgrade_enabled:
 		try_apply_skill_preset(false)
 
+	mark_stats_dirty()
+	current_barrier = get_max_barrier()
 	current_hp = get_max_hp()
 	current_mana = get_max_mana()
 	if not locations.is_empty():
 		current_location = locations[0]
 
 
-func start_new_run(target_difficulty: int) -> void:
+func start_new_run(target_difficulty: int, challenge_id: String = "") -> void:
 	_wait_for_save_thread()
 	var clamped_diff: int = clampi(target_difficulty, 1, maxi(1, max_unlocked_difficulty))
 	if boss_defeated_this_run:
 		total_runs_completed += 1
-	_init_run_state(clamped_diff)
+	_init_run_state(clamped_diff, challenge_id)
 	save_game(true)
 	_emit_all_refresh_signals()
 	game_reset.emit()
@@ -1215,21 +1632,32 @@ func select_hero_class(class_id: String) -> bool:
 	var prev_max_hp: float = get_max_hp()
 	var prev_max_mana: float = get_max_mana()
 	selected_class_id = class_id
+	mark_stats_dirty()
 	_validate_equipped_abilities_for_class()
 	clear_active_buffs()
 
 	if target.disables_equipment:
 		if equipped_weapon != null:
-			add_item(equipped_weapon, 1, false)
+			add_item(equipped_weapon, 1, false, equipped_weapon_quality, equipped_weapon_stars, false)
 			equipped_weapon = null
+			equipped_weapon_quality = 100
+			equipped_weapon_stars = 1
 		if equipped_armor != null:
-			add_item(equipped_armor, 1, false)
+			add_item(equipped_armor, 1, false, equipped_armor_quality, equipped_armor_stars, false)
 			equipped_armor = null
+			equipped_armor_quality = 100
+			equipped_armor_stars = 1
+		if equipped_offhand != null:
+			add_item(equipped_offhand, 1, false, equipped_offhand_quality, equipped_offhand_stars, false)
+			equipped_offhand = null
+			equipped_offhand_quality = 100
+			equipped_offhand_stars = 1
 		if equipped_ammo != null and equipped_ammo_count > 0:
 			add_item(equipped_ammo, equipped_ammo_count, false)
 			equipped_ammo = null
 			equipped_ammo_count = 0
 
+	mark_stats_dirty()
 	var new_max_hp: float = get_max_hp()
 	if new_max_hp > prev_max_hp:
 		current_hp = minf(new_max_hp, current_hp + (new_max_hp - prev_max_hp))
@@ -1242,12 +1670,14 @@ func select_hero_class(class_id: String) -> bool:
 	else:
 		current_mana = minf(new_max_mana, current_mana)
 
+	current_barrier = 0.0 if has_hero_class("reflector") else minf(current_barrier, get_max_barrier())
 	class_changed.emit(target)
 	stats_changed.emit()
 	inventory_changed.emit()
 	enchant_changed.emit()
 	abilities_changed.emit()
 	buffs_changed.emit()
+	barrier_changed.emit(current_barrier, get_max_barrier())
 	hp_changed.emit(current_hp, new_max_hp)
 	mana_changed.emit(current_mana, new_max_mana)
 	save_game()
@@ -1351,6 +1781,7 @@ func train_pet_with_treat(pet_id: String, treat_item: ItemData) -> Dictionary:
 	if randf() <= chance:
 		var new_lvl: int = cur_lvl + 1
 		pet_training_levels[pet_id] = new_lvl
+		mark_stats_dirty()
 		pets_changed.emit()
 		stats_changed.emit()
 		save_game()
@@ -1387,9 +1818,12 @@ func train_pet_with_treat(pet_id: String, treat_item: ItemData) -> Dictionary:
 func equip_pet(pet_id: String) -> bool:
 	if not has_pet_owned(pet_id):
 		return false
+	if is_pet_on_expedition(pet_id):
+		return false
 	if equipped_pet_id == pet_id:
 		return false
 	equipped_pet_id = pet_id
+	mark_stats_dirty()
 	pets_changed.emit()
 	stats_changed.emit()
 	save_game()
@@ -1400,9 +1834,107 @@ func unequip_pet() -> void:
 	if equipped_pet_id.is_empty():
 		return
 	equipped_pet_id = ""
+	mark_stats_dirty()
 	pets_changed.emit()
 	stats_changed.emit()
 	save_game()
+
+
+func is_pet_on_expedition(pet_id: String) -> bool:
+	for exp: Dictionary in pet_expeditions:
+		if str(exp.get("pet_id", "")) == pet_id:
+			return true
+	return false
+
+
+func get_pet_expedition(pet_id: String) -> Dictionary:
+	for exp: Dictionary in pet_expeditions:
+		if str(exp.get("pet_id", "")) == pet_id:
+			return exp
+	return {}
+
+
+func get_expedition_plan(plan_id: String) -> Dictionary:
+	for p: Dictionary in PET_EXPEDITION_PLANS:
+		if str(p.get("id", "")) == plan_id:
+			return p
+	return {}
+
+
+func start_pet_expedition(pet_id: String, plan_id: String) -> Dictionary:
+	if not has_pet_owned(pet_id):
+		return {"success": false, "message": "Путник не приручён."}
+	if equipped_pet_id == pet_id:
+		return {"success": false, "message": "Сначала снимите активного путника перед отправкой в экспедицию."}
+	if is_pet_on_expedition(pet_id):
+		return {"success": false, "message": "Этот путник уже в экспедиции."}
+	var plan: Dictionary = get_expedition_plan(plan_id)
+	if plan.is_empty():
+		return {"success": false, "message": "Неизвестный план экспедиции."}
+	pet_expeditions.append({
+		"pet_id": pet_id,
+		"plan_id": plan_id,
+		"elapsed": 0.0,
+		"duration": float(plan["duration"]),
+		"completed": false,
+	})
+	pets_changed.emit()
+	save_game()
+	return {"success": true, "message": "🧭 Путник отправлен в экспедицию: %s!" % str(plan["title"])}
+
+
+func claim_pet_expedition(pet_id: String) -> Dictionary:
+	var idx: int = -1
+	for i: int in range(pet_expeditions.size()):
+		if str(pet_expeditions[i].get("pet_id", "")) == pet_id:
+			idx = i
+			break
+	if idx < 0:
+		return {"success": false, "message": "Экспедиция не найдена."}
+	var exp: Dictionary = pet_expeditions[idx]
+	if not bool(exp.get("completed", false)):
+		return {"success": false, "message": "Экспедиция ещё не завершена."}
+	var plan: Dictionary = get_expedition_plan(str(exp.get("plan_id", "short")))
+	var ore_chance: float = float(plan.get("ore_chance", 0.45))
+	var seed_rolls: int = int(plan.get("seed_rolls", 2))
+	var rewards: Array[String] = []
+
+	var bonus_gold: float = round((120.0 + float(seed_rolls) * 60.0) * get_gold_multiplier())
+	add_gold(bonus_gold)
+	rewards.append("+%s з." % NumberFormatter.format_number(bonus_gold))
+
+	if randf() <= ore_chance:
+		var ore_item: ItemData = get_cached_item("res://resources/items/abyss_ore.tres")
+		if ore_item != null:
+			var ore_amt: int = 1 if seed_rolls <= 2 else 2
+			add_item(ore_item, ore_amt, true)
+			rewards.append("⛏️ Руда Бездны x%d" % ore_amt)
+
+	var light_seeds: Array[String] = [
+		"res://resources/items/light_clover_seed.tres",
+		"res://resources/items/honey_berry_seed.tres",
+		"res://resources/items/sky_chamomile_seed.tres",
+		"res://resources/items/spark_chili_seed.tres",
+	]
+	for _r: int in range(seed_rolls):
+		var s_path: String = light_seeds[randi() % light_seeds.size()]
+		var s_item: ItemData = get_cached_item(s_path)
+		if s_item != null:
+			add_item(s_item, 1, true)
+			rewards.append(s_item.get_display_name())
+
+	if seed_rolls >= 5:
+		var page_item: ItemData = get_cached_item("res://resources/items/ancient_page.tres")
+		if page_item != null:
+			add_item(page_item, 1, true)
+			rewards.append("📜 Древний лист x1")
+
+	pet_expeditions.remove_at(idx)
+	pets_changed.emit()
+	inventory_changed.emit()
+	stats_changed.emit()
+	save_game()
+	return {"success": true, "message": "🎒 Награда экспедиции: %s" % ", ".join(rewards)}
 
 
 # --- Learn by Doing (Melee / Ranged / Magic Masteries) ---
@@ -1479,6 +2011,7 @@ func add_mastery_xp(skill_id: String, base_amount: float) -> void:
 
 	mastery_changed.emit(skill_id, new_lvl, leveled_up)
 	if leveled_up:
+		mark_stats_dirty()
 		stats_changed.emit()
 
 
@@ -1628,6 +2161,29 @@ func is_dark_points_claimed_for_difficulty(diff: int) -> bool:
 	return dark_points_claimed_difficulties.has(diff)
 
 
+func get_challenge_def(challenge_id: String) -> Dictionary:
+	for ch: Dictionary in CHALLENGE_CATALOG:
+		if str(ch.get("id", "")) == challenge_id:
+			return ch
+	return {}
+
+
+func is_challenge_completed(challenge_id: String) -> bool:
+	return completed_challenges.has(challenge_id)
+
+
+func is_potions_blocked_by_challenge() -> bool:
+	return active_challenge_id == "no_potions_titan"
+
+
+func is_non_staff_blocked_by_challenge() -> bool:
+	return active_challenge_id == "staff_master"
+
+
+func is_gear_blocked_by_challenge() -> bool:
+	return active_challenge_id == "naked_ascetic"
+
+
 func on_final_boss_defeated() -> void:
 	if boss_defeated_this_run:
 		return
@@ -1641,6 +2197,12 @@ func on_final_boss_defeated() -> void:
 	dark_shop_coins += coins_gained
 	if difficulty_level >= max_unlocked_difficulty:
 		max_unlocked_difficulty = difficulty_level + 1
+	if not active_challenge_id.is_empty():
+		var passed: bool = (active_challenge_id != "speedrun_titan") or (run_elapsed_seconds <= 300.0)
+		if passed and not completed_challenges.has(active_challenge_id):
+			completed_challenges.append(active_challenge_id)
+		active_challenge_id = ""
+		challenge_changed.emit()
 	ensure_curses_for_difficulty(max_unlocked_difficulty)
 	_invalidate_progression_caches()
 	dark_skills_changed.emit()
@@ -2002,11 +2564,51 @@ func get_max_enchant_level() -> int:
 	return MAX_ENCHANT_LEVEL
 
 
+func get_quality_multiplier(quality_pct: int) -> float:
+	return float(clampi(quality_pct, 50, 200)) / 100.0
+
+
+func get_star_multiplier(star_level: int) -> float:
+	return 1.0 + float(maxi(0, star_level - 1)) * 0.20
+
+
+func get_equipped_slot_item(slot_type: ItemData.ItemType) -> ItemData:
+	if slot_type == ItemData.ItemType.WEAPON:
+		return equipped_weapon
+	if slot_type == ItemData.ItemType.ARMOR:
+		return equipped_armor
+	if slot_type == ItemData.ItemType.OFFHAND:
+		return equipped_offhand
+	return null
+
+
+func get_equipped_slot_quality(slot_type: ItemData.ItemType) -> int:
+	if slot_type == ItemData.ItemType.WEAPON:
+		return equipped_weapon_quality
+	if slot_type == ItemData.ItemType.ARMOR:
+		return equipped_armor_quality
+	if slot_type == ItemData.ItemType.OFFHAND:
+		return equipped_offhand_quality
+	return 100
+
+
+func get_equipped_slot_stars(slot_type: ItemData.ItemType) -> int:
+	if slot_type == ItemData.ItemType.WEAPON:
+		return equipped_weapon_stars
+	if slot_type == ItemData.ItemType.ARMOR:
+		return equipped_armor_stars
+	if slot_type == ItemData.ItemType.OFFHAND:
+		return equipped_offhand_stars
+	return 1
+
+
 func get_enchant_level(slot_type: ItemData.ItemType) -> int:
 	if slot_type == ItemData.ItemType.WEAPON:
 		return weapon_enchant_level
 	if slot_type == ItemData.ItemType.ARMOR:
 		return armor_enchant_level
+	if slot_type == ItemData.ItemType.OFFHAND:
+		return offhand_enchant_level
 	return 0
 
 
@@ -2035,6 +2637,8 @@ func get_dark_enchant_level(slot_type: ItemData.ItemType) -> int:
 		return dark_weapon_enchant_level
 	if slot_type == ItemData.ItemType.ARMOR:
 		return dark_armor_enchant_level
+	if slot_type == ItemData.ItemType.OFFHAND:
+		return dark_offhand_enchant_level
 	return 0
 
 
@@ -2048,15 +2652,16 @@ func get_enchant_power_multiplier(enchant_lvl: int) -> float:
 
 
 func get_equipped_stat_bonuses(slot_type: ItemData.ItemType) -> Dictionary:
-	if is_equipment_disabled():
+	if is_equipment_disabled() or is_gear_blocked_by_challenge():
 		return {"strength": 0, "agility": 0, "endurance": 0, "intellect": 0}
-	var item: ItemData = equipped_weapon if slot_type == ItemData.ItemType.WEAPON else equipped_armor
+	var item: ItemData = get_equipped_slot_item(slot_type)
 	if item == null:
 		return {"strength": 0, "agility": 0, "endurance": 0, "intellect": 0}
 	var run_elvl: int = get_enchant_level(slot_type)
 	var dark_elvl: int = get_dark_enchant_level(slot_type)
 	var total_elvl: int = run_elvl + dark_elvl
-	var mult: float = get_enchant_power_multiplier(total_elvl)
+	var gear_scale: float = get_quality_multiplier(get_equipped_slot_quality(slot_type)) * get_star_multiplier(get_equipped_slot_stars(slot_type))
+	var mult: float = get_enchant_power_multiplier(total_elvl) * gear_scale
 	var flat_per_lvl: int = 2 if has_dark_skill("blacksmith_brand") else 1
 
 	var s: int = roundi(float(item.bonus_strength) * mult)
@@ -2072,13 +2677,20 @@ func get_equipped_stat_bonuses(slot_type: ItemData.ItemType) -> Dictionary:
 		e += run_elvl * flat_per_lvl + dark_elvl * 2
 		if item.bonus_intellect > 0:
 			intel += dark_elvl * 2
+	elif slot_type == ItemData.ItemType.OFFHAND:
+		if item.offhand_kind == ItemData.OffhandKind.TALISMAN:
+			intel += run_elvl * flat_per_lvl + dark_elvl * 3
+		else:
+			e += run_elvl * flat_per_lvl + dark_elvl * 2
 	return {"strength": s, "agility": a, "endurance": e, "intellect": intel}
 
 
 func try_enchant_slot(slot_type: ItemData.ItemType) -> Dictionary:
 	if is_equipment_disabled():
 		return {"success": false, "message": "Класс Спирит не может использовать и ковать экипировку."}
-	var item: ItemData = equipped_weapon if slot_type == ItemData.ItemType.WEAPON else equipped_armor
+	if is_gear_blocked_by_challenge():
+		return {"success": false, "message": "Активное испытание запрещает экипировку и заточку."}
+	var item: ItemData = get_equipped_slot_item(slot_type)
 	if item == null:
 		return {"success": false, "message": "Сначала экипируйте предмет в этот слот."}
 
@@ -2107,19 +2719,25 @@ func try_enchant_slot(slot_type: ItemData.ItemType) -> Dictionary:
 		var prev_max_mana: float = get_max_mana()
 		if slot_type == ItemData.ItemType.WEAPON:
 			weapon_enchant_level += 1
-		else:
+		elif slot_type == ItemData.ItemType.ARMOR:
 			armor_enchant_level += 1
+		elif slot_type == ItemData.ItemType.OFFHAND:
+			offhand_enchant_level += 1
 
+		mark_stats_dirty()
 		var new_max_hp: float = get_max_hp()
 		if new_max_hp > prev_max_hp:
 			current_hp = minf(new_max_hp, current_hp + (new_max_hp - prev_max_hp))
 		var new_max_mana: float = get_max_mana()
 		if new_max_mana > prev_max_mana:
 			current_mana = minf(new_max_mana, current_mana + (new_max_mana - prev_max_mana))
+		var max_bar: float = get_max_barrier()
+		current_barrier = 0.0 if has_hero_class("reflector") else minf(maxf(current_barrier, max_bar), max_bar)
 
 		stats_changed.emit()
 		hp_changed.emit(current_hp, new_max_hp)
 		mana_changed.emit(current_mana, new_max_mana)
+		barrier_changed.emit(current_barrier, max_bar)
 		enchant_changed.emit()
 		save_game()
 		return {
@@ -2141,7 +2759,6 @@ func try_enchant_slot(slot_type: ItemData.ItemType) -> Dictionary:
 func get_dark_forge_enchant_chance(current_lvl: int) -> float:
 	if current_lvl <= 0:
 		return 25.0
-	# +1 -> +2 = 20%, decreasing down to minimum 15%
 	return maxf(15.0, 20.0 - float(current_lvl - 1) * 1.0)
 
 
@@ -2152,7 +2769,9 @@ func get_dark_forge_enchant_cost(current_lvl: int) -> int:
 func try_dark_forge_enchant(slot_type: ItemData.ItemType) -> Dictionary:
 	if is_equipment_disabled():
 		return {"success": false, "message": "Класс Спирит не может использовать Тёмную заточку."}
-	var item: ItemData = equipped_weapon if slot_type == ItemData.ItemType.WEAPON else equipped_armor
+	if is_gear_blocked_by_challenge():
+		return {"success": false, "message": "Активное испытание запрещает экипировку."}
+	var item: ItemData = get_equipped_slot_item(slot_type)
 	if item == null:
 		return {"success": false, "message": "Сначала экипируйте предмет в этот слот."}
 
@@ -2170,20 +2789,26 @@ func try_dark_forge_enchant(slot_type: ItemData.ItemType) -> Dictionary:
 		var prev_max_mana: float = get_max_mana()
 		if slot_type == ItemData.ItemType.WEAPON:
 			dark_weapon_enchant_level += 1
-		else:
+		elif slot_type == ItemData.ItemType.ARMOR:
 			dark_armor_enchant_level += 1
+		elif slot_type == ItemData.ItemType.OFFHAND:
+			dark_offhand_enchant_level += 1
 
+		mark_stats_dirty()
 		var new_max_hp: float = get_max_hp()
 		if new_max_hp > prev_max_hp:
 			current_hp = minf(new_max_hp, current_hp + (new_max_hp - prev_max_hp))
 		var new_max_mana: float = get_max_mana()
 		if new_max_mana > prev_max_mana:
 			current_mana = minf(new_max_mana, current_mana + (new_max_mana - prev_max_mana))
+		var max_bar: float = get_max_barrier()
+		current_barrier = 0.0 if has_hero_class("reflector") else minf(maxf(current_barrier, max_bar), max_bar)
 
 		stats_changed.emit()
 		dark_skills_changed.emit()
 		enchant_changed.emit()
 		dark_forge_changed.emit()
+		barrier_changed.emit(current_barrier, max_bar)
 		hp_changed.emit(current_hp, new_max_hp)
 		mana_changed.emit(current_mana, new_max_mana)
 		save_game()
@@ -2228,6 +2853,13 @@ func can_craft_dark_forge_recipe(recipe_id: String) -> bool:
 		return false
 	if need_page > 0 and get_dark_forge_material_count("ancient_page") < need_page:
 		return false
+	var req_items: Variant = r.get("required_items", {})
+	if req_items is Dictionary:
+		for req_id_var: Variant in (req_items as Dictionary).keys():
+			var req_id: String = str(req_id_var)
+			var req_cnt: int = int((req_items as Dictionary)[req_id_var])
+			if get_dark_forge_material_count(req_id) < req_cnt:
+				return false
 	return true
 
 
@@ -2248,6 +2880,18 @@ func craft_dark_forge_item(recipe_id: String) -> Dictionary:
 	if need_page > 0 and (page_item == null or get_item_count_in_inventory(page_item) < need_page):
 		return {"success": false, "message": "Недостаточно 📜 Древних листов (нужно %d)." % need_page}
 
+	var extra_consume: Array[Dictionary] = []
+	var req_items: Variant = r.get("required_items", {})
+	if req_items is Dictionary:
+		for req_id_var: Variant in (req_items as Dictionary).keys():
+			var req_id: String = str(req_id_var)
+			var req_cnt: int = int((req_items as Dictionary)[req_id_var])
+			var req_item: ItemData = get_cached_item("res://resources/items/%s.tres" % req_id)
+			if req_item == null or get_item_count_in_inventory(req_item) < req_cnt:
+				var title: String = req_item.get_display_name() if req_item != null else req_id
+				return {"success": false, "message": "Нужен предмет в инвентаре: %s x%d." % [title, req_cnt]}
+			extra_consume.append({"item": req_item, "count": req_cnt})
+
 	var result_item: ItemData = get_cached_item(str(r.get("result_path", "")))
 	if result_item == null:
 		return {"success": false, "message": "Предмет рецепта повреждён."}
@@ -2257,9 +2901,11 @@ func craft_dark_forge_item(recipe_id: String) -> Dictionary:
 		remove_item(ore_item, need_ore)
 	if need_page > 0 and page_item != null:
 		remove_item(page_item, need_page)
+	for entry: Dictionary in extra_consume:
+		remove_item(entry["item"] as ItemData, int(entry["count"]))
 
 	var amt: int = maxi(1, int(r.get("amount", 1)))
-	add_item(result_item, amt, true)
+	add_item(result_item, amt, true, 100, 1, false)
 	dark_skills_changed.emit()
 	dark_forge_changed.emit()
 	stats_changed.emit()
@@ -2343,88 +2989,176 @@ func consume_one_ammo() -> bool:
 # --- Player Stats ---
 
 func get_total_strength() -> int:
+	if not _stats_cache_dirty and _stats_cache.has("strength"):
+		return int(_stats_cache["strength"])
 	var wb: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.WEAPON)
 	var ab: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.ARMOR)
-	var total: float = float(base_strength + roundi(get_skill_bonus("strength")) + int(wb["strength"]) + int(ab["strength"]))
+	var ob: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.OFFHAND)
+	var total: float = float(base_strength + roundi(get_skill_bonus("strength")) + int(wb["strength"]) + int(ab["strength"]) + int(ob["strength"]))
+	if is_challenge_completed("naked_ascetic"):
+		total *= 1.10
 	if has_hero_class("spirit"):
 		total *= 1.35
 	elif has_hero_class("troll"):
 		total *= 1.20
-	return maxi(1, roundi(total))
+	var res: int = maxi(1, roundi(total))
+	_stats_cache["strength"] = res
+	_stats_cache_dirty = false
+	return res
 
 
 func get_total_agility() -> int:
+	if not _stats_cache_dirty and _stats_cache.has("agility"):
+		return int(_stats_cache["agility"])
 	var wb: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.WEAPON)
 	var ab: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.ARMOR)
-	var total: float = float(base_agility + roundi(get_skill_bonus("agility")) + int(wb["agility"]) + int(ab["agility"]))
+	var ob: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.OFFHAND)
+	var total: float = float(base_agility + roundi(get_skill_bonus("agility")) + int(wb["agility"]) + int(ab["agility"]) + int(ob["agility"]))
+	if is_challenge_completed("naked_ascetic"):
+		total *= 1.10
 	if has_hero_class("spirit"):
 		total *= 1.35
-	return maxi(1, roundi(total))
+	var res: int = maxi(1, roundi(total))
+	_stats_cache["agility"] = res
+	_stats_cache_dirty = false
+	return res
 
 
 func get_total_endurance() -> int:
+	if not _stats_cache_dirty and _stats_cache.has("endurance"):
+		return int(_stats_cache["endurance"])
 	var wb: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.WEAPON)
 	var ab: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.ARMOR)
-	var total: float = float(base_endurance + roundi(get_skill_bonus("endurance")) + int(wb["endurance"]) + int(ab["endurance"]))
+	var ob: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.OFFHAND)
+	var total: float = float(base_endurance + roundi(get_skill_bonus("endurance")) + int(wb["endurance"]) + int(ab["endurance"]) + int(ob["endurance"]))
+	if is_challenge_completed("naked_ascetic"):
+		total *= 1.10
 	if has_hero_class("spirit"):
 		total *= 1.35
-	return maxi(1, roundi(total))
+	var res: int = maxi(1, roundi(total))
+	_stats_cache["endurance"] = res
+	_stats_cache_dirty = false
+	return res
 
 
 func get_total_intellect() -> int:
+	if not _stats_cache_dirty and _stats_cache.has("intellect"):
+		return int(_stats_cache["intellect"])
 	var wb: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.WEAPON)
 	var ab: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.ARMOR)
+	var ob: Dictionary = get_equipped_stat_bonuses(ItemData.ItemType.OFFHAND)
 	var tome_int: int = 0
 	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
 		tome_int = equipped_ammo.bonus_intellect
-	var total: float = float(base_intellect + roundi(get_skill_bonus("intellect")) + int(wb["intellect"]) + int(ab["intellect"]) + tome_int)
+	var total: float = float(base_intellect + roundi(get_skill_bonus("intellect")) + int(wb["intellect"]) + int(ab["intellect"]) + int(ob["intellect"]) + tome_int)
+	if is_challenge_completed("naked_ascetic"):
+		total *= 1.10
 	if has_hero_class("spirit"):
 		total *= 1.35
 	elif has_hero_class("blood_archmage"):
 		total *= 2.0
-	return maxi(1, roundi(total))
+	var res: int = maxi(1, roundi(total))
+	_stats_cache["intellect"] = res
+	_stats_cache_dirty = false
+	return res
 
 
 func get_equipped_mana_cost_reduction() -> float:
-	if is_equipment_disabled():
+	if is_equipment_disabled() or is_gear_blocked_by_challenge():
 		return 0.0
 	var red: float = 0.0
 	if equipped_weapon != null:
-		red += equipped_weapon.bonus_mana_cost_red
+		red += equipped_weapon.bonus_mana_cost_red * get_quality_multiplier(equipped_weapon_quality) * get_star_multiplier(equipped_weapon_stars)
 	if equipped_armor != null:
-		red += equipped_armor.bonus_mana_cost_red
+		red += equipped_armor.bonus_mana_cost_red * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
+	if equipped_offhand != null:
+		red += equipped_offhand.bonus_mana_cost_red * get_quality_multiplier(equipped_offhand_quality) * get_star_multiplier(equipped_offhand_stars)
 	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
 		red += equipped_ammo.bonus_mana_cost_red
 	return clampf(red, 0.0, 0.65)
 
 
 func get_equipped_spell_power_bonus() -> float:
-	if is_equipment_disabled():
+	if is_equipment_disabled() or is_gear_blocked_by_challenge():
 		return 0.0
 	var sp: float = 0.0
 	if equipped_weapon != null:
-		sp += equipped_weapon.bonus_spell_power_pct
+		sp += equipped_weapon.bonus_spell_power_pct * get_quality_multiplier(equipped_weapon_quality) * get_star_multiplier(equipped_weapon_stars)
 	if equipped_armor != null:
-		sp += equipped_armor.bonus_spell_power_pct
+		sp += equipped_armor.bonus_spell_power_pct * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
+	if equipped_offhand != null:
+		sp += equipped_offhand.bonus_spell_power_pct * get_quality_multiplier(equipped_offhand_quality) * get_star_multiplier(equipped_offhand_stars)
 	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
 		sp += equipped_ammo.bonus_spell_power_pct
 	return maxf(0.0, sp)
 
 
 func get_effect_duration_multiplier() -> float:
-	if is_equipment_disabled():
+	if is_equipment_disabled() or is_gear_blocked_by_challenge():
 		return 1.0
 	var bonus: float = 0.0
 	if equipped_weapon != null:
-		bonus += equipped_weapon.bonus_effect_duration_pct
+		bonus += equipped_weapon.bonus_effect_duration_pct * get_quality_multiplier(equipped_weapon_quality) * get_star_multiplier(equipped_weapon_stars)
 	if equipped_armor != null:
-		bonus += equipped_armor.bonus_effect_duration_pct
+		bonus += equipped_armor.bonus_effect_duration_pct * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
+	if equipped_offhand != null:
+		bonus += equipped_offhand.bonus_effect_duration_pct * get_quality_multiplier(equipped_offhand_quality) * get_star_multiplier(equipped_offhand_stars)
 	if is_using_mage_staff() and has_matching_ammo() and equipped_ammo != null:
 		bonus += equipped_ammo.bonus_effect_duration_pct
 	return maxf(1.0, 1.0 + bonus)
 
 
+func get_raw_max_barrier() -> float:
+	if is_equipment_disabled() or is_gear_blocked_by_challenge():
+		return 0.0
+	var raw_bar: float = 0.0
+	if equipped_offhand != null:
+		var total_elvl: int = get_total_slot_enchant_level(ItemData.ItemType.OFFHAND)
+		var mult: float = get_enchant_power_multiplier(total_elvl) * get_quality_multiplier(equipped_offhand_quality) * get_star_multiplier(equipped_offhand_stars)
+		var stat_val: float = float(get_total_intellect()) if equipped_offhand.offhand_kind == ItemData.OffhandKind.TALISMAN else float(get_total_endurance())
+		raw_bar += (equipped_offhand.bonus_barrier + equipped_offhand.bonus_barrier_scale * stat_val) * mult
+	if equipped_armor != null and (equipped_armor.bonus_barrier > 0.0 or equipped_armor.bonus_barrier_scale > 0.0):
+		var total_alvl: int = get_total_slot_enchant_level(ItemData.ItemType.ARMOR)
+		var amult: float = get_enchant_power_multiplier(total_alvl) * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
+		raw_bar += (equipped_armor.bonus_barrier + equipped_armor.bonus_barrier_scale * float(get_total_endurance())) * amult
+	if well_run_blessing == "barrier_surge":
+		raw_bar *= 1.25
+	return maxf(0.0, raw_bar)
+
+
+func get_max_barrier() -> float:
+	if has_hero_class("reflector"):
+		return 0.0
+	return get_raw_max_barrier()
+
+
+func add_barrier(amount: float) -> float:
+	if amount <= 0.0:
+		return 0.0
+	if has_hero_class("reflector"):
+		return heal(amount)
+	var cap: float = maxf(get_max_barrier() * 1.5, get_max_hp() * 0.50)
+	var prev: float = current_barrier
+	current_barrier = minf(cap, current_barrier + amount)
+	var gained: float = current_barrier - prev
+	if gained > 0.0:
+		barrier_changed.emit(current_barrier, maxf(get_max_barrier(), current_barrier))
+	return gained
+
+
+func restore_barrier_full() -> void:
+	if has_hero_class("reflector"):
+		current_barrier = 0.0
+		barrier_changed.emit(0.0, 0.0)
+		return
+	var max_bar: float = get_max_barrier()
+	current_barrier = maxf(current_barrier, max_bar)
+	barrier_changed.emit(current_barrier, maxf(max_bar, current_barrier))
+
+
 func get_max_hp() -> float:
+	if not _stats_cache_dirty and _stats_cache.has("max_hp"):
+		return float(_stats_cache["max_hp"])
 	var hp_val: float = 100.0 + float(get_total_endurance()) * 60.0
 	var dark_hp_mult: float = get_dark_bonus("immortal_pact") + get_dark_bonus("abyssal_vitality") + get_dark_bonus("obsidian_bulwark")
 	if dark_hp_mult > 0.0:
@@ -2434,17 +3168,29 @@ func get_max_hp() -> float:
 	elif has_hero_class("reflector"):
 		hp_val *= 1.30
 		hp_val += float(reflector_kill_hp_stacks)
+		hp_val += get_raw_max_barrier()
+	if well_run_blessing == "barrier_surge":
+		hp_val *= 1.12
+	_stats_cache["max_hp"] = hp_val
+	_stats_cache_dirty = false
 	return hp_val
 
 
 func get_max_mana() -> float:
+	if not _stats_cache_dirty and _stats_cache.has("max_mana"):
+		return float(_stats_cache["max_mana"])
 	var mana_from_int: float = float(get_total_intellect()) * 32.0
 	if has_hero_class("blood_archmage"):
 		mana_from_int *= 3.0
-	return 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 16.0 + mana_from_int + get_skill_bonus("max_mana")
+	var mp_val: float = 40.0 + float(level) * 5.0 + float(get_total_endurance()) * 16.0 + mana_from_int + get_skill_bonus("max_mana")
+	_stats_cache["max_mana"] = mp_val
+	_stats_cache_dirty = false
+	return mp_val
 
 
 func get_mana_regen_per_sec() -> float:
+	if not _stats_cache_dirty and _stats_cache.has("mana_regen"):
+		return float(_stats_cache["mana_regen"])
 	var regen: float = 2.5 + float(get_total_endurance()) * 0.25 + float(get_total_intellect()) * 0.45 + get_skill_bonus("mana_regen")
 	regen *= (1.0 + float(magic_level - 1) * 0.04)
 	regen *= (1.0 + get_dark_bonus("mana_fountain"))
@@ -2453,6 +3199,8 @@ func get_mana_regen_per_sec() -> float:
 	if has_hero_class("alchemist"):
 		regen *= 1.15
 	regen *= maxf(0.1, 1.0 - get_curse_value("mana_burn"))
+	_stats_cache["mana_regen"] = regen
+	_stats_cache_dirty = false
 	return regen
 
 
@@ -2579,26 +3327,108 @@ func clear_ability_slot(slot_index: int) -> void:
 	save_game()
 
 
+func get_ability_casts(ability_id: String) -> int:
+	return maxi(0, int(ability_casts.get(ability_id, 0)))
+
+
+func get_ability_level(ability_id: String) -> int:
+	return clampi(int(ability_levels.get(ability_id, 1)), 1, AbilityData.MAX_SPELL_LEVEL)
+
+
+func get_next_spell_level_casts(ability_id: String) -> int:
+	var lvl: int = get_ability_level(ability_id)
+	if lvl >= AbilityData.MAX_SPELL_LEVEL:
+		return 0
+	return SPELL_LEVEL_CAST_THRESHOLDS[lvl]
+
+
+func get_ability_upgrade_page_cost(ability_id: String) -> int:
+	var lvl: int = get_ability_level(ability_id)
+	if lvl >= AbilityData.MAX_SPELL_LEVEL:
+		return 0
+	return lvl * 2
+
+
+func upgrade_ability_with_page(ability_id: String) -> Dictionary:
+	var ab: AbilityData = get_ability_by_id(ability_id)
+	if ab == null:
+		return {"success": false, "message": "Заклинание не найдено."}
+	var lvl: int = get_ability_level(ability_id)
+	if lvl >= AbilityData.MAX_SPELL_LEVEL:
+		return {"success": false, "message": "%s уже на макс. Ур.%d!" % [ab.title, AbilityData.MAX_SPELL_LEVEL]}
+	var page_cost: int = get_ability_upgrade_page_cost(ability_id)
+	var page_item: ItemData = get_cached_item("res://resources/items/ancient_page.tres")
+	if page_item == null or not remove_item(page_item, page_cost):
+		return {"success": false, "message": "Нужно %d 📜 Древних листов для улучшения чар." % page_cost}
+	ability_levels[ability_id] = lvl + 1
+	abilities_changed.emit()
+	stats_changed.emit()
+	save_game()
+	return {"success": true, "message": "📖 %s повышено до Ур.%d!" % [ab.title, lvl + 1]}
+
+
+func record_ability_cast(ability_id: String) -> void:
+	if ability_id.is_empty():
+		return
+	var next_casts: int = get_ability_casts(ability_id) + 1
+	ability_casts[ability_id] = next_casts
+	var cur_lvl: int = get_ability_level(ability_id)
+	while cur_lvl < AbilityData.MAX_SPELL_LEVEL and next_casts >= SPELL_LEVEL_CAST_THRESHOLDS[cur_lvl]:
+		cur_lvl += 1
+		ability_levels[ability_id] = cur_lvl
+	abilities_changed.emit()
+
+
+func get_ability_rune(ability_id: String) -> String:
+	var key: String = str(ability_runes.get(ability_id, ""))
+	return key if (key == "a" or key == "b") else ""
+
+
+func get_ability_rune_data(ability_id: String) -> Dictionary:
+	var r_key: String = get_ability_rune(ability_id)
+	if r_key.is_empty() or not SPELL_RUNES_CATALOG.has(ability_id):
+		return {}
+	var pair: Dictionary = SPELL_RUNES_CATALOG[ability_id] as Dictionary
+	if pair.has(r_key):
+		return pair[r_key] as Dictionary
+	return {}
+
+
+func set_ability_rune(ability_id: String, rune_key: String) -> void:
+	if rune_key != "" and rune_key != "a" and rune_key != "b":
+		return
+	if rune_key.is_empty():
+		ability_runes.erase(ability_id)
+	else:
+		ability_runes[ability_id] = rune_key
+	abilities_changed.emit()
+	save_game()
+
+
 func apply_ability_buff(ability: AbilityData, potency_scale: float = 1.0) -> void:
 	if ability == null or ability.duration <= 0.0:
 		return
-	var final_dur: float = maxf(1.0, ability.duration * get_effect_duration_multiplier())
+	var rune_data: Dictionary = get_ability_rune_data(ability.id)
+	var dur_mult: float = float(rune_data.get("duration_mult", 1.0))
+	var lvl_mult: float = AbilityData.get_level_multiplier(get_ability_level(ability.id))
+	var final_scale: float = potency_scale * lvl_mult * float(rune_data.get("power_mult", 1.0))
+	var final_dur: float = maxf(1.0, ability.duration * get_effect_duration_multiplier() * dur_mult)
 	var entry: Dictionary = {
 		"id": ability.id,
 		"title": ability.title,
 		"icon_emoji": ability.icon_emoji,
 		"remaining": final_dur,
 		"duration": final_dur,
-		"damage_pct": ability.buff_damage_pct * potency_scale,
-		"attack_speed_pct": ability.buff_attack_speed_pct * potency_scale,
-		"armor_pct": ability.buff_armor_pct * potency_scale,
-		"dodge_bonus": ability.buff_dodge_bonus * potency_scale,
-		"crit_chance_bonus": ability.buff_crit_chance_bonus * potency_scale,
-		"crit_mult_bonus": ability.buff_crit_mult_bonus * potency_scale,
-		"spell_power_pct": ability.buff_spell_power_pct * potency_scale,
-		"mana_regen_pct": ability.buff_mana_regen_pct * potency_scale,
-		"lifesteal_pct": ability.buff_lifesteal_pct * potency_scale,
-		"thorns_pct": ability.buff_thorns_pct * potency_scale,
+		"damage_pct": ability.buff_damage_pct * final_scale,
+		"attack_speed_pct": ability.buff_attack_speed_pct * final_scale,
+		"armor_pct": ability.buff_armor_pct * final_scale,
+		"dodge_bonus": ability.buff_dodge_bonus * final_scale,
+		"crit_chance_bonus": ability.buff_crit_chance_bonus * final_scale,
+		"crit_mult_bonus": ability.buff_crit_mult_bonus * final_scale,
+		"spell_power_pct": ability.buff_spell_power_pct * final_scale,
+		"mana_regen_pct": ability.buff_mana_regen_pct * final_scale,
+		"lifesteal_pct": ability.buff_lifesteal_pct * final_scale,
+		"thorns_pct": ability.buff_thorns_pct * final_scale,
 	}
 	var replaced: bool = false
 	for i: int in range(active_buffs.size()):
@@ -2608,6 +3438,7 @@ func apply_ability_buff(ability: AbilityData, potency_scale: float = 1.0) -> voi
 			break
 	if not replaced:
 		active_buffs.append(entry)
+	mark_stats_dirty()
 	buffs_changed.emit()
 	stats_changed.emit()
 
@@ -2638,6 +3469,7 @@ func clear_active_buffs() -> void:
 	if active_buffs.is_empty():
 		return
 	active_buffs.clear()
+	mark_stats_dirty()
 	buffs_changed.emit()
 	stats_changed.emit()
 
@@ -2658,6 +3490,8 @@ func get_ability_mana_cost(ability: AbilityData) -> float:
 	cost *= maxf(0.25, 1.0 - get_equipped_mana_cost_reduction())
 	if has_hero_class("blood_archmage"):
 		cost *= 0.50
+	var rune_data: Dictionary = get_ability_rune_data(ability.id)
+	cost *= float(rune_data.get("cost_mult", 1.0))
 	cost *= (1.0 + get_curse_value("clumsy_hands"))
 	return maxf(1.0, round(cost))
 
@@ -2671,20 +3505,35 @@ func get_ability_cooldown_duration(ability: AbilityData) -> float:
 	cd *= maxf(0.35, 1.0 - get_skill_bonus("ability_cd_red"))
 	if has_hero_class("blood_archmage"):
 		cd *= 0.70
+	if is_challenge_completed("speedrun_titan"):
+		cd *= 0.92
+	if well_run_blessing == "arcane_overdrive":
+		cd *= 0.85
+	var rune_data: Dictionary = get_ability_rune_data(ability.id)
+	cd *= float(rune_data.get("cd_mult", 1.0))
 	return maxf(0.4, cd)
 
 
 func get_ability_power_multiplier(ability: AbilityData) -> float:
 	if ability == null:
 		return 1.0
-	var mult: float = ability.power_multiplier
+	var mult: float = ability.power_multiplier * AbilityData.get_level_multiplier(get_ability_level(ability.id))
+	var rune_data: Dictionary = get_ability_rune_data(ability.id)
+	mult *= float(rune_data.get("power_mult", 1.0))
 	mult *= get_mastery_bonus_multiplier("magic")
-	mult *= (1.0 + get_skill_bonus("spell_power") + get_active_buff_sum("spell_power_pct") + get_equipped_spell_power_bonus() + float(get_total_intellect()) * 0.015)
+	var spell_bonus: float = get_skill_bonus("spell_power") + get_active_buff_sum("spell_power_pct") + get_equipped_spell_power_bonus() + float(get_total_intellect()) * 0.015
+	if is_challenge_completed("staff_master"):
+		spell_bonus += 0.12
+	if well_run_blessing == "arcane_overdrive":
+		spell_bonus += 0.20
+	mult *= (1.0 + spell_bonus)
 	if has_dark_skill("swift_runes"):
 		mult *= 1.35
 	if has_hero_class("blood_archmage"):
 		mult *= 1.75
 	if ability.effect_type == "heal":
+		if is_challenge_completed("no_potions_titan"):
+			mult *= 1.15
 		mult *= maxf(0.25, 1.0 - get_curse_value("blood_tax"))
 	return mult
 
@@ -2749,8 +3598,9 @@ func get_player_damage(preview_ammo_ready: bool = true) -> float:
 	var dmg: float = BASE_DAMAGE + float(get_total_strength()) * 1.5
 	if is_using_mage_staff():
 		dmg = BASE_DAMAGE + float(get_total_strength()) * 0.8 + float(get_total_intellect()) * 2.2
-	if not is_equipment_disabled() and equipped_weapon != null and equipped_weapon.bonus_damage > 0.0:
-		dmg += equipped_weapon.bonus_damage * get_enchant_power_multiplier(total_weapon_elvl)
+	if not is_equipment_disabled() and not is_gear_blocked_by_challenge() and equipped_weapon != null and equipped_weapon.bonus_damage > 0.0:
+		var w_scale: float = get_quality_multiplier(equipped_weapon_quality) * get_star_multiplier(equipped_weapon_stars)
+		dmg += equipped_weapon.bonus_damage * get_enchant_power_multiplier(total_weapon_elvl) * w_scale
 
 	if is_using_ranged_weapon():
 		if preview_ammo_ready and has_matching_ammo():
@@ -2778,11 +3628,13 @@ func get_player_damage(preview_ammo_ready: bool = true) -> float:
 		dmg *= (1.0 + get_skill_bonus("melee_dmg"))
 
 	dmg *= (1.0 + get_dark_bonus("awakening_power") + get_soul_harvest_bonus() + get_berserk_bonus() + get_active_buff_sum("damage_pct") + get_pet_secondary_value("enemy_burn"))
+	if well_run_blessing == "damage_surge":
+		dmg *= 1.15
 	return dmg
 
 
 func get_player_armor_penetration() -> float:
-	if is_equipment_disabled():
+	if is_equipment_disabled() or is_gear_blocked_by_challenge():
 		return 0.0
 	var pen: float = 0.0
 	if equipped_weapon != null:
@@ -2795,6 +3647,8 @@ func get_player_armor_penetration() -> float:
 func get_player_attack_interval() -> float:
 	var base_interval: float = maxf(0.42, 2.4 / (1.0 + float(get_total_agility()) * 0.08))
 	var wind_speed: float = get_dark_bonus("wind_mastery_dark") + get_active_buff_sum("attack_speed_pct")
+	if is_challenge_completed("speedrun_titan"):
+		wind_speed += 0.08
 	if wind_speed > 0.0:
 		base_interval /= (1.0 + wind_speed)
 	return maxf(0.26, base_interval * (1.0 + get_curse_value("lead_shackles")))
@@ -2813,6 +3667,11 @@ func get_dodge_chance() -> float:
 
 func get_armor_reduction() -> float:
 	var raw_armor: float = float(get_total_endurance()) * 0.6 + get_skill_bonus("flat_armor") + get_dark_bonus("void_plating")
+	if not is_equipment_disabled() and not is_gear_blocked_by_challenge():
+		if equipped_armor != null and equipped_armor.bonus_defense > 0.0:
+			raw_armor += equipped_armor.bonus_defense * get_enchant_power_multiplier(get_total_slot_enchant_level(ItemData.ItemType.ARMOR)) * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
+		if equipped_offhand != null and equipped_offhand.bonus_defense > 0.0:
+			raw_armor += equipped_offhand.bonus_defense * get_enchant_power_multiplier(get_total_slot_enchant_level(ItemData.ItemType.OFFHAND)) * get_quality_multiplier(equipped_offhand_quality) * get_star_multiplier(equipped_offhand_stars)
 	var dark_armor_pct: float = (0.25 if has_dark_skill("void_plating") else 0.0) + (0.35 if has_dark_skill("obsidian_bulwark") else 0.0)
 	if dark_armor_pct > 0.0:
 		raw_armor *= (1.0 + dark_armor_pct)
@@ -2831,7 +3690,7 @@ func get_damage_reflection_pct() -> float:
 
 func get_crit_chance() -> float:
 	var extra: float = get_active_buff_sum("crit_chance_bonus") + get_pet_effect_value("crit_lightning")
-	if not is_equipment_disabled() and equipped_weapon != null:
+	if not is_equipment_disabled() and not is_gear_blocked_by_challenge() and equipped_weapon != null:
 		extra += equipped_weapon.bonus_crit_chance
 	if is_using_ranged_weapon():
 		extra += float(maxi(0, ranged_level - 1)) * 0.003
@@ -2855,6 +3714,8 @@ func get_gold_multiplier() -> float:
 	var mult: float = (1.0 + get_skill_bonus("gold_mult") + get_dark_bonus("abyssal_greed") + get_pet_effect_value("gold_echo")) * get_difficulty_gold_mult()
 	if has_hero_class("alchemist"):
 		mult *= 1.15
+	if well_run_blessing == "greed_fortune":
+		mult *= 1.25
 	return mult
 
 
@@ -3093,7 +3954,7 @@ func set_afk_mode(enabled: bool) -> void:
 		afk_gold_earned = 0.0
 		afk_xp_earned = 0.0
 		_afk_ui_sync_timer = 0.0
-		Engine.max_fps = NORMAL_FPS_LIMIT
+		Engine.max_fps = afk_target_fps
 		DisplayServer.screen_set_keep_on(true)
 	else:
 		DisplayServer.screen_set_keep_on(false)
@@ -3134,10 +3995,421 @@ func select_location(location: LocationData) -> bool:
 		return false
 	if current_location == location:
 		return false
+	if wave_dungeon_active:
+		wave_dungeon_active = false
+		wave_dungeon_wave = 0
+		wave_dungeon_changed.emit()
 	current_location = location
+	consecutive_location_wins = 0
+	if current_location.is_one_attempt_mine and mine_depth < maxi(0, mine_start_depth - 1):
+		mine_depth = maxi(0, mine_start_depth - 1)
+		mine_state_changed.emit()
 	location_changed.emit(current_location)
 	save_game()
 	return true
+
+
+func is_mine_checkpoint_unlocked(depth: int) -> bool:
+	return depth <= 1 or unlocked_mine_checkpoints.has(depth)
+
+
+func get_mine_checkpoint_cost(depth: int) -> int:
+	return int(MINE_CHECKPOINT_COSTS.get(depth, 10))
+
+
+func buy_mine_checkpoint(depth: int) -> Dictionary:
+	if not MINE_CHECKPOINT_DEPTHS.has(depth):
+		return {"success": false, "message": "Неизвестный чекпоинт."}
+	if is_mine_checkpoint_unlocked(depth):
+		mine_start_depth = depth
+		mine_state_changed.emit()
+		save_game()
+		return {"success": true, "message": "⛏️ Точка старта в Шахте установлена: Глубина %d." % depth}
+	var cost: int = get_mine_checkpoint_cost(depth)
+	var ore_item: ItemData = get_cached_item("res://resources/items/abyss_ore.tres")
+	if ore_item == null or not remove_item(ore_item, cost):
+		return {"success": false, "message": "Нужно %d ⛏️ Руды Бездны для открытия Глубины %d." % [cost, depth]}
+	unlocked_mine_checkpoints.append(depth)
+	mine_start_depth = depth
+	mine_state_changed.emit()
+	save_game()
+	return {"success": true, "message": "⛏️ Чекпоинт Шахты (Глубина %d) открыт навсегда!" % depth}
+
+
+func set_mine_start_depth(depth: int) -> void:
+	if not is_mine_checkpoint_unlocked(depth):
+		return
+	mine_start_depth = maxi(1, depth)
+	mine_state_changed.emit()
+	save_game()
+
+
+func set_auto_route_settings(enabled: bool, threshold: int) -> void:
+	auto_route_enabled = enabled
+	auto_route_wins_threshold = clampi(threshold, 3, 25)
+	if not auto_route_enabled:
+		consecutive_location_wins = 0
+	stats_changed.emit()
+	save_game()
+
+
+func record_location_win_for_auto_route() -> String:
+	if wave_dungeon_active or is_mine_location():
+		return ""
+	consecutive_location_wins += 1
+	if not auto_route_enabled or consecutive_location_wins < auto_route_wins_threshold:
+		return ""
+	var cur_idx: int = locations.find(current_location)
+	if cur_idx < 0:
+		return ""
+	for next_i: int in range(cur_idx + 1, locations.size()):
+		var candidate: LocationData = locations[next_i]
+		if candidate != null and not candidate.is_one_attempt_mine and is_location_unlocked(candidate):
+			if select_location(candidate):
+				return "🧭 Авто-маршрут: переход в «%s»!" % candidate.location_name
+	return ""
+
+
+func retreat_to_safer_location() -> String:
+	if locations.is_empty():
+		return ""
+	var cur_idx: int = locations.find(current_location)
+	if cur_idx <= 0:
+		heal(get_max_hp() * 0.25)
+		return ""
+	for prev_i: int in range(cur_idx - 1, -1, -1):
+		var candidate: LocationData = locations[prev_i]
+		if candidate != null and not candidate.is_one_attempt_mine and is_location_unlocked(candidate):
+			select_location(candidate)
+			heal(get_max_hp() * 0.25)
+			return "🧭 Отступление в «%s» при критическом HP!" % candidate.location_name
+	return ""
+
+
+func record_bestiary_kill(enemy_id: String) -> void:
+	if enemy_id.is_empty():
+		return
+	bestiary_kills[enemy_id] = get_bestiary_kills(enemy_id) + 1
+	bestiary_changed.emit()
+
+
+func get_bestiary_kills(enemy_id: String) -> int:
+	return maxi(0, int(bestiary_kills.get(enemy_id, 0)))
+
+
+func get_bestiary_damage_bonus(enemy_id: String) -> float:
+	var kills: int = get_bestiary_kills(enemy_id)
+	var bonus: float = 0.0
+	for m: Dictionary in BESTIARY_MILESTONES:
+		if kills >= int(m["kills"]):
+			bonus += float(m["dmg_bonus"])
+	return bonus
+
+
+func get_bestiary_gold_bonus(enemy_id: String) -> float:
+	return 0.03 if get_bestiary_kills(enemy_id) >= 1000 else 0.0
+
+
+func get_bestiary_drop_bonus(enemy_id: String) -> float:
+	return 0.10 if get_bestiary_kills(enemy_id) >= 10000 else 0.0
+
+
+func can_sacrifice_to_well() -> Dictionary:
+	if well_greed_cooldown_remaining > 0.0:
+		var mins: int = ceili(well_greed_cooldown_remaining / 60.0)
+		return {"ok": false, "reason": "Колодец Жадности восстанавливается (%d мин)." % mins}
+	if gold < 100.0:
+		return {"ok": false, "reason": "Минимум для жертвы — 100 золота."}
+	return {"ok": true, "reason": "Готов принять всё золото (%s з.)." % NumberFormatter.format_number(gold)}
+
+
+func get_well_blessing_label() -> String:
+	match well_run_blessing:
+		"damage_surge":
+			return "🔥 Благословение: +15% урона"
+		"barrier_surge":
+			return "🛡️ Благословение: +25% Барьера, +12% Max HP"
+		"greed_fortune":
+			return "🪙 Благословение: +25% золота"
+		"arcane_overdrive":
+			return "🔮 Благословение: +20% Чар, -15% КД"
+	return "Нет активного благословения рана"
+
+
+func sacrifice_all_gold_to_well() -> Dictionary:
+	var check: Dictionary = can_sacrifice_to_well()
+	if not bool(check.get("ok", false)):
+		return {"success": false, "message": str(check.get("reason", ""))}
+	var sacrificed: float = gold
+	gold = 0.0
+	well_greed_cooldown_remaining = WELL_OF_GREED_COOLDOWN
+
+	var tier: int = clampi(int(floor(log(maxf(10.0, sacrificed)) / log(10.0))) - 1, 1, 6)
+	var rewards: Array[String] = []
+	var ore_amt: int = maxi(1, tier)
+	var ore_item: ItemData = get_cached_item("res://resources/items/abyss_ore.tres")
+	if ore_item != null:
+		add_item(ore_item, ore_amt, true)
+		rewards.append("⛏️ Руда Бездны x%d" % ore_amt)
+
+	var page_amt: int = maxi(1, floori(float(tier + 1) / 2.0))
+	var page_item: ItemData = get_cached_item("res://resources/items/ancient_page.tres")
+	if page_item != null:
+		add_item(page_item, page_amt, true)
+		rewards.append("📜 Древний лист x%d" % page_amt)
+
+	if tier >= 3:
+		curse_reroll_tokens += 1
+		rewards.append("🎲 Жетон реролла x1")
+
+	var seed_paths: Array[String] = [
+		"res://resources/items/moon_mint_seed.tres",
+		"res://resources/items/sun_root_seed.tres",
+		"res://resources/items/light_clover_seed.tres",
+		"res://resources/items/honey_berry_seed.tres",
+	]
+	var s_item: ItemData = get_cached_item(seed_paths[randi() % seed_paths.size()])
+	if s_item != null:
+		add_item(s_item, 1, true)
+		rewards.append(s_item.get_display_name())
+
+	var blessings: Array[String] = ["damage_surge", "barrier_surge", "greed_fortune", "arcane_overdrive"]
+	well_run_blessing = blessings[randi() % blessings.size()]
+	mark_stats_dirty()
+	stats_changed.emit()
+	hp_changed.emit(current_hp, get_max_hp())
+	barrier_changed.emit(current_barrier, get_max_barrier())
+	save_game()
+	return {
+		"success": true,
+		"message": "⛲ Пожертвовано %s з.! Получено: %s | %s" % [
+			NumberFormatter.format_number(sacrificed),
+			", ".join(rewards),
+			get_well_blessing_label(),
+		],
+	}
+
+
+func _ensure_loadouts() -> void:
+	while combat_loadouts.size() < LOADOUT_COUNT:
+		var idx: int = combat_loadouts.size() + 1
+		combat_loadouts.append({
+			"saved": false,
+			"name": "Комплект %d" % idx,
+			"class_id": "",
+			"weapon_path": "",
+			"armor_path": "",
+			"offhand_path": "",
+			"ammo_path": "",
+			"ability_ids": [],
+			"pet_id": "",
+		})
+	if combat_loadouts.size() > LOADOUT_COUNT:
+		combat_loadouts.resize(LOADOUT_COUNT)
+
+
+func has_combat_loadout_saved(idx: int) -> bool:
+	_ensure_loadouts()
+	if idx < 0 or idx >= combat_loadouts.size():
+		return false
+	return bool(combat_loadouts[idx].get("saved", false))
+
+
+func get_combat_loadout_summary(idx: int) -> String:
+	_ensure_loadouts()
+	if idx < 0 or idx >= combat_loadouts.size():
+		return "Пусто"
+	var l: Dictionary = combat_loadouts[idx]
+	if not bool(l.get("saved", false)):
+		return "Пустой слот — нажмите «💾 Сохранить»"
+	var hc: HeroClassData = get_class_by_id(str(l.get("class_id", "wanderer")))
+	var cls_title: String = hc.title if hc != null else str(l.get("class_id", ""))
+	var w_item: ItemData = get_cached_item(str(l.get("weapon_path", "")))
+	var o_item: ItemData = get_cached_item(str(l.get("offhand_path", "")))
+	return "%s | %s | %s" % [
+		cls_title,
+		w_item.item_name if w_item != null else "без оружия",
+		o_item.item_name if o_item != null else "без оффхенда",
+	]
+
+
+func save_combat_loadout(idx: int) -> Dictionary:
+	_ensure_loadouts()
+	if idx < 0 or idx >= LOADOUT_COUNT:
+		return {"success": false, "message": "Неверный слот комплекта."}
+	combat_loadouts[idx] = {
+		"saved": true,
+		"name": "Комплект %d" % (idx + 1),
+		"class_id": selected_class_id,
+		"weapon_path": equipped_weapon.resource_path if equipped_weapon != null else "",
+		"armor_path": equipped_armor.resource_path if equipped_armor != null else "",
+		"offhand_path": equipped_offhand.resource_path if equipped_offhand != null else "",
+		"ammo_path": equipped_ammo.resource_path if equipped_ammo != null else "",
+		"ability_ids": equipped_ability_ids.duplicate(),
+		"pet_id": equipped_pet_id,
+	}
+	loadouts_changed.emit()
+	save_game()
+	return {"success": true, "message": "💾 Комплект %d сохранён!" % (idx + 1)}
+
+
+func _equip_best_matching_path(target_path: String, expected_type: ItemData.ItemType) -> void:
+	if target_path.is_empty():
+		return
+	var current_item: ItemData = get_equipped_slot_item(expected_type)
+	if current_item != null and current_item.resource_path == target_path:
+		return
+	var best_idx: int = -1
+	var best_score: int = -1
+	for i: int in range(inventory.size()):
+		var entry: Dictionary = inventory[i]
+		var it: ItemData = entry["item"] as ItemData
+		if it != null and it.item_type == expected_type and it.resource_path == target_path:
+			var sc: int = get_entry_stars(entry) * 1000 + get_entry_quality(entry)
+			if sc > best_score:
+				best_score = sc
+				best_idx = i
+	if best_idx >= 0:
+		var chosen: Dictionary = inventory[best_idx]
+		use_or_equip_item(chosen["item"] as ItemData, get_entry_quality(chosen), get_entry_stars(chosen))
+
+
+func apply_combat_loadout(idx: int) -> Dictionary:
+	_ensure_loadouts()
+	if idx < 0 or idx >= LOADOUT_COUNT:
+		return {"success": false, "message": "Комплект не найден."}
+	var l: Dictionary = combat_loadouts[idx]
+	if not bool(l.get("saved", false)):
+		return {"success": false, "message": "Комплект %d ещё пуст." % (idx + 1)}
+	var cls_id: String = str(l.get("class_id", ""))
+	if not cls_id.is_empty() and cls_id != selected_class_id:
+		select_hero_class(cls_id)
+
+	var w_path: String = str(l.get("weapon_path", ""))
+	if w_path.is_empty():
+		unequip_slot(ItemData.ItemType.WEAPON)
+	else:
+		_equip_best_matching_path(w_path, ItemData.ItemType.WEAPON)
+
+	var a_path: String = str(l.get("armor_path", ""))
+	if a_path.is_empty():
+		unequip_slot(ItemData.ItemType.ARMOR)
+	else:
+		_equip_best_matching_path(a_path, ItemData.ItemType.ARMOR)
+
+	var o_path: String = str(l.get("offhand_path", ""))
+	if o_path.is_empty():
+		unequip_slot(ItemData.ItemType.OFFHAND)
+	else:
+		_equip_best_matching_path(o_path, ItemData.ItemType.OFFHAND)
+
+	var am_path: String = str(l.get("ammo_path", ""))
+	if not am_path.is_empty() and (equipped_ammo == null or equipped_ammo.resource_path != am_path):
+		var am_item: ItemData = get_cached_item(am_path)
+		if am_item != null and get_item_count_in_inventory(am_item) > 0:
+			use_or_equip_item(am_item)
+
+	var saved_ab: Variant = l.get("ability_ids", [])
+	if saved_ab is Array:
+		var ab_arr: Array = saved_ab as Array
+		for s_i: int in range(mini(MAX_ACTIVE_ABILITY_SLOTS, ab_arr.size())):
+			var aid: String = str(ab_arr[s_i])
+			if aid.is_empty():
+				clear_ability_slot(s_i)
+			else:
+				equip_ability_to_slot(aid, s_i)
+
+	var p_id: String = str(l.get("pet_id", ""))
+	if p_id.is_empty():
+		unequip_pet()
+	elif has_pet_owned(p_id) and not is_pet_on_expedition(p_id):
+		equip_pet(p_id)
+
+	mark_stats_dirty()
+	loadouts_changed.emit()
+	save_game()
+	return {"success": true, "message": "🎒 Применён Комплект %d!" % (idx + 1)}
+
+
+func start_wave_dungeon() -> Dictionary:
+	if wave_dungeon_active:
+		return {"success": false, "message": "Данж волн уже запущен!"}
+	_wave_dungeon_return_location_id = current_location.id if current_location != null else "quiet_glade"
+	wave_dungeon_active = true
+	wave_dungeon_wave = 1
+	restore_barrier_full()
+	wave_dungeon_changed.emit()
+	return {"success": true, "message": "🏰 Вход в Данж волн (10 волн)! Бой начался!"}
+
+
+func abort_wave_dungeon() -> void:
+	if not wave_dungeon_active:
+		return
+	wave_dungeon_active = false
+	wave_dungeon_wave = 0
+	var ret_loc: LocationData = get_location_by_id(_wave_dungeon_return_location_id)
+	if ret_loc != null and is_location_unlocked(ret_loc):
+		current_location = ret_loc
+		location_changed.emit(current_location)
+	wave_dungeon_changed.emit()
+
+
+func get_wave_dungeon_enemy_for_wave(wave_idx: int) -> EnemyData:
+	if all_enemies.is_empty():
+		return null
+	if wave_idx >= WAVE_DUNGEON_TOTAL_WAVES:
+		if _enemies_by_id.has("curse_warden"):
+			return _enemies_by_id["curse_warden"] as EnemyData
+	var unlocked_pool: Array[EnemyData] = []
+	for loc: LocationData in locations:
+		if loc != null and not loc.is_one_attempt_mine and loc.id != FINAL_BOSS_LOCATION_ID and is_location_unlocked(loc):
+			for e: EnemyData in loc.enemies:
+				if e != null and not unlocked_pool.has(e):
+					unlocked_pool.append(e)
+	if unlocked_pool.is_empty():
+		unlocked_pool = all_enemies.duplicate()
+	var idx: int = clampi(floori(float(wave_idx - 1) * float(unlocked_pool.size()) / float(WAVE_DUNGEON_TOTAL_WAVES)), 0, unlocked_pool.size() - 1)
+	return unlocked_pool[idx]
+
+
+func advance_wave_dungeon_on_kill() -> Dictionary:
+	if not wave_dungeon_active:
+		return {"completed": false, "message": ""}
+	if wave_dungeon_wave < WAVE_DUNGEON_TOTAL_WAVES:
+		wave_dungeon_wave += 1
+		wave_dungeon_changed.emit()
+		return {"completed": false, "message": "🏰 Волна %d / %d!" % [wave_dungeon_wave, WAVE_DUNGEON_TOTAL_WAVES]}
+
+	wave_dungeon_active = false
+	wave_dungeon_wave = 0
+	wave_dungeon_clears += 1
+	var ore_item: ItemData = get_cached_item("res://resources/items/abyss_ore.tres")
+	if ore_item != null:
+		add_item(ore_item, 2, true)
+	var page_item: ItemData = get_cached_item("res://resources/items/ancient_page.tres")
+	if page_item != null:
+		add_item(page_item, 2, true)
+	var chest_gold: float = round(450.0 * get_gold_multiplier())
+	add_gold(chest_gold)
+	var chest_offhand: ItemData = get_cached_item("res://resources/items/aegis_bulwark_shield.tres" if randf() < 0.5 else "res://resources/items/astral_arcane_talisman.tres")
+	var bonus_drop: String = ""
+	if chest_offhand != null and max_unlocked_difficulty >= 5:
+		add_item(chest_offhand, 1, true, 100, 1, true)
+		bonus_drop = " + %s" % chest_offhand.get_display_name()
+
+	var ret_loc: LocationData = get_location_by_id(_wave_dungeon_return_location_id)
+	if ret_loc != null and is_location_unlocked(ret_loc) and current_location != ret_loc:
+		current_location = ret_loc
+		location_changed.emit(current_location)
+	wave_dungeon_changed.emit()
+	save_game()
+	return {
+		"completed": true,
+		"message": "🏆 Сундук Данжа волн: +%s з., ⛏️ Руда x2, 📜 Листы x2%s!" % [
+			NumberFormatter.format_number(chest_gold),
+			bonus_drop,
+		],
+	}
 
 
 func record_mine_kill() -> void:
@@ -3228,8 +4500,14 @@ func apply_damage(raw_damage: float) -> float:
 		if mana_shield_cap > 0.0:
 			spend_mana(mana_shield_cap)
 			reduced = maxf(1.0, reduced - mana_shield_cap)
-	current_hp = maxf(0.0, current_hp - reduced)
-	hp_changed.emit(current_hp, get_max_hp())
+	if not has_hero_class("reflector") and current_barrier > 0.0:
+		var absorbed: float = minf(current_barrier, reduced)
+		current_barrier = maxf(0.0, current_barrier - absorbed)
+		reduced = maxf(0.0, reduced - absorbed)
+		barrier_changed.emit(current_barrier, maxf(get_max_barrier(), current_barrier))
+	if reduced > 0.0:
+		current_hp = maxf(0.0, current_hp - reduced)
+		hp_changed.emit(current_hp, get_max_hp())
 	return reduced
 
 
@@ -3268,6 +4546,7 @@ func upgrade_stat_with_skill_point(stat_name: String) -> bool:
 	if not _increment_base_stat(stat_name):
 		return false
 	skill_points -= 1
+	mark_stats_dirty()
 	var new_max_hp: float = get_max_hp()
 	var new_max_mana: float = get_max_mana()
 	if new_max_hp > prev_max_hp:
@@ -3278,6 +4557,7 @@ func upgrade_stat_with_skill_point(stat_name: String) -> bool:
 	skills_changed.emit()
 	hp_changed.emit(current_hp, new_max_hp)
 	mana_changed.emit(current_mana, new_max_mana)
+	barrier_changed.emit(current_barrier, get_max_barrier())
 	save_game()
 	return true
 
@@ -3291,6 +4571,7 @@ func train_stat_with_gold(stat_name: String) -> bool:
 	if not _increment_base_stat(stat_name):
 		return false
 	gold -= cost
+	mark_stats_dirty()
 	var new_max_hp: float = get_max_hp()
 	var new_max_mana: float = get_max_mana()
 	if new_max_hp > prev_max_hp:
@@ -3300,6 +4581,7 @@ func train_stat_with_gold(stat_name: String) -> bool:
 	stats_changed.emit()
 	hp_changed.emit(current_hp, new_max_hp)
 	mana_changed.emit(current_mana, new_max_mana)
+	barrier_changed.emit(current_barrier, get_max_barrier())
 	save_game()
 	return true
 
@@ -3321,9 +4603,48 @@ func _increment_base_stat(stat_name: String) -> bool:
 	return false
 
 
-func add_item(item: ItemData, amount: int = 1, notify: bool = true) -> void:
+func get_entry_quality(entry: Dictionary) -> int:
+	return clampi(int(entry.get("quality_pct", 100)), 80, 125)
+
+
+func get_entry_stars(entry: Dictionary) -> int:
+	return clampi(int(entry.get("star_level", 1)), 1, 5)
+
+
+func set_auto_salvage_settings(mode: String, min_quality: int) -> void:
+	if mode == "sell" or mode == "salvage":
+		auto_salvage_mode = mode
+	else:
+		auto_salvage_mode = "off"
+	auto_salvage_min_quality = clampi(min_quality, 80, 125)
+	inventory_changed.emit()
+	save_game()
+
+
+func add_item(item: ItemData, amount: int = 1, notify: bool = true, quality_pct: int = 100, star_level: int = 1, from_loot: bool = false) -> void:
 	if item == null or amount <= 0:
 		return
+	var is_gear: bool = item.is_equipment()
+	var final_q: int = randi_range(80, 125) if (from_loot and is_gear) else (clampi(quality_pct, 80, 125) if is_gear else 100)
+	var final_s: int = clampi(star_level, 1, 5) if is_gear else 1
+
+	if from_loot and is_gear and not item.is_dark_forged and auto_salvage_mode != "off" and final_q < auto_salvage_min_quality:
+		if auto_salvage_mode == "sell":
+			var sell_g: float = maxf(1.0, round(get_item_sell_value(item) * get_quality_multiplier(final_q) * float(amount)))
+			add_gold(sell_g)
+			return
+		elif auto_salvage_mode == "salvage":
+			abyss_ore_shards += amount
+			var forged_ores: int = floori(float(abyss_ore_shards) / 10.0)
+			if forged_ores > 0:
+				abyss_ore_shards -= forged_ores * 10
+				var ore_item: ItemData = get_cached_item("res://resources/items/abyss_ore.tres")
+				if ore_item != null:
+					add_item(ore_item, forged_ores, true, 100, 1, false)
+			inventory_changed.emit()
+			stats_changed.emit()
+			return
+
 	if item.item_type == ItemData.ItemType.AMMO and equipped_ammo != null and equipped_ammo.id == item.id and not is_equipment_disabled():
 		equipped_ammo_count += amount
 		inventory_changed.emit()
@@ -3334,24 +4655,29 @@ func add_item(item: ItemData, amount: int = 1, notify: bool = true) -> void:
 	for entry: Dictionary in inventory:
 		var existing: ItemData = entry["item"] as ItemData
 		if existing != null and existing.id == item.id:
-			entry["count"] = int(entry["count"]) + amount
-			inventory_changed.emit()
-			if notify:
-				item_acquired.emit(item, amount)
-			return
-	inventory.append({"item": item, "count": amount})
+			if not is_gear or (get_entry_quality(entry) == final_q and get_entry_stars(entry) == final_s):
+				entry["count"] = int(entry["count"]) + amount
+				inventory_changed.emit()
+				if notify:
+					item_acquired.emit(item, amount)
+				return
+	inventory.append({"item": item, "count": amount, "quality_pct": final_q, "star_level": final_s})
 	inventory_changed.emit()
 	if notify:
 		item_acquired.emit(item, amount)
 
 
-func remove_item(item: ItemData, amount: int = 1) -> bool:
+func remove_item(item: ItemData, amount: int = 1, quality_pct: int = -1, star_level: int = -1) -> bool:
 	if item == null or amount <= 0:
 		return false
 	for i: int in range(inventory.size()):
 		var entry: Dictionary = inventory[i]
 		var existing: ItemData = entry["item"] as ItemData
 		if existing != null and existing.id == item.id:
+			if quality_pct >= 0 and get_entry_quality(entry) != quality_pct:
+				continue
+			if star_level >= 1 and get_entry_stars(entry) != star_level:
+				continue
 			var count: int = int(entry["count"])
 			if count < amount:
 				return false
@@ -3368,19 +4694,94 @@ func remove_item(item: ItemData, amount: int = 1) -> bool:
 func get_item_count_in_inventory(item: ItemData) -> int:
 	if item == null:
 		return 0
+	var total: int = 0
 	for entry: Dictionary in inventory:
 		var existing: ItemData = entry["item"] as ItemData
 		if existing != null and existing.id == item.id:
-			return int(entry["count"])
-	return 0
+			total += int(entry["count"])
+	return total
 
 
-func sell_item(item: ItemData, amount: int = 1) -> String:
+func get_merge_candidates() -> Array[Dictionary]:
+	var buckets: Dictionary = {}
+	for entry: Dictionary in inventory:
+		var it: ItemData = entry["item"] as ItemData
+		if it == null or not it.is_equipment():
+			continue
+		var stars: int = get_entry_stars(entry)
+		if stars >= 5:
+			continue
+		var key: String = "%s|%d" % [it.id, stars]
+		if not buckets.has(key):
+			buckets[key] = {"item": it, "star_level": stars, "total": 0, "max_quality": 80}
+		var b: Dictionary = buckets[key] as Dictionary
+		b["total"] = int(b["total"]) + int(entry["count"])
+		b["max_quality"] = maxi(int(b["max_quality"]), get_entry_quality(entry))
+	var res: Array[Dictionary] = []
+	for k: Variant in buckets.keys():
+		var b: Dictionary = buckets[k] as Dictionary
+		if int(b["total"]) >= 2:
+			res.append(b)
+	return res
+
+
+func merge_duplicate_item(item_id: String, star_level: int) -> Dictionary:
+	if star_level < 1 or star_level >= 5:
+		return {"success": false, "message": "Максимальный уровень слияния: ★5."}
+	var matching: Array[Dictionary] = []
+	var total_cnt: int = 0
+	var target_item: ItemData = null
+	var best_q: int = 80
+	for entry: Dictionary in inventory:
+		var it: ItemData = entry["item"] as ItemData
+		if it != null and it.id == item_id and get_entry_stars(entry) == star_level:
+			matching.append(entry)
+			total_cnt += int(entry["count"])
+			target_item = it
+			best_q = maxi(best_q, get_entry_quality(entry))
+	if target_item == null or total_cnt < 2:
+		return {"success": false, "message": "Нужно минимум 2 дубликата одного ★ уровня."}
+
+	matching.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return get_entry_quality(a) < get_entry_quality(b)
+	)
+	var consumed: int = 0
+	for m: Dictionary in matching:
+		var q: int = get_entry_quality(m)
+		var avail: int = int(m["count"])
+		var take: int = mini(2 - consumed, avail)
+		if take > 0 and remove_item(target_item, take, q, star_level):
+			consumed += take
+		if consumed >= 2:
+			break
+	if consumed < 2:
+		return {"success": false, "message": "Не удалось объединить дубликаты."}
+
+	var next_star: int = star_level + 1
+	add_item(target_item, 1, true, best_q, next_star, false)
+	save_game()
+	return {
+		"success": true,
+		"message": "⭐ Слияние! %s улучшен до ★%d (%d%% кач.)!" % [target_item.get_display_name(), next_star, best_q],
+	}
+
+
+func sell_item(item: ItemData, amount: int = 1, quality_pct: int = -1, star_level: int = -1) -> String:
 	if item == null or amount <= 0:
 		return ""
-	if not remove_item(item, amount):
+	var use_q: int = quality_pct
+	var use_s: int = star_level
+	if use_q < 0 or use_s < 1:
+		for entry: Dictionary in inventory:
+			var ex: ItemData = entry["item"] as ItemData
+			if ex != null and ex.id == item.id:
+				use_q = get_entry_quality(entry)
+				use_s = get_entry_stars(entry)
+				break
+	if not remove_item(item, amount, quality_pct, star_level):
 		return ""
-	var total_gold: float = get_item_sell_value(item) * float(amount)
+	var scale: float = (get_quality_multiplier(use_q) * get_star_multiplier(use_s)) if item.is_equipment() else 1.0
+	var total_gold: float = maxf(1.0, round(get_item_sell_value(item) * scale)) * float(amount)
 	add_gold(total_gold)
 	save_game()
 	return "Продано %s x%d (+%s з.)." % [
@@ -3478,11 +4879,13 @@ func apply_potion_buff(item: ItemData, duration_scale: float = 1.0) -> void:
 	stats_changed.emit()
 
 
-func use_or_equip_item(item: ItemData) -> String:
+func use_or_equip_item(item: ItemData, quality_pct: int = -1, star_level: int = -1) -> String:
 	if item == null:
 		return ""
 	match item.item_type:
 		ItemData.ItemType.CONSUMABLE:
+			if is_potions_blocked_by_challenge():
+				return "🏆 Испытание «Без зелий до Титана» блокирует использование зелий!"
 			var has_heal: bool = item.heal_amount > 0.0 or item.heal_pct > 0.0
 			var has_mana: bool = item.mana_amount > 0.0 or item.mana_pct > 0.0
 			var has_buff: bool = item.is_buff_potion()
@@ -3537,41 +4940,71 @@ func use_or_equip_item(item: ItemData) -> String:
 			return "Урожай %s используется в котле зельеварения Убежища (или продаётся в лавке)." % item.get_display_name()
 		ItemData.ItemType.MATERIAL:
 			return "Ресурс Шахты %s используется в 🔥 Тёмной кузне для ковки вечного снаряжения и древних книг (не сбрасывается между ранами)." % item.get_display_name()
-		ItemData.ItemType.WEAPON:
+		ItemData.ItemType.WEAPON, ItemData.ItemType.ARMOR, ItemData.ItemType.OFFHAND:
 			if is_equipment_disabled():
-				return "Класс Спирит не может носить оружие."
-			if remove_item(item, 1):
-				if equipped_weapon != null:
-					add_item(equipped_weapon, 1, false)
-				equipped_weapon = item
+				return "Класс Спирит не может носить экипировку."
+			if is_gear_blocked_by_challenge():
+				return "🏆 Испытание «Аскет» запрещает экипировку!"
+			if is_non_staff_blocked_by_challenge():
+				if item.item_type == ItemData.ItemType.WEAPON and not item.is_mage_staff():
+					return "🏆 Испытание «Путь Арканы» разрешает только магические посохи!"
+				if item.item_type == ItemData.ItemType.OFFHAND and item.offhand_kind != ItemData.OffhandKind.TALISMAN:
+					return "🏆 Испытание «Путь Арканы» разрешает только талисманы!"
+			var target_q: int = quality_pct
+			var target_s: int = star_level
+			if target_q < 0 or target_s < 1:
+				var best_sc: int = -1
+				for entry: Dictionary in inventory:
+					var ex: ItemData = entry["item"] as ItemData
+					if ex != null and ex.id == item.id:
+						var sc: int = get_entry_stars(entry) * 1000 + get_entry_quality(entry)
+						if sc > best_sc:
+							best_sc = sc
+							target_q = get_entry_quality(entry)
+							target_s = get_entry_stars(entry)
+			if target_q < 0:
+				target_q = 100
+			if target_s < 1:
+				target_s = 1
+			if remove_item(item, 1, target_q, target_s):
+				if item.item_type == ItemData.ItemType.WEAPON:
+					if equipped_weapon != null:
+						add_item(equipped_weapon, 1, false, equipped_weapon_quality, equipped_weapon_stars, false)
+					equipped_weapon = item
+					equipped_weapon_quality = target_q
+					equipped_weapon_stars = target_s
+				elif item.item_type == ItemData.ItemType.ARMOR:
+					if equipped_armor != null:
+						add_item(equipped_armor, 1, false, equipped_armor_quality, equipped_armor_stars, false)
+					equipped_armor = item
+					equipped_armor_quality = target_q
+					equipped_armor_stars = target_s
+				else:
+					if equipped_offhand != null:
+						add_item(equipped_offhand, 1, false, equipped_offhand_quality, equipped_offhand_stars, false)
+					equipped_offhand = item
+					equipped_offhand_quality = target_q
+					equipped_offhand_stars = target_s
+				mark_stats_dirty()
 				current_hp = minf(current_hp, get_max_hp())
 				current_mana = minf(current_mana, get_max_mana())
+				var max_bar: float = get_max_barrier()
+				current_barrier = 0.0 if has_hero_class("reflector") else minf(maxf(current_barrier, max_bar), max_bar)
 				stats_changed.emit()
 				hp_changed.emit(current_hp, get_max_hp())
 				mana_changed.emit(current_mana, get_max_mana())
+				barrier_changed.emit(current_barrier, max_bar)
 				inventory_changed.emit()
 				enchant_changed.emit()
 				save_game()
-				return "Экипировано оружие: %s." % item.get_display_name()
-		ItemData.ItemType.ARMOR:
-			if is_equipment_disabled():
-				return "Класс Спирит не может носить броню."
-			if remove_item(item, 1):
-				if equipped_armor != null:
-					add_item(equipped_armor, 1, false)
-				equipped_armor = item
-				current_hp = minf(current_hp, get_max_hp())
-				current_mana = minf(current_mana, get_max_mana())
-				stats_changed.emit()
-				hp_changed.emit(current_hp, get_max_hp())
-				mana_changed.emit(current_mana, get_max_mana())
-				inventory_changed.emit()
-				enchant_changed.emit()
-				save_game()
-				return "Экипирована броня: %s." % item.get_display_name()
+				return "Экипировано: %s (%d%% ★%d)." % [item.get_display_name(), target_q, target_s]
 		ItemData.ItemType.AMMO:
 			if is_equipment_disabled():
 				return "Класс Спирит не может использовать снаряды."
+			if is_gear_blocked_by_challenge():
+				return "🏆 Испытание «Аскет» запрещает экипировку и снаряды!"
+			if is_non_staff_blocked_by_challenge() and item.ammo_kind != ItemData.AmmoKind.TOME:
+				return "🏆 Испытание «Путь Арканы» разрешает только магические книги-фолианты!"
 			var stack_count: int = get_item_count_in_inventory(item)
 			if stack_count <= 0:
 				return ""
@@ -3588,6 +5021,7 @@ func use_or_equip_item(item: ItemData) -> String:
 				else:
 					equipped_ammo = item
 					equipped_ammo_count = stack_count
+				mark_stats_dirty()
 				stats_changed.emit()
 				inventory_changed.emit()
 				save_game()
@@ -3600,13 +5034,30 @@ func unequip_slot(slot_type: ItemData.ItemType) -> void:
 		ItemData.ItemType.WEAPON:
 			if equipped_weapon != null:
 				var prev: ItemData = equipped_weapon
+				var pq: int = equipped_weapon_quality
+				var ps: int = equipped_weapon_stars
 				equipped_weapon = null
-				add_item(prev, 1, false)
+				equipped_weapon_quality = 100
+				equipped_weapon_stars = 1
+				add_item(prev, 1, false, pq, ps, false)
 		ItemData.ItemType.ARMOR:
 			if equipped_armor != null:
 				var prev: ItemData = equipped_armor
+				var pq: int = equipped_armor_quality
+				var ps: int = equipped_armor_stars
 				equipped_armor = null
-				add_item(prev, 1, false)
+				equipped_armor_quality = 100
+				equipped_armor_stars = 1
+				add_item(prev, 1, false, pq, ps, false)
+		ItemData.ItemType.OFFHAND:
+			if equipped_offhand != null:
+				var prev: ItemData = equipped_offhand
+				var pq: int = equipped_offhand_quality
+				var ps: int = equipped_offhand_stars
+				equipped_offhand = null
+				equipped_offhand_quality = 100
+				equipped_offhand_stars = 1
+				add_item(prev, 1, false, pq, ps, false)
 		ItemData.ItemType.AMMO:
 			if equipped_ammo != null and equipped_ammo_count > 0:
 				var prev_ammo: ItemData = equipped_ammo
@@ -3614,11 +5065,15 @@ func unequip_slot(slot_type: ItemData.ItemType) -> void:
 				equipped_ammo = null
 				equipped_ammo_count = 0
 				add_item(prev_ammo, prev_cnt, false)
+	mark_stats_dirty()
 	current_hp = minf(current_hp, get_max_hp())
 	current_mana = minf(current_mana, get_max_mana())
+	var max_bar: float = get_max_barrier()
+	current_barrier = 0.0 if has_hero_class("reflector") else minf(current_barrier, max_bar)
 	stats_changed.emit()
 	hp_changed.emit(current_hp, get_max_hp())
 	mana_changed.emit(current_mana, get_max_mana())
+	barrier_changed.emit(current_barrier, max_bar)
 	inventory_changed.emit()
 	enchant_changed.emit()
 	save_game()
@@ -3804,11 +5259,29 @@ func _process_sanctuary(delta: float) -> void:
 		else:
 			cauldron["elapsed"] = next_elapsed
 
+	var exp_dirty: bool = false
+	for i: int in range(pet_expeditions.size()):
+		var exp: Dictionary = pet_expeditions[i]
+		if bool(exp.get("completed", false)):
+			continue
+		any_active_timer = true
+		var dur: float = maxf(1.0, float(exp.get("duration", 900.0)))
+		var next_elapsed: float = float(exp.get("elapsed", 0.0)) + delta
+		if next_elapsed >= dur:
+			exp["elapsed"] = dur
+			exp["completed"] = true
+			exp_dirty = true
+		else:
+			exp["elapsed"] = next_elapsed
+
 	if garden_dirty:
 		garden_changed.emit()
 		save_game()
 	if brew_dirty:
 		brewing_changed.emit()
+		save_game()
+	if exp_dirty:
+		pets_changed.emit()
 		save_game()
 
 	if any_active_timer:
@@ -3817,6 +5290,8 @@ func _process_sanctuary(delta: float) -> void:
 			_sanctuary_ui_sync_timer = 0.0
 			garden_changed.emit()
 			brewing_changed.emit()
+			if not pet_expeditions.is_empty():
+				pets_changed.emit()
 
 
 func roll_rare_seed_drops(enemy: EnemyData) -> void:
@@ -4154,6 +5629,7 @@ func train_spirit(spirit_key: String) -> Dictionary:
 
 	var next_lvl: int = get_spirit_training_level(spirit_key) + 1
 	spirit_training_levels[spirit_key] = next_lvl
+	mark_stats_dirty()
 	stats_changed.emit()
 	garden_changed.emit()
 	save_game()
@@ -4397,11 +5873,45 @@ func _build_save_data() -> SaveData:
 	save_data.pet_training_levels = pet_training_levels.duplicate(true)
 	save_data.spirit_training_levels = spirit_training_levels.duplicate(true)
 
+	# v0.22.0 fields
+	save_data.afk_target_fps = afk_target_fps
+	save_data.equipped_weapon_quality = equipped_weapon_quality
+	save_data.equipped_weapon_stars = equipped_weapon_stars
+	save_data.equipped_armor_quality = equipped_armor_quality
+	save_data.equipped_armor_stars = equipped_armor_stars
+	save_data.equipped_offhand_path = equipped_offhand.resource_path if equipped_offhand != null else ""
+	save_data.equipped_offhand_quality = equipped_offhand_quality
+	save_data.equipped_offhand_stars = equipped_offhand_stars
+	save_data.offhand_enchant_level = offhand_enchant_level
+	save_data.dark_offhand_enchant_level = dark_offhand_enchant_level
+	save_data.auto_salvage_mode = auto_salvage_mode
+	save_data.auto_salvage_min_quality = auto_salvage_min_quality
+	save_data.abyss_ore_shards = abyss_ore_shards
+	save_data.bestiary_kills = bestiary_kills.duplicate(true)
+	save_data.active_challenge_id = active_challenge_id
+	save_data.completed_challenges = completed_challenges.duplicate()
+	save_data.run_elapsed_seconds = run_elapsed_seconds
+	save_data.combat_loadouts = combat_loadouts.duplicate(true)
+	save_data.auto_route_enabled = auto_route_enabled
+	save_data.auto_route_wins_threshold = auto_route_wins_threshold
+	save_data.consecutive_location_wins = consecutive_location_wins
+	save_data.well_greed_cooldown_remaining = well_greed_cooldown_remaining
+	save_data.well_run_blessing = well_run_blessing
+	save_data.ability_casts = ability_casts.duplicate(true)
+	save_data.ability_levels = ability_levels.duplicate(true)
+	save_data.ability_runes = ability_runes.duplicate(true)
+	save_data.pet_expeditions = pet_expeditions.duplicate(true)
+	save_data.unlocked_mine_checkpoints = unlocked_mine_checkpoints.duplicate()
+	save_data.mine_start_depth = mine_start_depth
+	save_data.wave_dungeon_clears = wave_dungeon_clears
+
 	for entry: Dictionary in inventory:
 		var item: ItemData = entry["item"] as ItemData
 		if item != null and not item.resource_path.is_empty():
 			save_data.inventory_paths.append(item.resource_path)
 			save_data.inventory_counts.append(int(entry["count"]))
+			save_data.inventory_qualities.append(get_entry_quality(entry))
+			save_data.inventory_stars.append(get_entry_stars(entry))
 
 	return save_data
 
@@ -4477,6 +5987,9 @@ func _apply_save_data(save_data: SaveData) -> void:
 	var max_ench: int = get_max_enchant_level()
 	weapon_enchant_level = clampi(save_data.weapon_enchant_level, 0, max_ench)
 	armor_enchant_level = clampi(save_data.armor_enchant_level, 0, max_ench)
+	offhand_enchant_level = clampi(save_data.offhand_enchant_level, 0, max_ench)
+	dark_offhand_enchant_level = maxi(0, save_data.dark_offhand_enchant_level)
+	afk_target_fps = save_data.afk_target_fps if AFK_FPS_OPTIONS.has(save_data.afk_target_fps) else DEFAULT_AFK_MAX_FPS
 
 	difficulty_curses.clear()
 	if save_data.difficulty_curses is Dictionary:
@@ -4511,20 +6024,85 @@ func _apply_save_data(save_data: SaveData) -> void:
 		else:
 			ability_auto_cast[i] = false
 
+	# v0.22.0 Challenge, Bestiary, Spells, Route, Well, Mine & Loadouts
+	active_challenge_id = save_data.active_challenge_id if not get_challenge_def(save_data.active_challenge_id).is_empty() else ""
+	run_elapsed_seconds = maxf(0.0, save_data.run_elapsed_seconds)
+	completed_challenges.clear()
+	for cid: String in save_data.completed_challenges:
+		if not cid.is_empty() and not completed_challenges.has(cid):
+			completed_challenges.append(cid)
+
+	bestiary_kills.clear()
+	if save_data.bestiary_kills is Dictionary:
+		for bk: Variant in save_data.bestiary_kills.keys():
+			bestiary_kills[str(bk)] = maxi(0, int(save_data.bestiary_kills[bk]))
+
+	ability_casts.clear()
+	if save_data.ability_casts is Dictionary:
+		for ack: Variant in save_data.ability_casts.keys():
+			ability_casts[str(ack)] = maxi(0, int(save_data.ability_casts[ack]))
+	ability_levels.clear()
+	if save_data.ability_levels is Dictionary:
+		for alk: Variant in save_data.ability_levels.keys():
+			ability_levels[str(alk)] = clampi(int(save_data.ability_levels[alk]), 1, AbilityData.MAX_SPELL_LEVEL)
+	ability_runes.clear()
+	if save_data.ability_runes is Dictionary:
+		for ark: Variant in save_data.ability_runes.keys():
+			var rk: String = str(save_data.ability_runes[ark])
+			if rk == "a" or rk == "b":
+				ability_runes[str(ark)] = rk
+
+	combat_loadouts.clear()
+	for cl: Dictionary in save_data.combat_loadouts:
+		combat_loadouts.append(cl.duplicate(true))
+	_ensure_loadouts()
+
+	auto_salvage_mode = save_data.auto_salvage_mode if (save_data.auto_salvage_mode == "sell" or save_data.auto_salvage_mode == "salvage") else "off"
+	auto_salvage_min_quality = clampi(save_data.auto_salvage_min_quality, 80, 125)
+	abyss_ore_shards = maxi(0, save_data.abyss_ore_shards)
+	auto_route_enabled = save_data.auto_route_enabled
+	auto_route_wins_threshold = clampi(save_data.auto_route_wins_threshold, 3, 25)
+	consecutive_location_wins = maxi(0, save_data.consecutive_location_wins)
+	well_greed_cooldown_remaining = maxf(0.0, save_data.well_greed_cooldown_remaining)
+	well_run_blessing = save_data.well_run_blessing
+	wave_dungeon_clears = maxi(0, save_data.wave_dungeon_clears)
+	wave_dungeon_active = false
+	wave_dungeon_wave = 0
+	unlocked_mine_checkpoints.clear()
+	for cp: int in save_data.unlocked_mine_checkpoints:
+		if MINE_CHECKPOINT_DEPTHS.has(cp) and not unlocked_mine_checkpoints.has(cp):
+			unlocked_mine_checkpoints.append(cp)
+	mine_start_depth = save_data.mine_start_depth if is_mine_checkpoint_unlocked(save_data.mine_start_depth) else 1
+
 	equipped_weapon = null
-	if not is_equipment_disabled() and not save_data.equipped_weapon_path.is_empty():
-		equipped_weapon = get_cached_item(save_data.equipped_weapon_path)
+	equipped_weapon_quality = clampi(save_data.equipped_weapon_quality, 80, 125)
+	equipped_weapon_stars = clampi(save_data.equipped_weapon_stars, 1, 5)
+	if not is_equipment_disabled() and not is_gear_blocked_by_challenge() and not save_data.equipped_weapon_path.is_empty():
+		var w_cand: ItemData = get_cached_item(save_data.equipped_weapon_path)
+		if w_cand != null and (not is_non_staff_blocked_by_challenge() or w_cand.is_mage_staff()):
+			equipped_weapon = w_cand
 
 	equipped_armor = null
-	if not is_equipment_disabled() and not save_data.equipped_armor_path.is_empty():
+	equipped_armor_quality = clampi(save_data.equipped_armor_quality, 80, 125)
+	equipped_armor_stars = clampi(save_data.equipped_armor_stars, 1, 5)
+	if not is_equipment_disabled() and not is_gear_blocked_by_challenge() and not save_data.equipped_armor_path.is_empty():
 		equipped_armor = get_cached_item(save_data.equipped_armor_path)
+
+	equipped_offhand = null
+	equipped_offhand_quality = clampi(save_data.equipped_offhand_quality, 80, 125)
+	equipped_offhand_stars = clampi(save_data.equipped_offhand_stars, 1, 5)
+	if not is_equipment_disabled() and not is_gear_blocked_by_challenge() and not save_data.equipped_offhand_path.is_empty():
+		var o_cand: ItemData = get_cached_item(save_data.equipped_offhand_path)
+		if o_cand != null and (not is_non_staff_blocked_by_challenge() or o_cand.offhand_kind == ItemData.OffhandKind.TALISMAN):
+			equipped_offhand = o_cand
 
 	equipped_ammo = null
 	equipped_ammo_count = 0
-	if not is_equipment_disabled() and not save_data.equipped_ammo_path.is_empty():
-		equipped_ammo = get_cached_item(save_data.equipped_ammo_path)
-		equipped_ammo_count = maxi(0, save_data.equipped_ammo_count)
-		if equipped_ammo != null:
+	if not is_equipment_disabled() and not is_gear_blocked_by_challenge() and not save_data.equipped_ammo_path.is_empty():
+		var am_cand: ItemData = get_cached_item(save_data.equipped_ammo_path)
+		if am_cand != null and (not is_non_staff_blocked_by_challenge() or am_cand.ammo_kind == ItemData.AmmoKind.TOME):
+			equipped_ammo = am_cand
+			equipped_ammo_count = maxi(0, save_data.equipped_ammo_count)
 			if equipped_ammo.is_dark_forged:
 				equipped_ammo_count = maxi(1, equipped_ammo_count)
 			elif equipped_ammo_count == 0:
@@ -4536,7 +6114,9 @@ func _apply_save_data(save_data: SaveData) -> void:
 		var path: String = save_data.inventory_paths[i]
 		var item: ItemData = get_cached_item(path)
 		if item != null:
-			add_item(item, save_data.inventory_counts[i], false)
+			var iq: int = save_data.inventory_qualities[i] if i < save_data.inventory_qualities.size() else 100
+			var is_val: int = save_data.inventory_stars[i] if i < save_data.inventory_stars.size() else 1
+			add_item(item, save_data.inventory_counts[i], false, iq, is_val, false)
 
 	garden_plots.clear()
 	for gp: Dictionary in save_data.garden_plots:
@@ -4559,14 +6139,22 @@ func _apply_save_data(save_data: SaveData) -> void:
 		for sk: String in SPIRIT_KEYS:
 			if save_data.spirit_training_levels.has(sk):
 				spirit_training_levels[sk] = maxi(0, int(save_data.spirit_training_levels[sk]))
+	pet_expeditions.clear()
+	for pe: Dictionary in save_data.pet_expeditions:
+		var pe_copy: Dictionary = pe.duplicate(true)
+		var pe_pid: String = str(pe_copy.get("pet_id", ""))
+		if has_pet_owned(pe_pid) and equipped_pet_id != pe_pid:
+			pet_expeditions.append(pe_copy)
 	_ensure_sanctuary_slots()
 
 	active_buffs.clear()
 	for i: int in range(MAX_ACTIVE_ABILITY_SLOTS):
 		ability_cooldowns[i] = 0.0
 
+	mark_stats_dirty()
 	current_hp = clampf(save_data.current_hp, 0.0, get_max_hp())
 	current_mana = clampf(save_data.current_mana, 0.0, get_max_mana())
+	current_barrier = get_max_barrier()
 	current_location = locations[0] if not locations.is_empty() else null
 	for loc: LocationData in locations:
 		if loc.id == save_data.current_location_id and is_location_unlocked(loc):
@@ -4602,6 +6190,8 @@ func _save_data_to_dict(save_data: SaveData) -> Dictionary:
 		"equipped_ammo_count": save_data.equipped_ammo_count,
 		"inventory_paths": save_data.inventory_paths.duplicate(),
 		"inventory_counts": save_data.inventory_counts.duplicate(),
+		"inventory_qualities": save_data.inventory_qualities.duplicate(),
+		"inventory_stars": save_data.inventory_stars.duplicate(),
 		"unlocked_skills": save_data.unlocked_skills.duplicate(),
 		"skill_presets": save_data.skill_presets.duplicate(true),
 		"active_skill_preset_index": save_data.active_skill_preset_index,
@@ -4645,6 +6235,36 @@ func _save_data_to_dict(save_data: SaveData) -> Dictionary:
 		"alchemist_next_mistake_safe": save_data.alchemist_next_mistake_safe,
 		"pet_training_levels": save_data.pet_training_levels.duplicate(true),
 		"spirit_training_levels": save_data.spirit_training_levels.duplicate(true),
+		"afk_target_fps": save_data.afk_target_fps,
+		"equipped_weapon_quality": save_data.equipped_weapon_quality,
+		"equipped_weapon_stars": save_data.equipped_weapon_stars,
+		"equipped_armor_quality": save_data.equipped_armor_quality,
+		"equipped_armor_stars": save_data.equipped_armor_stars,
+		"equipped_offhand_path": save_data.equipped_offhand_path,
+		"equipped_offhand_quality": save_data.equipped_offhand_quality,
+		"equipped_offhand_stars": save_data.equipped_offhand_stars,
+		"offhand_enchant_level": save_data.offhand_enchant_level,
+		"dark_offhand_enchant_level": save_data.dark_offhand_enchant_level,
+		"auto_salvage_mode": save_data.auto_salvage_mode,
+		"auto_salvage_min_quality": save_data.auto_salvage_min_quality,
+		"abyss_ore_shards": save_data.abyss_ore_shards,
+		"bestiary_kills": save_data.bestiary_kills.duplicate(true),
+		"active_challenge_id": save_data.active_challenge_id,
+		"completed_challenges": save_data.completed_challenges.duplicate(),
+		"run_elapsed_seconds": save_data.run_elapsed_seconds,
+		"combat_loadouts": save_data.combat_loadouts.duplicate(true),
+		"auto_route_enabled": save_data.auto_route_enabled,
+		"auto_route_wins_threshold": save_data.auto_route_wins_threshold,
+		"consecutive_location_wins": save_data.consecutive_location_wins,
+		"well_greed_cooldown_remaining": save_data.well_greed_cooldown_remaining,
+		"well_run_blessing": save_data.well_run_blessing,
+		"ability_casts": save_data.ability_casts.duplicate(true),
+		"ability_levels": save_data.ability_levels.duplicate(true),
+		"ability_runes": save_data.ability_runes.duplicate(true),
+		"pet_expeditions": save_data.pet_expeditions.duplicate(true),
+		"unlocked_mine_checkpoints": save_data.unlocked_mine_checkpoints.duplicate(),
+		"mine_start_depth": save_data.mine_start_depth,
+		"wave_dungeon_clears": save_data.wave_dungeon_clears,
 	}
 
 
@@ -4681,6 +6301,12 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 	if data.get("inventory_counts") is Array:
 		for c: Variant in data["inventory_counts"]:
 			save_data.inventory_counts.append(int(c))
+	if data.get("inventory_qualities") is Array:
+		for iq: Variant in data["inventory_qualities"]:
+			save_data.inventory_qualities.append(int(iq))
+	if data.get("inventory_stars") is Array:
+		for isv: Variant in data["inventory_stars"]:
+			save_data.inventory_stars.append(int(isv))
 	if data.get("unlocked_skills") is Array:
 		for s: Variant in data["unlocked_skills"]:
 			save_data.unlocked_skills.append(str(s))
@@ -4759,6 +6385,52 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 		save_data.pet_training_levels = (data["pet_training_levels"] as Dictionary).duplicate(true)
 	if data.get("spirit_training_levels") is Dictionary:
 		save_data.spirit_training_levels = (data["spirit_training_levels"] as Dictionary).duplicate(true)
+
+	# v0.22.0 fields
+	save_data.afk_target_fps = int(data.get("afk_target_fps", DEFAULT_AFK_MAX_FPS))
+	save_data.equipped_weapon_quality = int(data.get("equipped_weapon_quality", 100))
+	save_data.equipped_weapon_stars = int(data.get("equipped_weapon_stars", 1))
+	save_data.equipped_armor_quality = int(data.get("equipped_armor_quality", 100))
+	save_data.equipped_armor_stars = int(data.get("equipped_armor_stars", 1))
+	save_data.equipped_offhand_path = str(data.get("equipped_offhand_path", ""))
+	save_data.equipped_offhand_quality = int(data.get("equipped_offhand_quality", 100))
+	save_data.equipped_offhand_stars = int(data.get("equipped_offhand_stars", 1))
+	save_data.offhand_enchant_level = int(data.get("offhand_enchant_level", 0))
+	save_data.dark_offhand_enchant_level = int(data.get("dark_offhand_enchant_level", 0))
+	save_data.auto_salvage_mode = str(data.get("auto_salvage_mode", "off"))
+	save_data.auto_salvage_min_quality = int(data.get("auto_salvage_min_quality", 95))
+	save_data.abyss_ore_shards = int(data.get("abyss_ore_shards", 0))
+	if data.get("bestiary_kills") is Dictionary:
+		save_data.bestiary_kills = (data["bestiary_kills"] as Dictionary).duplicate(true)
+	save_data.active_challenge_id = str(data.get("active_challenge_id", ""))
+	if data.get("completed_challenges") is Array:
+		for cid: Variant in data["completed_challenges"]:
+			save_data.completed_challenges.append(str(cid))
+	save_data.run_elapsed_seconds = float(data.get("run_elapsed_seconds", 0.0))
+	if data.get("combat_loadouts") is Array:
+		for cl: Variant in data["combat_loadouts"]:
+			if cl is Dictionary:
+				save_data.combat_loadouts.append((cl as Dictionary).duplicate(true))
+	save_data.auto_route_enabled = bool(data.get("auto_route_enabled", false))
+	save_data.auto_route_wins_threshold = int(data.get("auto_route_wins_threshold", 5))
+	save_data.consecutive_location_wins = int(data.get("consecutive_location_wins", 0))
+	save_data.well_greed_cooldown_remaining = float(data.get("well_greed_cooldown_remaining", 0.0))
+	save_data.well_run_blessing = str(data.get("well_run_blessing", ""))
+	if data.get("ability_casts") is Dictionary:
+		save_data.ability_casts = (data["ability_casts"] as Dictionary).duplicate(true)
+	if data.get("ability_levels") is Dictionary:
+		save_data.ability_levels = (data["ability_levels"] as Dictionary).duplicate(true)
+	if data.get("ability_runes") is Dictionary:
+		save_data.ability_runes = (data["ability_runes"] as Dictionary).duplicate(true)
+	if data.get("pet_expeditions") is Array:
+		for pe: Variant in data["pet_expeditions"]:
+			if pe is Dictionary:
+				save_data.pet_expeditions.append((pe as Dictionary).duplicate(true))
+	if data.get("unlocked_mine_checkpoints") is Array:
+		for cp: Variant in data["unlocked_mine_checkpoints"]:
+			save_data.unlocked_mine_checkpoints.append(int(cp))
+	save_data.mine_start_depth = int(data.get("mine_start_depth", 1))
+	save_data.wave_dungeon_clears = int(data.get("wave_dungeon_clears", 0))
 
 	return save_data
 

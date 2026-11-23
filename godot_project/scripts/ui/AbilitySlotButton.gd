@@ -34,8 +34,15 @@ func _ready() -> void:
 	GameManager.difficulty_changed.connect(_refresh)
 	GameManager.dark_skills_changed.connect(_refresh)
 	GameManager.class_changed.connect(func(_c: HeroClassData) -> void: _refresh())
+	GameManager.afk_mode_changed.connect(_on_afk_mode_changed)
 	GameManager.game_reset.connect(_refresh)
 	_refresh()
+
+
+func _on_afk_mode_changed(is_afk: bool) -> void:
+	if not is_afk:
+		_last_visual_sig = ""
+		_refresh()
 
 
 func set_overcharge_tick(tick_num: int) -> void:
@@ -95,6 +102,8 @@ func _on_mana_changed(_current_mana: float, _max_mana: float) -> void:
 
 
 func _refresh() -> void:
+	if GameManager.is_afk_mode:
+		return
 	var ability: AbilityData = GameManager.get_ability(slot_index)
 	if ability == null:
 		if _last_auto_state != 0:

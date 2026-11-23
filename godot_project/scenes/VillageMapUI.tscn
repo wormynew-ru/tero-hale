@@ -139,12 +139,29 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_hotspot_hover")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_hotspot")
 flat = true
 
+[node name="WellHotspot" type="Button" parent="RootVBox/MapAspectContainer/MapCanvas"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.22
+anchor_top = 0.68
+anchor_right = 0.39
+anchor_bottom = 0.90
+grow_horizontal = 2
+grow_vertical = 2
+tooltip_text = "⛲ Колодец Жадности (пожертвовать всё золото)"
+mouse_default_cursor_shape = 2
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hotspot")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_hotspot_hover")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hotspot")
+flat = true
+
 [node name="MapHintLabel" type="Label" parent="RootVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.76, 0.84, 0.94, 1)
 theme_override_font_sizes/font_size = 13
-text = "🗺️ Нажмите на объекты на картине: Домик (🏡 Убежище — Сад и Зелья), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня), Щенок (🐾 Путники), Горы (⚔️ Бой)."
+text = "🗺️ Нажмите на объекты на картине: Домик (🏡 Убежище), «МАГАЗИН» (🏪 Лавка / ⚒️ Кузня), Колодец (⛲ Жертва золота), Щенок (🐾 Путники), Горы (⚔️ Бой)."
 horizontal_alignment = 1
 autowrap_mode = 3
 
@@ -222,3 +239,85 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 text = "✕ Отмена"
+
+[node name="WellOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.03, 0.05, 0.76)
+
+[node name="WellCenterBox" type="CenterContainer" parent="WellOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WellCard" type="PanelContainer" parent="WellOverlay/WellCenterBox"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_modal_card")
+
+[node name="WellVBox" type="VBoxContainer" parent="WellOverlay/WellCenterBox/WellCard"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="WellTitle" type="Label" parent="WellOverlay/WellCenterBox/WellCard/WellVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.85, 0.38, 1)
+theme_override_font_sizes/font_size = 19
+text = "⛲ Колодец Жадности"
+horizontal_alignment = 1
+
+[node name="WellSubtitle" type="Label" parent="WellOverlay/WellCenterBox/WellCard/WellVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.76, 0.84, 0.94, 1)
+theme_override_font_sizes/font_size = 13
+text = "Сбросьте ВСЁ золото рана в обмен на ⛏️ Руду Бездны, 📜 Древние листы, 🎲 Рероллы, редкие семена и случайное благословение рана (КД 15 мин)."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="WellBlessingLabel" type="Label" parent="WellOverlay/WellCenterBox/WellCard/WellVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.56, 0.96, 0.74, 1)
+theme_override_font_sizes/font_size = 14
+text = "Нет активного благословения рана"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="WellStatusLabel" type="Label" parent="WellOverlay/WellCenterBox/WellCard/WellVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Минимум для жертвы — 100 золота."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="WellFeedbackLabel" type="Label" parent="WellOverlay/WellCenterBox/WellCard/WellVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.88, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="WellSacrificeButton" type="Button" parent="WellOverlay/WellCenterBox/WellCard/WellVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "🪙 Пожертвовать всё золото"
+
+[node name="CloseWellButton" type="Button" parent="WellOverlay/WellCenterBox/WellCard/WellVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "✕ Закрыть"

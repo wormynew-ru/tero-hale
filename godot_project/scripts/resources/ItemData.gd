@@ -9,6 +9,7 @@ enum ItemType {
 	SEED,
 	HARVEST,
 	MATERIAL,
+	OFFHAND,
 }
 
 enum WeaponStyle {
@@ -25,6 +26,12 @@ enum AmmoKind {
 	TOME,
 }
 
+enum OffhandKind {
+	NONE,
+	SHIELD,
+	TALISMAN,
+}
+
 @export var id: String = ""
 @export var item_name: String = ""
 @export var icon_emoji: String = "📦"
@@ -37,13 +44,17 @@ enum AmmoKind {
 @export var bonus_endurance: int = 0
 @export var bonus_intellect: int = 0
 
-@export_group("Ranged & Ammo")
+@export_group("Ranged, Offhand & Ammo")
 @export var weapon_style: WeaponStyle = WeaponStyle.MELEE
 @export var required_ammo: AmmoKind = AmmoKind.NONE
 @export var ammo_kind: AmmoKind = AmmoKind.NONE
+@export var offhand_kind: OffhandKind = OffhandKind.NONE
 @export var bonus_damage: float = 0.0
 @export var bonus_crit_chance: float = 0.0
 @export var armor_penetration: float = 0.0
+@export var bonus_defense: float = 0.0
+@export var bonus_barrier: float = 0.0
+@export var bonus_barrier_scale: float = 0.0
 @export var shop_pack_amount: int = 1
 
 @export_group("Mage & Dark Forge")
@@ -92,6 +103,10 @@ func uses_ammo() -> bool:
 	return is_ranged_weapon() or is_mage_staff()
 
 
+func is_equipment() -> bool:
+	return item_type == ItemType.WEAPON or item_type == ItemType.ARMOR or item_type == ItemType.OFFHAND
+
+
 func is_buff_potion() -> bool:
 	return item_type == ItemType.CONSUMABLE and not buff_id.is_empty() and buff_duration > 0.0
 
@@ -111,6 +126,14 @@ func get_style_tag() -> String:
 				return "🪄 Посох (Книга)"
 			_:
 				return "⚔️ Ближний"
+	if item_type == ItemType.OFFHAND:
+		match offhand_kind:
+			OffhandKind.SHIELD:
+				return "🛡️ Щит"
+			OffhandKind.TALISMAN:
+				return "🔮 Талисман"
+			_:
+				return "🛡️ Оффхенд"
 	if item_type == ItemType.AMMO:
 		match ammo_kind:
 			AmmoKind.ARROW:
@@ -137,6 +160,13 @@ func get_summary_text() -> String:
 		parts.append(tag)
 	if bonus_damage > 0.0:
 		parts.append("+%d Урон" % int(bonus_damage))
+	if bonus_defense > 0.0:
+		parts.append("+%d Броня" % int(bonus_defense))
+	if bonus_barrier > 0.0:
+		parts.append("+%d Барьер" % int(bonus_barrier))
+	if bonus_barrier_scale > 0.0:
+		var scale_stat: String = "Инт" if offhand_kind == OffhandKind.TALISMAN else "Вын"
+		parts.append("+%.1f Барьер/%s" % [bonus_barrier_scale, scale_stat])
 	if bonus_strength > 0:
 		parts.append("+%d Сила" % bonus_strength)
 	if bonus_agility > 0:

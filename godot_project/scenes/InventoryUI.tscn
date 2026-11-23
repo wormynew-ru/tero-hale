@@ -72,6 +72,23 @@ custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
 text = "Снять"
 
+[node name="OffhandRow" type="HBoxContainer" parent="InventoryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="OffhandSlotLabel" type="Label" parent="InventoryVBox/OffhandRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🔰 Оффхенд: [Пусто]"
+autowrap_mode = 3
+
+[node name="UnequipOffhandButton" type="Button" parent="InventoryVBox/OffhandRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+text = "Снять"
+
 [node name="AmmoRow" type="HBoxContainer" parent="InventoryVBox"]
 layout_mode = 2
 theme_override_constants/separation = 10
@@ -213,6 +230,30 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/h_separation = 6
 theme_override_constants/v_separation = 6
+
+[node name="AutoSalvageRow" type="HBoxContainer" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AutoSalvageModeButton" type="Button" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoSalvageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "♻️ Авто-разбор дропа: ВЫКЛ"
+
+[node name="AutoSalvageQualityButton" type="Button" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoSalvageRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(138, 40)
+layout_mode = 2
+text = "Порог: <95%"
+
+[node name="OreShardsLabel" type="Label" parent="InventoryVBox/AutoPotionSettingsCard/AutoPotionVBox/AutoSalvageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74, 0.92, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "⛏️ Осколки: 0/10"
 
 [node name="InvSeparator" type="HSeparator" parent="InventoryVBox"]
 layout_mode = 2

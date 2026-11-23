@@ -13,6 +13,7 @@ var _dirty: bool = true
 
 func _ready() -> void:
 	GameManager.abilities_changed.connect(_on_state_changed)
+	GameManager.inventory_changed.connect(_on_state_changed)
 	GameManager.class_changed.connect(_on_class_changed)
 	GameManager.dark_skills_changed.connect(_on_state_changed)
 	GameManager.skills_changed.connect(_on_state_changed)
@@ -59,9 +60,31 @@ func _on_equip_slot_pressed(ability_id: String, slot_index: int) -> void:
 		_refresh(true)
 
 
+func _on_upgrade_spell_pressed(ability_id: String) -> void:
+	var res: Dictionary = GameManager.upgrade_ability_with_page(ability_id)
+	feedback_label.text = str(res.get("message", ""))
+	_refresh(true)
+
+
+func _on_toggle_rune_pressed(ability_id: String, rune_key: String) -> void:
+	var cur: String = GameManager.get_ability_rune(ability_id)
+	var next_key: String = "" if cur == rune_key else rune_key
+	GameManager.set_ability_rune(ability_id, next_key)
+	var ab: AbilityData = GameManager.get_ability_by_id(ability_id)
+	var ab_name: String = ab.title if ab != null else ability_id
+	if next_key.is_empty():
+		feedback_label.text = "Руна для «%s» снята." % ab_name
+	else:
+		var r_dict: Dictionary = GameManager.SPELL_RUNES_CATALOG.get(ability_id, {}) as Dictionary
+		var r_info: Dictionary = r_dict.get(next_key, {}) as Dictionary
+		feedback_label.text = "Активирована руна %s для «%s»: %s" % [str(r_info.get("title", next_key.to_upper())), ab_name, str(r_info.get("desc", ""))]
+	_refresh(true)
+
+
 func _compute_state_signature() -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	parts.append(GameManager.selected_class_id)
+	parts.append("P:%d" % GameManager.get_dark_forge_material_count("ancient_page"))
 	parts.append(",".join(PackedStringArray(GameManager.equipped_ability_ids)))
 	for ab: AbilityData in GameManager.all_abilities:
 		if ab == null:
@@ -69,7 +92,10 @@ func _compute_state_signature() -> String:
 		var unlocked_flag: int = 1 if GameManager.is_ability_unlocked(ab) else 0
 		var mana_key: int = roundi(GameManager.get_ability_mana_cost(ab) * 10.0)
 		var cd_key: int = roundi(GameManager.get_ability_cooldown_duration(ab) * 10.0)
-		parts.append("%s:%d:%d:%d" % [ab.id, unlocked_flag, mana_key, cd_key])
+		var lvl: int = GameManager.get_ability_level(ab.id)
+		var casts: int = GameManager.get_ability_casts(ab.id)
+		var rune_key: String = GameManager.get_ability_rune(ab.id)
+		parts.append("%s:%d:%d:%d:%d:%d:%s" % [ab.id, unlocked_flag, mana_key, cd_key, lvl, casts, rune_key])
 	return "|".join(parts)
 
 
@@ -99,15 +125,17 @@ func _refresh(force: bool = false) -> void:
 
 	var blood_open: bool = GameManager.has_hero_class("blood_archmage")
 	var is_reflector: bool = GameManager.has_hero_class("reflector")
+	var page_cnt: int = GameManager.get_dark_forge_material_count("ancient_page")
 	var class_note: String = "🩸 Класс Архимаг Крови активен — все 7 запретных чар доступны!" if blood_open else "🔒 Ещё 7 запретных заклинаний открывает класс «🩸 Архимаг Крови» (Сл.50+)."
 	if is_reflector:
 		class_note = "🪞 Отражатель: боевые заклинания урона заблокированы — доступны только лечение и баффы."
 	status_label.text = (
-		"✨ Открыто заклинаний: %d / %d. В бою можно использовать максимум %d слота. %s"
+		"✨ Открыто заклинаний: %d / %d (слотов: %d)  |  📜 Древних листов: %d  •  %s"
 		% [
 			unlocked_count,
 			total_spells,
 			GameManager.MAX_ACTIVE_ABILITY_SLOTS,
+			page_cnt,
 			class_note,
 		]
 	)
@@ -181,10 +209,15 @@ func _update_active_slots() -> void:
 		style.border_color = Color(0.45, 0.72, 0.98, 0.9) if ab != null else Color(0.30, 0.34, 0.42, 0.7)
 
 		if ab != null:
-			lbl.text = "Слот %d: %s %s (💧%.0f)" % [
+			var lvl: int = GameManager.get_ability_level(ab.id)
+			var r_key: String = GameManager.get_ability_rune(ab.id)
+			var r_tag: String = " [Руна %s]" % r_key.to_upper() if not r_key.is_empty() else ""
+			lbl.text = "Слот %d: %s %s Ур.%d%s (💧%.0f)" % [
 				slot_idx + 1,
 				ab.icon_emoji,
 				ab.title,
+				lvl,
+				r_tag,
 				GameManager.get_ability_mana_cost(ab),
 			]
 			lbl.modulate = Color.WHITE
@@ -235,6 +268,45 @@ func _build_spell_list() -> void:
 		desc_lbl.add_theme_font_size_override("font_size", 13)
 		info_vbox.add_child(desc_lbl)
 
+		var prog_row: HFlowContainer = HFlowContainer.new()
+		prog_row.add_theme_constant_override("h_separation", 8)
+		prog_row.add_theme_constant_override("v_separation", 6)
+
+		var target_ab_id: String = ab.id
+
+		var lvl_lbl: Label = Label.new()
+		lvl_lbl.add_theme_font_size_override("font_size", 12)
+		lvl_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		prog_row.add_child(lvl_lbl)
+
+		var upgrade_btn: Button = Button.new()
+		upgrade_btn.custom_minimum_size = Vector2(138.0, 34.0)
+		upgrade_btn.focus_mode = Control.FOCUS_NONE
+		upgrade_btn.add_theme_font_size_override("font_size", 12)
+		upgrade_btn.pressed.connect(func() -> void: _on_upgrade_spell_pressed(target_ab_id))
+		prog_row.add_child(upgrade_btn)
+
+		var rune_a_btn: Button = Button.new()
+		rune_a_btn.custom_minimum_size = Vector2(130.0, 34.0)
+		rune_a_btn.focus_mode = Control.FOCUS_NONE
+		rune_a_btn.add_theme_font_size_override("font_size", 12)
+		rune_a_btn.pressed.connect(func() -> void: _on_toggle_rune_pressed(target_ab_id, "a"))
+		prog_row.add_child(rune_a_btn)
+
+		var rune_b_btn: Button = Button.new()
+		rune_b_btn.custom_minimum_size = Vector2(130.0, 34.0)
+		rune_b_btn.focus_mode = Control.FOCUS_NONE
+		rune_b_btn.add_theme_font_size_override("font_size", 12)
+		rune_b_btn.pressed.connect(func() -> void: _on_toggle_rune_pressed(target_ab_id, "b"))
+		prog_row.add_child(rune_b_btn)
+
+		info_vbox.add_child(prog_row)
+
+		var rune_desc_lbl: Label = Label.new()
+		rune_desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rune_desc_lbl.add_theme_font_size_override("font_size", 12)
+		info_vbox.add_child(rune_desc_lbl)
+
 		row.add_child(info_vbox)
 
 		var actions_hbox: HBoxContainer = HBoxContainer.new()
@@ -249,7 +321,6 @@ func _build_spell_list() -> void:
 		actions_hbox.add_child(lock_btn)
 
 		var slot_buttons: Array[Button] = []
-		var target_ab_id: String = ab.id
 		for slot_i: int in range(GameManager.MAX_ACTIVE_ABILITY_SLOTS):
 			var btn: Button = Button.new()
 			btn.custom_minimum_size = Vector2(68.0, 44.0)
@@ -268,6 +339,11 @@ func _build_spell_list() -> void:
 			"style": style,
 			"title_lbl": title_lbl,
 			"desc_lbl": desc_lbl,
+			"lvl_lbl": lvl_lbl,
+			"upgrade_btn": upgrade_btn,
+			"rune_a_btn": rune_a_btn,
+			"rune_b_btn": rune_b_btn,
+			"rune_desc_lbl": rune_desc_lbl,
 			"lock_btn": lock_btn,
 			"slot_buttons": slot_buttons,
 		})
@@ -275,6 +351,7 @@ func _build_spell_list() -> void:
 
 func _update_spell_list() -> void:
 	var is_reflector: bool = GameManager.has_hero_class("reflector")
+	var page_cnt: int = GameManager.get_dark_forge_material_count("ancient_page")
 	for view: Dictionary in _spell_row_views:
 		var ab: AbilityData = view["ability"] as AbilityData
 		if ab == null:
@@ -282,6 +359,11 @@ func _update_spell_list() -> void:
 		var style: StyleBoxFlat = view["style"] as StyleBoxFlat
 		var title_lbl: Label = view["title_lbl"] as Label
 		var desc_lbl: Label = view["desc_lbl"] as Label
+		var lvl_lbl: Label = view["lvl_lbl"] as Label
+		var upgrade_btn: Button = view["upgrade_btn"] as Button
+		var rune_a_btn: Button = view["rune_a_btn"] as Button
+		var rune_b_btn: Button = view["rune_b_btn"] as Button
+		var rune_desc_lbl: Label = view["rune_desc_lbl"] as Label
 		var lock_btn: Button = view["lock_btn"] as Button
 		var slot_buttons: Array[Button] = view["slot_buttons"] as Array[Button]
 
@@ -305,14 +387,19 @@ func _update_spell_list() -> void:
 			style.bg_color = Color(0.11, 0.13, 0.17, 1.0)
 			style.border_color = Color(0.32, 0.36, 0.44, 1.0)
 
+		var lvl: int = GameManager.get_ability_level(ab.id)
+		var casts: int = GameManager.get_ability_casts(ab.id)
+		var next_casts: int = GameManager.get_next_spell_level_casts(ab.id)
 		var mana_eff: float = GameManager.get_ability_mana_cost(ab)
 		var cd_eff: float = GameManager.get_ability_cooldown_duration(ab)
 		var type_tag: String = _get_type_tag(ab)
 		var blood_tag: String = "  |  🩸 Архимаг Крови" if is_blood else ""
 
-		title_lbl.text = "%s %s  [%s]  •  💧%.0f  ⏱️%.1fс%s" % [
+		title_lbl.text = "%s %s [Ур.%d/%d]  [%s]  •  💧%.0f  ⏱️%.1fс%s" % [
 			ab.icon_emoji,
 			ab.title,
+			lvl,
+			AbilityData.MAX_SPELL_LEVEL,
 			type_tag,
 			mana_eff,
 			cd_eff,
@@ -328,6 +415,54 @@ func _update_spell_list() -> void:
 		var is_reflector_locked: bool = is_reflector and ab.effect_type != "heal" and ab.effect_type != "buff"
 		desc_lbl.modulate = Color(0.76, 0.82, 0.90, 1.0) if unlocked else Color(0.58, 0.56, 0.62, 1.0)
 		desc_lbl.text = ab.description + ("  [🛡️ Заблокировано Отражателем: только хил/баффы]" if is_reflector_locked else "")
+
+		var lvl_mult: float = AbilityData.get_level_multiplier(lvl)
+		if next_casts > 0:
+			lvl_lbl.text = "📖 Сила x%.2f • Касты: %d/%d" % [lvl_mult, casts, next_casts]
+		else:
+			lvl_lbl.text = "📖 МАКС. Ур.%d (x%.2f) • Кастов: %d" % [lvl, lvl_mult, casts]
+		lvl_lbl.modulate = Color(0.56, 0.96, 0.72, 1.0) if lvl >= AbilityData.MAX_SPELL_LEVEL else Color(0.78, 0.86, 0.96, 1.0)
+
+		var page_cost: int = GameManager.get_ability_upgrade_page_cost(ab.id)
+		if page_cost <= 0:
+			upgrade_btn.text = "✅ Макс. Ур."
+			upgrade_btn.disabled = true
+		else:
+			upgrade_btn.text = "📜 +1 Ур. (%d)" % page_cost
+			upgrade_btn.disabled = (not unlocked) or (page_cnt < page_cost)
+
+		var active_rune: String = GameManager.get_ability_rune(ab.id)
+		var rune_pair: Dictionary = GameManager.SPELL_RUNES_CATALOG.get(ab.id, {}) as Dictionary
+		var rune_a: Dictionary = rune_pair.get("a", {}) as Dictionary
+		var rune_b: Dictionary = rune_pair.get("b", {}) as Dictionary
+
+		rune_a_btn.visible = not rune_a.is_empty()
+		rune_b_btn.visible = not rune_b.is_empty()
+		if not rune_a.is_empty():
+			var a_active: bool = active_rune == "a"
+			rune_a_btn.text = ("%s " % ("✅" if a_active else "🔸")) + "Руна A"
+			rune_a_btn.modulate = Color(0.55, 0.98, 0.74, 1.0) if a_active else Color.WHITE
+			rune_a_btn.disabled = not unlocked
+		if not rune_b.is_empty():
+			var b_active: bool = active_rune == "b"
+			rune_b_btn.text = ("%s " % ("✅" if b_active else "🔹")) + "Руна B"
+			rune_b_btn.modulate = Color(0.45, 0.90, 1.0, 1.0) if b_active else Color.WHITE
+			rune_b_btn.disabled = not unlocked
+
+		if active_rune == "a" and not rune_a.is_empty():
+			rune_desc_lbl.text = "✅ Активна Руна A — %s: %s" % [str(rune_a.get("title", "")), str(rune_a.get("desc", ""))]
+			rune_desc_lbl.modulate = Color(0.55, 0.98, 0.74, 1.0)
+		elif active_rune == "b" and not rune_b.is_empty():
+			rune_desc_lbl.text = "✅ Активна Руна B — %s: %s" % [str(rune_b.get("title", "")), str(rune_b.get("desc", ""))]
+			rune_desc_lbl.modulate = Color(0.45, 0.90, 1.0, 1.0)
+		else:
+			rune_desc_lbl.text = "Руны: [A] %s (%s)  |  [B] %s (%s)" % [
+				str(rune_a.get("title", "-")),
+				str(rune_a.get("desc", "")),
+				str(rune_b.get("title", "-")),
+				str(rune_b.get("desc", "")),
+			]
+			rune_desc_lbl.modulate = Color(0.70, 0.74, 0.82, 1.0)
 
 		if not unlocked:
 			lock_btn.visible = true

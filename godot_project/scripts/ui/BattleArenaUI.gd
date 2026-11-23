@@ -30,6 +30,7 @@ const AbilitySlotButtonScript = preload("res://scripts/ui/AbilitySlotButton.gd")
 @onready var village_chip_button: Button = %VillageChipButton
 @onready var difficulty_chip_button: Button = %DifficultyChipButton
 @onready var next_boss_button: Button = %NextBossButton
+@onready var wave_dungeon_label: Label = %WaveDungeonLabel
 @onready var state_label: Label = %StateLabel
 @onready var afk_toggle_button: Button = %AfkToggleButton
 @onready var save_button: Button = %SaveButton
@@ -39,6 +40,7 @@ const AbilitySlotButtonScript = preload("res://scripts/ui/AbilitySlotButton.gd")
 @onready var player_avatar_panel: PanelContainer = %PlayerAvatarPanel
 @onready var player_emoji_label: Label = %PlayerEmojiLabel
 @onready var player_hp_bar: ProgressBar = %PlayerHPBar
+@onready var player_barrier_bar: ProgressBar = %PlayerBarrierBar
 @onready var player_hp_bar_label: Label = %PlayerHPBarLabel
 @onready var player_mana_bar: ProgressBar = %PlayerManaBar
 @onready var player_mana_bar_label: Label = %PlayerManaBarLabel
@@ -99,6 +101,7 @@ func _ready() -> void:
 	GameManager.stats_changed.connect(_request_hud_refresh)
 	GameManager.hp_changed.connect(_on_player_hp_changed)
 	GameManager.mana_changed.connect(_on_player_mana_changed)
+	GameManager.barrier_changed.connect(_on_player_barrier_changed)
 	GameManager.player_healed.connect(_on_player_healed)
 	GameManager.abilities_changed.connect(_refresh_magic_summary)
 	GameManager.buffs_changed.connect(_refresh_active_buffs)
@@ -111,6 +114,7 @@ func _ready() -> void:
 	GameManager.pets_changed.connect(_refresh_companion_slot)
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.mine_run_failed.connect(_on_mine_run_failed)
+	GameManager.wave_dungeon_changed.connect(_refresh_wave_dungeon_banner)
 	GameManager.afk_mode_changed.connect(_on_afk_mode_changed)
 	GameManager.game_reset.connect(_refresh_all)
 
@@ -160,7 +164,7 @@ func _create_popup_slot(stage: Control) -> Dictionary:
 
 
 func _request_hud_refresh() -> void:
-	if _hud_refresh_queued:
+	if GameManager.is_afk_mode or _hud_refresh_queued:
 		return
 	_hud_refresh_queued = true
 	call_deferred("_refresh_hud")
@@ -190,6 +194,7 @@ func bind_combat_system(combat: CombatSystem) -> void:
 	_combat_system.enemy_stun_changed.connect(_on_enemy_stun_changed)
 	_combat_system.pet_action_performed.connect(_on_pet_action_performed)
 	_combat_system.mine_find_triggered.connect(_on_mine_find_triggered)
+	_combat_system.route_event_triggered.connect(_on_route_event_triggered)
 
 	_on_battle_search_changed(_combat_system.is_seeking_battle)
 	_on_combat_state_changed(int(_combat_system.current_state))
@@ -206,14 +211,23 @@ func bind_combat_system(combat: CombatSystem) -> void:
 
 
 func _refresh_all() -> void:
+	if GameManager.is_afk_mode:
+		afk_toggle_button.text = "🌙 AFK (вкл)"
+		return
+	_last_hp_bar_str = ""
+	_last_mp_bar_str = ""
+	_last_enemy_hp_str = ""
+	_last_enemy_mp_str = ""
 	_refresh_hud()
 	_refresh_companion_slot()
 	_refresh_difficulty_chip()
 	_refresh_magic_summary()
 	_refresh_active_buffs()
+	_refresh_wave_dungeon_banner()
 	_on_player_hp_changed(GameManager.current_hp, GameManager.get_max_hp())
 	_on_player_mana_changed(GameManager.current_mana, GameManager.get_max_mana())
-	_on_afk_mode_changed(GameManager.is_afk_mode)
+	_on_player_barrier_changed(GameManager.current_barrier, GameManager.get_max_barrier())
+	afk_toggle_button.text = "🌙 AFK"
 	if GameManager.current_location != null:
 		_on_location_changed(GameManager.current_location)
 	if _combat_system != null:
@@ -236,6 +250,8 @@ func _refresh_all() -> void:
 
 func _refresh_hud() -> void:
 	_hud_refresh_queued = false
+	if GameManager.is_afk_mode:
+		return
 	level_label.text = "Lv. %d" % GameManager.level
 	var xp_req: float = GameManager.get_xp_to_next_level()
 	xp_bar.max_value = xp_req
@@ -320,7 +336,7 @@ func _refresh_magic_summary() -> void:
 
 
 func _refresh_active_buffs() -> void:
-	if active_buffs_label == null:
+	if GameManager.is_afk_mode or active_buffs_label == null:
 		return
 	if GameManager.active_buffs.is_empty():
 		active_buffs_label.text = ""
@@ -331,6 +347,14 @@ func _refresh_active_buffs() -> void:
 		if rem > 0.0:
 			parts.append("%s%.0fс" % [str(b.get("icon_emoji", "✨")), ceil(rem)])
 	active_buffs_label.text = " ".join(parts)
+
+
+func _refresh_wave_dungeon_banner() -> void:
+	if wave_dungeon_label == null:
+		return
+	wave_dungeon_label.visible = GameManager.wave_dungeon_active
+	if GameManager.wave_dungeon_active:
+		wave_dungeon_label.text = "🏰 Данж волн: %d / %d" % [GameManager.wave_dungeon_wave, GameManager.WAVE_DUNGEON_TOTAL_WAVES]
 
 
 func _on_battle_search_pressed() -> void:
@@ -471,10 +495,13 @@ func _on_mastery_changed(skill_id: String, new_level: int, leveled_up: bool) -> 
 
 
 func _on_player_hp_changed(current_hp: float, max_hp: float) -> void:
+	if GameManager.is_afk_mode:
+		return
 	var pct: int = clampi(roundi((current_hp / maxf(1.0, max_hp)) * 100.0), 0, 100)
 	var cur_str: String = NumberFormatter.format_number(ceil(current_hp))
 	var max_str: String = NumberFormatter.format_number(maxf(1.0, max_hp))
-	var full_str: String = "%s / %s (%d%%)" % [cur_str, max_str, pct]
+	var barrier_note: String = " [🛡️%s]" % NumberFormatter.format_number(ceil(GameManager.current_barrier)) if GameManager.current_barrier > 0.5 else ""
+	var full_str: String = "%s / %s (%d%%)%s" % [cur_str, max_str, pct, barrier_note]
 
 	player_hp_bar.max_value = max_hp
 	player_hp_bar.value = current_hp
@@ -488,7 +515,20 @@ func _on_player_hp_changed(current_hp: float, max_hp: float) -> void:
 		crest_red_label.text = "❤️ %s" % cur_str
 
 
+func _on_player_barrier_changed(current_barrier: float, max_barrier: float) -> void:
+	if GameManager.is_afk_mode:
+		return
+	if player_barrier_bar != null:
+		var bar_cap: float = maxf(max_barrier, GameManager.get_max_hp())
+		player_barrier_bar.visible = current_barrier > 0.5
+		player_barrier_bar.max_value = maxf(1.0, bar_cap)
+		player_barrier_bar.value = clampf(current_barrier, 0.0, bar_cap)
+	_on_player_hp_changed(GameManager.current_hp, GameManager.get_max_hp())
+
+
 func _on_player_mana_changed(current_mana: float, max_mana: float) -> void:
+	if GameManager.is_afk_mode:
+		return
 	var has_mana: bool = max_mana > 0.0
 	player_mana_bar.visible = has_mana
 	if not has_mana:
@@ -510,7 +550,7 @@ func _on_player_mana_changed(current_mana: float, max_mana: float) -> void:
 
 
 func _on_player_healed(amount: float) -> void:
-	if amount <= 0.0 or GameManager.is_afk_mode:
+	if amount <= 0.0 or GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	_spawn_floating_text(player_avatar_stage, "+%s HP" % NumberFormatter.format_number(amount), Color(0.32, 0.92, 0.56, 1.0))
 
@@ -578,6 +618,8 @@ func _update_enemy_name_label() -> void:
 
 
 func _on_enemy_hp_changed(current_hp: float, max_hp: float) -> void:
+	if GameManager.is_afk_mode:
+		return
 	var pct: int = clampi(roundi((current_hp / maxf(1.0, max_hp)) * 100.0), 0, 100)
 	var hp_str: String = "%s / %s (%d%%)" % [
 		NumberFormatter.format_number(ceil(current_hp)),
@@ -592,6 +634,8 @@ func _on_enemy_hp_changed(current_hp: float, max_hp: float) -> void:
 
 
 func _on_enemy_mana_changed(current_mana: float, max_mana: float) -> void:
+	if GameManager.is_afk_mode:
+		return
 	var has_mana: bool = max_mana > 0.0
 	enemy_mana_bar.visible = has_mana
 	if not has_mana:
@@ -610,12 +654,14 @@ func _on_enemy_mana_changed(current_mana: float, max_mana: float) -> void:
 
 
 func _on_attack_progress_updated(player_progress: float, enemy_progress: float) -> void:
+	if GameManager.is_afk_mode:
+		return
 	player_attack_diamond.set_progress(player_progress)
 	enemy_attack_diamond.set_progress(enemy_progress)
 
 
 func _on_ranged_shot_fired(ammo_emoji: String, has_ammo: bool) -> void:
-	if GameManager.is_afk_mode:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	if has_ammo:
 		_spawn_ranged_projectile(ammo_emoji)
@@ -624,7 +670,7 @@ func _on_ranged_shot_fired(ammo_emoji: String, has_ammo: bool) -> void:
 
 
 func _on_spirit_action_performed(spirit_name: String, emoji: String, value: float, is_heal: bool) -> void:
-	if GameManager.is_afk_mode:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	if is_heal:
 		_spawn_floating_text(player_avatar_stage, "%s +%s HP" % [emoji, NumberFormatter.format_number(value)], Color(0.45, 0.96, 0.68, 1.0))
@@ -634,7 +680,7 @@ func _on_spirit_action_performed(spirit_name: String, emoji: String, value: floa
 
 
 func _on_player_attack_landed(damage: float, is_crit: bool) -> void:
-	if GameManager.is_afk_mode:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	_play_attack_animation(true, 22.0)
 	_play_hit_reaction(false)
@@ -646,7 +692,7 @@ func _on_player_attack_landed(damage: float, is_crit: bool) -> void:
 
 
 func _on_enemy_attack_landed(damage: float, dodged: bool) -> void:
-	if GameManager.is_afk_mode:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	_play_attack_animation(false, -22.0)
 	if dodged:
@@ -657,7 +703,7 @@ func _on_enemy_attack_landed(damage: float, dodged: bool) -> void:
 
 
 func _on_enemy_defeated_reward(xp_earned: float, gold_earned: float) -> void:
-	if GameManager.is_afk_mode:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	_spawn_floating_text(
 		enemy_avatar_stage,
@@ -667,7 +713,7 @@ func _on_enemy_defeated_reward(xp_earned: float, gold_earned: float) -> void:
 
 
 func _spawn_ranged_projectile(emoji: String) -> void:
-	if player_avatar_stage == null or enemy_avatar_stage == null or _proj_pool.is_empty():
+	if GameManager.is_afk_mode or GameManager.is_menu_open or player_avatar_stage == null or enemy_avatar_stage == null or _proj_pool.is_empty():
 		return
 	var slot: Dictionary = _proj_pool[_proj_cursor]
 	_proj_cursor = (_proj_cursor + 1) % _proj_pool.size()
@@ -688,6 +734,8 @@ func _spawn_ranged_projectile(emoji: String) -> void:
 
 
 func _play_attack_animation(is_player: bool, offset_x: float) -> void:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
+		return
 	var now_ms: int = Time.get_ticks_msec()
 	var last_ms: int = _last_player_anim_ms if is_player else _last_enemy_anim_ms
 	if last_ms > 0 and (now_ms - last_ms) < AVATAR_TWEEN_MIN_INTERVAL_MS:
@@ -719,6 +767,8 @@ func _play_attack_animation(is_player: bool, offset_x: float) -> void:
 
 
 func _play_hit_reaction(is_player: bool) -> void:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
+		return
 	var now_ms: int = Time.get_ticks_msec()
 	var last_ms: int = _last_player_anim_ms if is_player else _last_enemy_anim_ms
 	if last_ms > 0 and (now_ms - last_ms) < AVATAR_TWEEN_MIN_INTERVAL_MS:
@@ -750,6 +800,8 @@ func _play_hit_reaction(is_player: bool) -> void:
 
 
 func _play_enemy_spawn_pop() -> void:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
+		return
 	if _enemy_tween != null and _enemy_tween.is_valid():
 		_enemy_tween.kill()
 
@@ -764,7 +816,7 @@ func _play_enemy_spawn_pop() -> void:
 
 
 func _spawn_floating_text(stage: Control, text_value: String, color: Color, is_big: bool = false) -> void:
-	if stage == null:
+	if stage == null or GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	var is_player_stage: bool = (stage == player_avatar_stage)
 	var pool: Array[Dictionary] = _player_popup_pool if is_player_stage else _enemy_popup_pool
@@ -849,13 +901,19 @@ func _on_location_changed(location: LocationData) -> void:
 
 
 func _on_mine_find_triggered(msg: String) -> void:
-	if msg.is_empty() or GameManager.is_afk_mode:
+	if msg.is_empty() or GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	_spawn_floating_text(player_avatar_stage, msg, Color(0.55, 0.92, 1.0, 1.0), true)
 
 
+func _on_route_event_triggered(msg: String) -> void:
+	if msg.is_empty() or GameManager.is_afk_mode or GameManager.is_menu_open:
+		return
+	_spawn_floating_text(player_avatar_stage, msg, Color(0.96, 0.86, 0.36, 1.0), true)
+
+
 func _on_mine_run_failed(depth_reached: int) -> void:
-	if GameManager.is_afk_mode:
+	if GameManager.is_afk_mode or GameManager.is_menu_open:
 		return
 	_spawn_floating_text(
 		player_avatar_stage,
@@ -867,3 +925,5 @@ func _on_mine_run_failed(depth_reached: int) -> void:
 
 func _on_afk_mode_changed(is_afk: bool) -> void:
 	afk_toggle_button.text = "🌙 AFK (вкл)" if is_afk else "🌙 AFK"
+	if not is_afk:
+		_refresh_all()

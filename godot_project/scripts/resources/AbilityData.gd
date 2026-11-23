@@ -1,6 +1,8 @@
 class_name AbilityData
 extends Resource
 
+const MAX_SPELL_LEVEL: int = 5
+
 @export var id: String = ""
 @export var title: String = ""
 @export var icon_emoji: String = "✨"
@@ -33,3 +35,9 @@ extends Resource
 
 func get_display_name() -> String:
 	return "%s %s" % [icon_emoji, title]
+
+
+static func get_level_multiplier(spell_level: int) -> float:
+	var clamped: int = clampi(spell_level, 1, MAX_SPELL_LEVEL)
+	return 1.0 + float(clamped - 1) * 0.15
+
