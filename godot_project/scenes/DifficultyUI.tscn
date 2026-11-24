@@ -67,25 +67,6 @@ theme_override_font_sizes/font_size = 13
 text = "🏆 Активное испытание: Нет"
 autowrap_mode = 3
 
-[node name="NextBossActionRow" type="HBoxContainer" parent="DiffVBox/StatusCard/StatusVBox"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="NextBossButton" type="Button" parent="DiffVBox/StatusCard/StatusVBox/NextBossActionRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(240, 46)
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Перейти на Сл.+1 сразу после победы над боссом без сброса уровня, вещей и талантов"
-text = "⏭️ Сразу на след. босса (Сл. 2)"
-
-[node name="AutoAdvanceButton" type="Button" parent="DiffVBox/StatusCard/StatusVBox/NextBossActionRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(230, 46)
-layout_mode = 2
-tooltip_text = "Автоматически переходить на следующую сложность сразу после победы над Вечным титаном"
-text = "🔁 Авто-след. босс: ВЫКЛ"
-
 [node name="SelectorCard" type="PanelContainer" parent="DiffVBox"]
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_diff_card")

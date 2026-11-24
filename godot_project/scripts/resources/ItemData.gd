@@ -71,6 +71,7 @@ enum OffhandKind {
 @export var buy_price: int = 20
 @export var sell_value: int = 5
 @export var dark_shop_coin_price: int = 0
+@export var resets_claimed_difficulties: bool = false
 @export var icon_color: Color = Color(0.75, 0.78, 0.85, 1.0)
 
 @export_group("Buff Potion")
@@ -186,6 +187,8 @@ func get_summary_text() -> String:
 	if armor_penetration > 0.0:
 		parts.append("+%d Пробитие" % int(armor_penetration))
 	if item_type == ItemType.CONSUMABLE:
+		if resets_claimed_difficulties:
+			parts.append("Сброс наград 🌑 пройденных сложностей (макс. Сл. сохраняется)")
 		if heal_amount > 0.0:
 			parts.append("+%d HP" % int(heal_amount))
 		if heal_pct > 0.0:

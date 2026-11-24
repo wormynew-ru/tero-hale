@@ -19,19 +19,51 @@ signal reset_triggered
 
 @onready var str_value_label: Label = %StrValueLabel
 @onready var str_sp_button: Button = %StrSPButton
+@onready var str_sp_10_button: Button = %StrSP10Button
+@onready var str_sp_25_button: Button = %StrSP25Button
+@onready var str_sp_50_button: Button = %StrSP50Button
+@onready var str_sp_max_button: Button = %StrSPMaxButton
 @onready var str_gold_button: Button = %StrGoldButton
+@onready var str_gold_10_button: Button = %StrGold10Button
+@onready var str_gold_25_button: Button = %StrGold25Button
+@onready var str_gold_50_button: Button = %StrGold50Button
+@onready var str_gold_max_button: Button = %StrGoldMaxButton
 
 @onready var agi_value_label: Label = %AgiValueLabel
 @onready var agi_sp_button: Button = %AgiSPButton
+@onready var agi_sp_10_button: Button = %AgiSP10Button
+@onready var agi_sp_25_button: Button = %AgiSP25Button
+@onready var agi_sp_50_button: Button = %AgiSP50Button
+@onready var agi_sp_max_button: Button = %AgiSPMaxButton
 @onready var agi_gold_button: Button = %AgiGoldButton
+@onready var agi_gold_10_button: Button = %AgiGold10Button
+@onready var agi_gold_25_button: Button = %AgiGold25Button
+@onready var agi_gold_50_button: Button = %AgiGold50Button
+@onready var agi_gold_max_button: Button = %AgiGoldMaxButton
 
 @onready var end_value_label: Label = %EndValueLabel
 @onready var end_sp_button: Button = %EndSPButton
+@onready var end_sp_10_button: Button = %EndSP10Button
+@onready var end_sp_25_button: Button = %EndSP25Button
+@onready var end_sp_50_button: Button = %EndSP50Button
+@onready var end_sp_max_button: Button = %EndSPMaxButton
 @onready var end_gold_button: Button = %EndGoldButton
+@onready var end_gold_10_button: Button = %EndGold10Button
+@onready var end_gold_25_button: Button = %EndGold25Button
+@onready var end_gold_50_button: Button = %EndGold50Button
+@onready var end_gold_max_button: Button = %EndGoldMaxButton
 
 @onready var int_value_label: Label = %IntValueLabel
 @onready var int_sp_button: Button = %IntSPButton
+@onready var int_sp_10_button: Button = %IntSP10Button
+@onready var int_sp_25_button: Button = %IntSP25Button
+@onready var int_sp_50_button: Button = %IntSP50Button
+@onready var int_sp_max_button: Button = %IntSPMaxButton
 @onready var int_gold_button: Button = %IntGoldButton
+@onready var int_gold_10_button: Button = %IntGold10Button
+@onready var int_gold_25_button: Button = %IntGold25Button
+@onready var int_gold_50_button: Button = %IntGold50Button
+@onready var int_gold_max_button: Button = %IntGoldMaxButton
 
 @onready var export_txt_button: Button = %ExportTxtButton
 @onready var import_txt_button: Button = %ImportTxtButton
@@ -67,15 +99,10 @@ func _ready() -> void:
 	GameManager.challenge_changed.connect(_on_state_updated)
 	GameManager.wave_dungeon_changed.connect(_on_state_updated)
 
-	str_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("strength"))
-	agi_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("agility"))
-	end_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("endurance"))
-	int_sp_button.pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_point("intellect"))
-
-	str_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("strength"))
-	agi_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("agility"))
-	end_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("endurance"))
-	int_gold_button.pressed.connect(func() -> void: GameManager.train_stat_with_gold("intellect"))
+	_connect_stat_buttons("strength", [str_sp_button, str_sp_10_button, str_sp_25_button, str_sp_50_button, str_sp_max_button], [str_gold_button, str_gold_10_button, str_gold_25_button, str_gold_50_button, str_gold_max_button])
+	_connect_stat_buttons("agility", [agi_sp_button, agi_sp_10_button, agi_sp_25_button, agi_sp_50_button, agi_sp_max_button], [agi_gold_button, agi_gold_10_button, agi_gold_25_button, agi_gold_50_button, agi_gold_max_button])
+	_connect_stat_buttons("endurance", [end_sp_button, end_sp_10_button, end_sp_25_button, end_sp_50_button, end_sp_max_button], [end_gold_button, end_gold_10_button, end_gold_25_button, end_gold_50_button, end_gold_max_button])
+	_connect_stat_buttons("intellect", [int_sp_button, int_sp_10_button, int_sp_25_button, int_sp_50_button, int_sp_max_button], [int_gold_button, int_gold_10_button, int_gold_25_button, int_gold_50_button, int_gold_max_button])
 
 	HoldAutoClicker.attach(str_sp_button, 50.0)
 	HoldAutoClicker.attach(agi_sp_button, 50.0)
@@ -105,6 +132,14 @@ func _ready() -> void:
 
 	reset_button.pressed.connect(_on_reset_button_pressed)
 	_refresh()
+
+
+func _connect_stat_buttons(stat_key: String, sp_buttons: Array[Button], gold_buttons: Array[Button]) -> void:
+	var amounts: Array[int] = [1, 10, 25, 50, 0]
+	for idx: int in range(amounts.size()):
+		var amt: int = amounts[idx]
+		sp_buttons[idx].pressed.connect(func() -> void: GameManager.upgrade_stat_with_skill_points_bulk(stat_key, amt))
+		gold_buttons[idx].pressed.connect(func() -> void: GameManager.train_stat_with_gold_bulk(stat_key, amt))
 
 
 func _notification(what: int) -> void:
@@ -162,7 +197,13 @@ func _refresh() -> void:
 
 	var style_info: String = "Ближний бой"
 	if GameManager.has_hero_class("reflector"):
-		style_info = "🪞 Отражение 20%% + 5%% HP/с + 0.1%% гниение (стак +%s HP)" % NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks))
+		var ref_pct: float = GameManager.get_damage_reflection_pct() * 100.0
+		var mit_pct: float = GameManager.get_reflector_mitigation_pct() * 100.0
+		style_info = "🪞 Отражение %.0f%% (поглощ. %.0f%% до брони) + 5%% HP/с + 0.1%% гниение (стак +%s, x20 HP)" % [
+			ref_pct,
+			mit_pct,
+			NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks)),
+		]
 	elif GameManager.has_hero_class("blood_archmage"):
 		style_info = "🩸 10% шанс каста случайных чар вместо тычки (2x Инта, 3x MP/Инта)"
 	elif GameManager.is_equipment_disabled():
@@ -186,7 +227,7 @@ func _refresh() -> void:
 	var max_bar: float = GameManager.get_max_barrier()
 	var barrier_str: String = "%s/%s" % [NumberFormatter.format_number(GameManager.current_barrier), NumberFormatter.format_number(max_bar)]
 	if GameManager.has_hero_class("reflector"):
-		barrier_str = "→ Max HP (+%s)" % NumberFormatter.format_number(GameManager.get_raw_max_barrier())
+		barrier_str = "→ x20 Max HP (+%s)" % NumberFormatter.format_number(GameManager.get_raw_max_barrier() * 20.0 * 1.3)
 	var ch_def: Dictionary = GameManager.get_challenge_def(GameManager.active_challenge_id)
 	var extra_tags: Array[String] = []
 	if not ch_def.is_empty():
@@ -237,26 +278,37 @@ func _refresh() -> void:
 	end_value_label.text = "🛡️ Выносливость: %d (%d + %d)" % [total_end, GameManager.base_endurance, bonus_end]
 	int_value_label.text = "🧠 Инта: %d (%d + %d)" % [total_int, GameManager.base_intellect, bonus_int]
 
-	var has_sp: bool = GameManager.skill_points > 0
-	str_sp_button.disabled = not has_sp
-	agi_sp_button.disabled = not has_sp
-	end_sp_button.disabled = not has_sp
-	int_sp_button.disabled = not has_sp
+	_refresh_stat_bulk_row("strength", [str_sp_button, str_sp_10_button, str_sp_25_button, str_sp_50_button, str_sp_max_button], [str_gold_button, str_gold_10_button, str_gold_25_button, str_gold_50_button, str_gold_max_button])
+	_refresh_stat_bulk_row("agility", [agi_sp_button, agi_sp_10_button, agi_sp_25_button, agi_sp_50_button, agi_sp_max_button], [agi_gold_button, agi_gold_10_button, agi_gold_25_button, agi_gold_50_button, agi_gold_max_button])
+	_refresh_stat_bulk_row("endurance", [end_sp_button, end_sp_10_button, end_sp_25_button, end_sp_50_button, end_sp_max_button], [end_gold_button, end_gold_10_button, end_gold_25_button, end_gold_50_button, end_gold_max_button])
+	_refresh_stat_bulk_row("intellect", [int_sp_button, int_sp_10_button, int_sp_25_button, int_sp_50_button, int_sp_max_button], [int_gold_button, int_gold_10_button, int_gold_25_button, int_gold_50_button, int_gold_max_button])
 
-	var str_cost: float = GameManager.get_train_cost("strength")
-	var agi_cost: float = GameManager.get_train_cost("agility")
-	var end_cost: float = GameManager.get_train_cost("endurance")
-	var int_cost: float = GameManager.get_train_cost("intellect")
 
-	str_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(str_cost)
-	agi_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(agi_cost)
-	end_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(end_cost)
-	int_gold_button.text = "Тренир. (%s з.)" % NumberFormatter.format_number(int_cost)
+func _refresh_stat_bulk_row(stat_key: String, sp_buttons: Array[Button], gold_buttons: Array[Button]) -> void:
+	var sp_avail: int = GameManager.skill_points
+	sp_buttons[0].disabled = sp_avail < 1
+	sp_buttons[1].disabled = sp_avail < 10
+	sp_buttons[2].disabled = sp_avail < 25
+	sp_buttons[3].disabled = sp_avail < 50
+	sp_buttons[4].disabled = sp_avail <= 0
+	sp_buttons[4].text = "Макс (+%d)" % sp_avail if sp_avail > 0 else "Макс"
 
-	str_gold_button.disabled = GameManager.gold < str_cost
-	agi_gold_button.disabled = GameManager.gold < agi_cost
-	end_gold_button.disabled = GameManager.gold < end_cost
-	int_gold_button.disabled = GameManager.gold < int_cost
+	var fixed_steps: Array[int] = [1, 10, 25, 50]
+	for idx: int in range(fixed_steps.size()):
+		var step_cnt: int = fixed_steps[idx]
+		var bulk_res: Dictionary = GameManager.get_train_bulk_cost(stat_key, step_cnt)
+		var step_cost: float = float(bulk_res.get("cost", 0.0))
+		gold_buttons[idx].text = "+%d (%s з.)" % [step_cnt, NumberFormatter.format_number(step_cost)]
+		gold_buttons[idx].disabled = GameManager.gold < step_cost
+
+	var max_res: Dictionary = GameManager.get_train_bulk_cost(stat_key, 0)
+	var max_cnt: int = int(max_res.get("count", 0))
+	var max_cost: float = float(max_res.get("cost", 0.0))
+	gold_buttons[4].disabled = max_cnt <= 0
+	if max_cnt > 0:
+		gold_buttons[4].text = "Макс +%d (%s)" % [max_cnt, NumberFormatter.format_number(max_cost)]
+	else:
+		gold_buttons[4].text = "Макс (0)"
 
 
 func _refresh_masteries() -> void:

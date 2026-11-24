@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "eternal_bastion_greatsword"
+item_name = "Вечный Двуручный Бастион"
+icon_emoji = "🗡️"
+description = "Ультимативный двуручный меч защитника из Тёмной кузни (даёт Выносливость HP и Защиту). НЕ сбрасывается в новом ране!"
+item_type = 0
+bonus_strength = 64
+bonus_agility = 32
+bonus_endurance = 115
+bonus_intellect = 0
+weapon_style = 0
+required_ammo = 0
+ammo_kind = 0
+bonus_damage = 235.0
+bonus_defense = 52.0
+bonus_crit_chance = 0.12
+armor_penetration = 40.0
+shop_pack_amount = 1
+is_dark_forged = true
+heal_amount = 0.0
+buy_price = 15500
+sell_value = 6200
+icon_color = Color(0.55, 0.92, 0.88, 1)

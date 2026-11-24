@@ -253,11 +253,12 @@ test('resource .tres properties match GDScript definitions and no integer divisi
   }
 });
 
-test('spellbook has exactly 26 abilities (19 general + 7 blood_archmage exclusives), max 3 active slots, buffs, and overcharge_burn', () => {
+test('spellbook has exactly 27 abilities (19 general + 7 blood_archmage + 1 reflector exclusives), max 3 active slots, buffs, and overcharge_burn', () => {
   const abilityFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/abilities'), '.tres');
-  assert.equal(abilityFiles.length, 26, 'Expected exactly 26 abilities');
+  assert.equal(abilityFiles.length, 27, 'Expected exactly 27 abilities');
 
   let bloodExclusiveCount = 0;
+  let reflectorExclusiveCount = 0;
   let buffCount = 0;
   let hasOverchargeBurn = false;
   const ids = new Set<string>();
@@ -272,6 +273,9 @@ test('spellbook has exactly 26 abilities (19 general + 7 blood_archmage exclusiv
     if (/^required_class_id\s*=\s*"blood_archmage"/m.test(txt)) {
       bloodExclusiveCount++;
     }
+    if (/^required_class_id\s*=\s*"reflector"/m.test(txt)) {
+      reflectorExclusiveCount++;
+    }
     if (/^effect_type\s*=\s*"buff"/m.test(txt)) {
       buffCount++;
     }
@@ -281,6 +285,7 @@ test('spellbook has exactly 26 abilities (19 general + 7 blood_archmage exclusiv
   }
 
   assert.equal(bloodExclusiveCount, 7, 'Expected exactly 7 Blood Archmage exclusive abilities');
+  assert.equal(reflectorExclusiveCount, 1, 'Expected exactly 1 Reflector exclusive ability');
   assert.ok(buffCount >= 4, 'Expected multiple buff abilities');
   assert.ok(hasOverchargeBurn, 'Expected escalating overcharge_burn burst spell');
 
@@ -309,8 +314,13 @@ test('Reflector class and 6 immortal Pets (including Firework 5s start-of-battle
   assert.ok(saveContent.includes('owned_pet_ids'), 'SaveData must persist owned_pet_ids');
   assert.ok(saveContent.includes('equipped_pet_id'), 'SaveData must persist equipped_pet_id');
 
+  const gmReflContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  assert.ok(gmReflContent.includes('base_reflect: float = 0.20'), 'GameManager must define 20% base reflection for Reflector');
+  assert.ok(gmReflContent.includes('func get_reflector_mitigation_pct()'), 'GameManager must expose pre-armor mitigation cap (up to 99%)');
+
   const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
-  assert.ok(combatContent.includes('raw_damage * 0.20'), 'CombatSystem must reflect 20% incoming damage for Reflector');
+  assert.ok(combatContent.includes('raw_damage * total_reflect_pct'), 'CombatSystem must reflect total_reflect_pct of raw incoming damage for Reflector');
+  assert.ok(combatContent.includes('get_reflector_mitigation_pct()'), 'CombatSystem must disperse incoming damage before armor using get_reflector_mitigation_pct()');
   assert.ok(combatContent.includes('get_max_hp() * 0.05'), 'CombatSystem must pulse 5% Max HP/s for Reflector');
   assert.ok(combatContent.includes('enemy_max_hp * 0.001'), 'CombatSystem must apply 0.1% enemy Max HP/s rot for Reflector');
   assert.ok(combatContent.includes('start_stun'), 'CombatSystem must trigger start_stun pet effect on enemy spawn');
@@ -350,7 +360,7 @@ test('all 44 regular skills cost 1 SP with empowered bonuses, XP curve is steepe
 
 test('mana potions, buff potions, village map hotspots, Diff-10 Sanctuary garden/brewing, scarlet petal (2000 boss kills), and deterministic Alchemist safety flag are implemented', () => {
   const itemFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/items'), '.tres');
-  assert.equal(itemFiles.length, 96, 'Expected 96 item resources (including mage gear, offhand shields/talismans, mine materials, eternal dark-forged gear + 3 ultimates, and 6 Dark Shop ultimate consumables)');
+  assert.equal(itemFiles.length, 100, 'Expected 100 item resources (including mage gear, offhand shields/talismans, mine materials, eternal dark-forged gear + 6 ultimates, 6 Dark Shop consumables, and abyss_difficulty_reset_orb)');
 
   const cropFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/crops'), '.tres');
   assert.equal(cropFiles.length, 10, 'Expected 10 Sanctuary crop resources (4 light + 6 dark)');
@@ -807,7 +817,7 @@ test('base_intellect is trainable, persisted, shown in StatsUI/BattleArenaUI, an
   assert.ok(arenaGd.includes('int_badge_label.text ='), 'BattleArenaUI.gd must update IntBadgeLabel');
 });
 
-test('high-mana high-potency spells (110-260 MP) are registered and HeroMenuUI/SpellbookUI reflect 26 spells', () => {
+test('high-mana high-potency spells (110-260 MP) are registered and HeroMenuUI/SpellbookUI reflect 27 spells', () => {
   const highManaSpells = [
     'arcane_cataclysm.tres',
     'astral_tempest.tres',
@@ -828,9 +838,9 @@ test('high-mana high-potency spells (110-260 MP) are registered and HeroMenuUI/S
   }
 
   const spellbookTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/SpellbookUI.tscn'), 'utf-8');
-  assert.ok(spellbookTscn.includes('19 общих + 7 Архимага Крови'), 'SpellbookUI.tscn must reflect 19 general + 7 Blood Archmage spells');
+  assert.ok(spellbookTscn.includes('19 общих + 7 Архимага Крови + 1 Отражателя'), 'SpellbookUI.tscn must reflect 19 general + 7 Blood Archmage + 1 Reflector spells');
   const heroMenuTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/HeroMenuUI.tscn'), 'utf-8');
-  assert.ok(heroMenuTscn.includes('Заклинания (26)'), 'HeroMenuUI.tscn must show 26 spells');
+  assert.ok(heroMenuTscn.includes('Заклинания (27)'), 'HeroMenuUI.tscn must show 27 spells');
 });
 
 test('regular skill tree auto-upgrade preset profiles (3 profiles, preserved across new run) and Bastion of Reflection dark branch are wired', () => {
@@ -913,7 +923,7 @@ test('Alchemist ignores greedy_curse price increases and Blood Archmage casts a 
 
   const archmageTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/classes/blood_archmage.tres'), 'utf-8');
   assert.ok(archmageTres.includes('10%') && archmageTres.includes('тычки') && archmageTres.includes('быстрого доступа'), 'blood_archmage.tres must document 10% random quick-access spell basic attack');
-  assert.ok(archmageTres.includes('из 26'), 'blood_archmage.tres must reference 26 total spells');
+  assert.ok(archmageTres.includes('из 27'), 'blood_archmage.tres must reference 27 total spells');
 
   const statsUiGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
   assert.ok(statsUiGd.includes('has_hero_class("blood_archmage")') && statsUiGd.includes('10%'), 'StatsUI must show 10% Blood Archmage attack style');
@@ -939,8 +949,8 @@ test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Sho
     'record_kill() must increment reflector_kill_hp_stacks infinitely only while Reflector is active',
   );
   assert.ok(
-    /func get_max_hp\([\s\S]*?elif has_hero_class\("reflector"\):[\s\S]*?hp_val \+= float\(reflector_kill_hp_stacks\)/.test(gmTxt),
-    'get_max_hp() must scope reflector_kill_hp_stacks strictly inside has_hero_class("reflector")',
+    /func get_max_hp\([\s\S]*?elif has_hero_class\("reflector"\):[\s\S]*?float\(reflector_kill_hp_stacks\)[\s\S]*?total_hp_gain \* 20\.0/.test(gmTxt),
+    'get_max_hp() must scope reflector_kill_hp_stacks strictly inside has_hero_class("reflector") and apply 20x HP gain scaling',
   );
   assert.ok(
     /func on_final_boss_defeated\([\s\S]*?var coins_gained: int = maxi\(1, difficulty_level\)[\s\S]*?dark_shop_coins \+= coins_gained/.test(gmTxt),
@@ -982,42 +992,35 @@ test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Sho
   assert.ok(classUiGd.includes('reflector_kill_hp_stacks'), 'ClassUI.gd must show Reflector kill HP stacks');
 });
 
-test('seamless next-boss advance after clearing current difficulty boss works without resetting run and supports optional auto-advance', () => {
+test('next-boss-without-reset mechanic is completely removed across scripts and scenes (only SaveData legacy field retained)', () => {
   const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
-  assert.ok(saveTxt.includes('@export var auto_advance_next_boss: bool = false'), 'SaveData must persist auto_advance_next_boss');
+  assert.ok(saveTxt.includes('@export var auto_advance_next_boss: bool = false'), 'SaveData must retain inert auto_advance_next_boss for save compatibility');
 
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  for (const sym of [
-    'signal next_boss_advanced(new_difficulty: int, immediate_spawn: bool)',
-    'const FINAL_BOSS_LOCATION_ID: String = "celestial_throne"',
-    'func can_advance_to_next_boss()',
-    'func set_auto_advance_next_boss(',
-    'func advance_to_next_boss_in_run(',
+  for (const removedSym of [
+    'next_boss_advanced',
+    'can_advance_to_next_boss',
+    'set_auto_advance_next_boss',
+    'advance_to_next_boss_in_run',
   ]) {
-    assert.ok(gmTxt.includes(sym), `GameManager.gd must define ${sym}`);
+    assert.ok(!gmTxt.includes(removedSym), `GameManager.gd must NOT contain removed symbol ${removedSym}`);
   }
 
-  const advMatch = /func advance_to_next_boss_in_run\([^)]*\) -> bool:\n([\s\S]*?)\n+func on_curse_warden_defeated/.exec(gmTxt);
-  assert.ok(advMatch, 'GameManager.gd must define advance_to_next_boss_in_run()');
-  assert.ok(!advMatch[1].includes('_init_run_state('), 'advance_to_next_boss_in_run() must NOT reset level/gear via _init_run_state');
-  assert.ok(advMatch[1].includes('difficulty_level += 1') && advMatch[1].includes('boss_defeated_this_run = false'), 'advance_to_next_boss_in_run() must increment difficulty_level and clear boss_defeated_this_run');
-
   const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
-  assert.ok(combatTxt.includes('_pending_boss_duel') && combatTxt.includes('_on_next_boss_advanced'), 'CombatSystem must handle next_boss_advanced and prioritize eternal_titan');
-  assert.ok(combatTxt.includes('GameManager.auto_advance_next_boss'), 'CombatSystem must trigger auto-advance when enabled');
+  assert.ok(!combatTxt.includes('_pending_boss_duel') && !combatTxt.includes('_on_next_boss_advanced') && !combatTxt.includes('advance_to_next_boss_in_run'), 'CombatSystem must NOT contain next-boss-without-reset logic');
 
   const arenaTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/BattleArenaUI.tscn'), 'utf-8');
-  assert.ok(arenaTscn.includes('NextBossButton'), 'BattleArenaUI.tscn must expose quick NextBossButton');
+  assert.ok(!arenaTscn.includes('NextBossButton'), 'BattleArenaUI.tscn must NOT expose NextBossButton');
   const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
-  assert.ok(arenaGd.includes('advance_to_next_boss_in_run(true)') && arenaGd.includes('next_boss_advanced.connect'), 'BattleArenaUI.gd must wire NextBossButton and next_boss_advanced');
+  assert.ok(!arenaGd.includes('next_boss_button') && !arenaGd.includes('next_boss_advanced'), 'BattleArenaUI.gd must NOT reference next-boss-without-reset');
 
   const diffTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/DifficultyUI.tscn'), 'utf-8');
-  assert.ok(diffTscn.includes('NextBossButton') && diffTscn.includes('AutoAdvanceButton'), 'DifficultyUI.tscn must expose NextBossButton and AutoAdvanceButton');
+  assert.ok(!diffTscn.includes('NextBossButton') && !diffTscn.includes('AutoAdvanceButton'), 'DifficultyUI.tscn must NOT expose NextBossButton or AutoAdvanceButton');
   const diffGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/DifficultyUI.gd'), 'utf-8');
-  assert.ok(diffGd.includes('signal next_boss_started') && diffGd.includes('set_auto_advance_next_boss'), 'DifficultyUI.gd must wire next_boss_started and auto-advance toggle');
+  assert.ok(!diffGd.includes('next_boss_started') && !diffGd.includes('advance_to_next_boss_in_run'), 'DifficultyUI.gd must NOT reference next-boss-without-reset');
 
   const heroMenuGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/HeroMenuUI.gd'), 'utf-8');
-  assert.ok(heroMenuGd.includes('difficulty_ui.next_boss_started.connect(close_menu)'), 'HeroMenuUI.gd must close menu when advancing to next boss');
+  assert.ok(!heroMenuGd.includes('next_boss_started'), 'HeroMenuUI.gd must NOT connect next_boss_started');
 });
 
 test('Blood Archmage gets 2x intellect and 3x mana per intellect, and README.md reflects CHANGELOG.md', () => {
@@ -1041,11 +1044,11 @@ test('Blood Archmage gets 2x intellect and 3x mana per intellect, and README.md 
   assert.ok(faqGd.includes('2x прирост Инты') && faqGd.includes('3x маны от Инты'), 'FaqUI.gd must document Blood Archmage 2x Int and 3x mana from Int');
 
   const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
-  assert.ok(changelogTxt.includes('## [0.21.0]'), 'CHANGELOG.md must include [0.21.0] entry');
+  assert.ok(changelogTxt.includes('## [0.21.0]') && changelogTxt.includes('## [0.23.0]'), 'CHANGELOG.md must include [0.21.0] and [0.23.0] entries');
 
   const readmeTxt = fs.readFileSync(path.resolve(GODOT_ROOT, '../README.md'), 'utf-8');
   assert.ok(!readmeTxt.includes('2 FPS') && !readmeTxt.includes('34 узлов'), 'README.md must not contain stale pre-0.17.3 claims');
-  for (const keyFeature of ['0.22.0', '2x прирост интеллекта', 'Тёмный магазин', 'Древняя Шахта', '44 узла', '31 постоянный узел', '26 чар', '96 предметов', 'Бестиарий']) {
+  for (const keyFeature of ['0.23.0', '2x прирост интеллекта', 'Тёмный магазин', 'Древняя Шахта', '44 узла', '31 постоянный узел', '27 чар', '100 предметов', 'Бестиарий']) {
     assert.ok(readmeTxt.includes(keyFeature), `README.md must include updated feature "${keyFeature}"`);
   }
 });
@@ -1188,6 +1191,67 @@ test('GDScripts have zero SHADOWED_GLOBAL_IDENTIFIER, Control SHADOWED_VARIABLE_
       assert.ok(!bMatch, `${rel} must not shadow Control/Node2D base properties: ${bMatch?.[0] ?? ''}`);
     }
   }
+});
+
+test('v0.23.0 features: Reflector rework (20x HP, 0% dodge, pre-armor 99% cap, battle-start aura, +200% spell), 0.25s spawn, 3 Dark Forge ultimates + weapon def, bulk stats, and 0.001% difficulty reset orb', () => {
+  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const abilityDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/AbilityData.gd'), 'utf-8');
+  const itemDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/ItemData.gd'), 'utf-8');
+
+  // 1. Mirror Apotheosis (+200% reflect exclusive Reflector spell)
+  assert.ok(abilityDataTxt.includes('buff_reflect_pct'), 'AbilityData.gd must declare buff_reflect_pct');
+  const mirrorApotheosisTxt = fs.readFileSync(path.join(GODOT_ROOT, 'resources/abilities/mirror_apotheosis.tres'), 'utf-8');
+  assert.ok(/required_class_id\s*=\s*"reflector"/.test(mirrorApotheosisTxt), 'mirror_apotheosis.tres must require reflector class');
+  assert.ok(/buff_reflect_pct\s*=\s*2\.0/.test(mirrorApotheosisTxt), 'mirror_apotheosis.tres must grant +200% (2.0) reflection');
+  assert.ok(gmTxt.includes('abilities/mirror_apotheosis.tres'), 'GameManager must register mirror_apotheosis.tres');
+
+  const spellbookGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SpellbookUI.gd'), 'utf-8');
+  assert.ok(spellbookGd.includes('reflector') && spellbookGd.includes('Отражатель'), 'SpellbookUI must style and tag Reflector exclusive spells');
+
+  // 2. Pre-armor dispersion with 99% mitigation cap + overflow reflection
+  assert.ok(gmTxt.includes('minf(get_damage_reflection_pct(), 0.99)'), 'get_reflector_mitigation_pct() must cap incoming damage reduction at 99%');
+  assert.ok(combatTxt.includes('var mitigated_pct: float = GameManager.get_reflector_mitigation_pct()') && combatTxt.includes('raw_damage * (1.0 - mitigated_pct)'), 'CombatSystem must apply pre-armor dispersion before apply_damage()');
+
+  // 3. Battle-start Reflector Max HP aura trigger
+  assert.ok(combatTxt.includes('func _trigger_reflector_aura_pulse()'), 'CombatSystem must extract _trigger_reflector_aura_pulse()');
+  assert.ok(/func _spawn_enemy\([\s\S]*?_trigger_reflector_aura_pulse\(\)/.test(combatTxt), 'CombatSystem._spawn_enemy() must immediately trigger Reflector aura pulse at battle start');
+
+  // 4. Reflector 20x HP scaling + 0% dodge
+  assert.ok(/func get_dodge_chance\([\s\S]*?has_hero_class\("reflector"\):\s*\n\s*return 0\.0/.test(gmTxt), 'GameManager.get_dodge_chance() must return 0.0 for Reflector');
+  assert.ok(/func record_kill\([\s\S]*?20\.0/.test(gmTxt), 'GameManager.record_kill() must heal proportionally for 20x Reflector HP stack');
+
+  // 5. Faster next-battle start (0.25s normal / 0.2s wave dungeon)
+  assert.ok(combatTxt.includes('const SPAWN_DELAY: float = 0.25'), 'CombatSystem must set SPAWN_DELAY = 0.25');
+  assert.ok(combatTxt.includes('_spawn_timer = 0.2'), 'CombatSystem must set wave dungeon _spawn_timer = 0.2');
+
+  // 6. 3 new Dark Forge ultimate items + equipped weapon bonus_defense
+  for (const newUlt of ['eternal_void_bastion_plate.tres', 'eternal_abyss_bulwark.tres', 'eternal_bastion_greatsword.tres']) {
+    assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items', newUlt)), `${newUlt} must exist`);
+    assert.ok(gmTxt.includes(newUlt), `GameManager must register Dark Forge recipe for ${newUlt}`);
+  }
+  assert.ok(/func get_armor_reduction\([\s\S]*?equipped_weapon\.bonus_defense/.test(gmTxt), 'GameManager.get_armor_reduction() must include equipped_weapon.bonus_defense');
+
+  // 7. Bulk stat upgrades (+10, +25, +50, Max)
+  for (const sym of ['func upgrade_stat_with_skill_points_bulk(', 'func train_stat_with_gold_bulk(', 'func get_train_bulk_cost(']) {
+    assert.ok(gmTxt.includes(sym), `GameManager must implement ${sym}`);
+  }
+  const statsTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/StatsUI.tscn'), 'utf-8');
+  for (const btn of ['StrSP10Button', 'StrSPMaxButton', 'AgiGold25Button', 'EndSP50Button', 'IntGoldMaxButton']) {
+    assert.ok(statsTscn.includes(btn), `StatsUI.tscn must expose bulk stat button ${btn}`);
+  }
+  const statsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
+  assert.ok(statsGd.includes('upgrade_stat_with_skill_points_bulk') && statsGd.includes('train_stat_with_gold_bulk'), 'StatsUI.gd must wire bulk stat upgrade functions');
+
+  // 8. 0.001% drop Difficulty-Reward Reset Orb (preserves max_unlocked_difficulty)
+  assert.ok(itemDataTxt.includes('resets_claimed_difficulties'), 'ItemData.gd must declare resets_claimed_difficulties');
+  const orbTxt = fs.readFileSync(path.join(GODOT_ROOT, 'resources/items/abyss_difficulty_reset_orb.tres'), 'utf-8');
+  assert.ok(/resets_claimed_difficulties\s*=\s*true/.test(orbTxt) && /is_dark_forged\s*=\s*true/.test(orbTxt), 'abyss_difficulty_reset_orb.tres must reset claimed difficulties and persist as dark-forged item');
+  assert.ok(gmTxt.includes('const DIFFICULTY_RESET_DROP_CHANCE: float = 0.00001'), 'GameManager must set DIFFICULTY_RESET_DROP_CHANCE = 0.00001 (0.001%)');
+  assert.ok(gmTxt.includes('func reset_claimed_difficulties_rewards(') && gmTxt.includes('func roll_difficulty_reset_item_drop('), 'GameManager must implement reset_claimed_difficulties_rewards and roll_difficulty_reset_item_drop');
+  assert.ok(combatTxt.includes('roll_difficulty_reset_item_drop'), 'CombatSystem._roll_drops must invoke roll_difficulty_reset_item_drop');
+  const invGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/InventoryUI.gd'), 'utf-8');
+  assert.ok(invGd.includes('resets_claimed_difficulties') && invGd.includes('Сбросить'), 'InventoryUI.gd must support using the difficulty reset orb');
 });
 
 

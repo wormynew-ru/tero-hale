@@ -1,14 +1,11 @@
 extends ScrollContainer
 
 signal new_run_started
-signal next_boss_started
 
 @onready var current_run_label: Label = %CurrentRunLabel
 @onready var boss_status_label: Label = %BossStatusLabel
 @onready var crucible_status_label: Label = %CrucibleStatusLabel
 @onready var challenge_status_label: Label = %ChallengeStatusLabel
-@onready var next_boss_button: Button = %NextBossButton
-@onready var auto_advance_button: Button = %AutoAdvanceButton
 @onready var diff_minus_button: Button = %DiffMinusButton
 @onready var selected_diff_label: Label = %SelectedDiffLabel
 @onready var diff_plus_button: Button = %DiffPlusButton
@@ -47,8 +44,6 @@ func _ready() -> void:
 	HoldAutoClicker.attach(diff_plus_button, 50.0)
 	diff_max_button.pressed.connect(func() -> void: _set_selected_difficulty(GameManager.max_unlocked_difficulty))
 	start_new_run_button.pressed.connect(_on_start_new_run_pressed)
-	next_boss_button.pressed.connect(_on_next_boss_pressed)
-	auto_advance_button.pressed.connect(_on_auto_advance_pressed)
 
 	_build_challenge_cards_once()
 	_refresh()
@@ -129,15 +124,6 @@ func _on_start_new_run_pressed() -> void:
 	set_process(false)
 	GameManager.start_new_run(_selected_difficulty, _selected_challenge_id)
 	new_run_started.emit()
-
-
-func _on_next_boss_pressed() -> void:
-	if GameManager.advance_to_next_boss_in_run(true):
-		next_boss_started.emit()
-
-
-func _on_auto_advance_pressed() -> void:
-	GameManager.set_auto_advance_next_boss(not GameManager.auto_advance_next_boss)
 
 
 func _refresh_start_button_text() -> void:
@@ -351,23 +337,6 @@ func _refresh() -> void:
 			GameManager.CHALLENGE_CATALOG.size(),
 		]
 		challenge_status_label.modulate = Color(0.76, 0.86, 0.94, 1.0)
-
-	var next_diff: int = GameManager.difficulty_level + 1
-	if GameManager.can_advance_to_next_boss():
-		next_boss_button.disabled = false
-		next_boss_button.text = "⏭️ Сразу на след. босса (Сл.%d, без сброса)" % next_diff
-		next_boss_button.modulate = Color(0.58, 0.98, 0.72, 1.0)
-	else:
-		next_boss_button.disabled = true
-		next_boss_button.text = "🔒 След. босс Сл.%d (победите Титана Сл.%d)" % [next_diff, GameManager.difficulty_level]
-		next_boss_button.modulate = Color(0.74, 0.78, 0.86, 0.85)
-
-	if GameManager.auto_advance_next_boss:
-		auto_advance_button.text = "🔁 Авто-след. босс: ВКЛ"
-		auto_advance_button.modulate = Color(0.58, 0.98, 0.72, 1.0)
-	else:
-		auto_advance_button.text = "🔁 Авто-след. босс: ВЫКЛ"
-		auto_advance_button.modulate = Color(0.86, 0.88, 0.94, 0.92)
 
 	reroll_tokens_label.text = "🎲 Жетоны реролла: %d" % GameManager.curse_reroll_tokens
 

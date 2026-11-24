@@ -30,7 +30,7 @@ signal pet_action_performed(pet_emoji: String, text_value: String, color: Color)
 signal mine_find_triggered(msg: String)
 signal route_event_triggered(msg: String)
 
-const SPAWN_DELAY: float = 1.5
+const SPAWN_DELAY: float = 0.25
 const REGEN_RATE_PER_SEC: float = 0.15
 const ENEMY_MANA_REGEN_PER_SEC: float = 3.0
 const ENEMY_SPELL_MANA_COST: float = 20.0
@@ -85,7 +85,6 @@ var _enemy_hud_sync_timer: float = 0.0
 var _attack_progress_sync_timer: float = 0.0
 var _last_emitted_p_prog: float = -1.0
 var _last_emitted_e_prog: float = -1.0
-var _pending_boss_duel: bool = false
 var _was_wave_dungeon_active: bool = false
 
 
@@ -93,7 +92,6 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.abilities_changed.connect(_on_abilities_changed)
-	GameManager.next_boss_advanced.connect(_on_next_boss_advanced)
 	GameManager.wave_dungeon_changed.connect(_on_wave_dungeon_changed)
 	GameManager.game_reset.connect(_on_game_reset)
 
@@ -156,8 +154,8 @@ func toggle_battle_search() -> void:
 		if GameManager.current_hp <= 0.0:
 			_set_state(State.RESTING)
 		else:
-			_spawn_enemy()
 			_set_state(State.FIGHTING)
+			_spawn_enemy()
 
 
 func try_cast_ability(
@@ -739,18 +737,25 @@ func _process_fighting(delta: float) -> void:
 				return
 
 
+func _trigger_reflector_aura_pulse() -> void:
+	if current_enemy == null:
+		return
+	var hp_aura_dmg: float = maxf(1.0, GameManager.get_max_hp() * 0.05)
+	var rot_dmg: float = enemy_max_hp * 0.001
+	var total_dmg: float = hp_aura_dmg + rot_dmg
+	enemy_hp = maxf(0.0, enemy_hp - total_dmg)
+	enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
+	dot_tick_landed.emit("🪞", "Аура 5% HP + Гниение 0.1%", total_dmg)
+	if enemy_hp <= 0.0:
+		_handle_enemy_defeated()
+
+
 func _process_reflector_aura(delta: float) -> void:
 	_reflector_pulse_timer += delta
 	while _reflector_pulse_timer >= 1.0 and current_enemy != null and current_state == State.FIGHTING:
 		_reflector_pulse_timer -= 1.0
-		var hp_aura_dmg: float = maxf(1.0, GameManager.get_max_hp() * 0.05)
-		var rot_dmg: float = enemy_max_hp * 0.001
-		var total_dmg: float = hp_aura_dmg + rot_dmg
-		enemy_hp = maxf(0.0, enemy_hp - total_dmg)
-		enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
-		dot_tick_landed.emit("🪞", "Аура 5% HP + Гниение 0.1%", total_dmg)
-		if enemy_hp <= 0.0:
-			_handle_enemy_defeated()
+		_trigger_reflector_aura_pulse()
+		if current_state != State.FIGHTING or current_enemy == null:
 			return
 
 
@@ -871,11 +876,11 @@ func _process_resting(delta: float) -> void:
 
 	if GameManager.current_hp >= max_hp:
 		if is_seeking_battle:
-			if current_enemy == null or enemy_hp <= 0.0:
-				_spawn_enemy()
 			_player_attack_timer = 0.0
 			_enemy_attack_timer = 0.0
 			_set_state(State.FIGHTING)
+			if current_enemy == null or enemy_hp <= 0.0:
+				_spawn_enemy()
 		else:
 			_set_state(State.IDLE)
 
@@ -887,8 +892,8 @@ func _process_spawning(delta: float) -> void:
 	_spawn_timer -= delta
 	_emit_attack_progress(0.0, 0.0)
 	if _spawn_timer <= 0.0:
-		_spawn_enemy()
 		_set_state(State.FIGHTING)
+		_spawn_enemy()
 
 
 func _try_cast_random_quick_ability(power_scale: float = 1.0) -> bool:
@@ -992,23 +997,30 @@ func _perform_enemy_attack() -> void:
 		enemy_mana_changed.emit(enemy_mana, current_enemy.max_mana)
 		raw_damage *= 1.35
 
-	var taken: float = GameManager.apply_damage(raw_damage)
-	enemy_attack_landed.emit(taken, false)
-
-	var reflector_dmg: float = raw_damage * 0.20 if GameManager.has_hero_class("reflector") else 0.0
-	var dark_reflect_pct: float = GameManager.get_damage_reflection_pct()
-	var dark_reflect_dmg: float = raw_damage * dark_reflect_pct if dark_reflect_pct > 0.0 else 0.0
+	var total_reflect_pct: float = GameManager.get_damage_reflection_pct()
+	var taken: float = 0.0
+	var reflect_dmg: float = 0.0
+	if GameManager.has_hero_class("reflector"):
+		var mitigated_pct: float = GameManager.get_reflector_mitigation_pct()
+		var remaining_raw: float = raw_damage * (1.0 - mitigated_pct)
+		taken = GameManager.apply_damage(remaining_raw)
+		enemy_attack_landed.emit(taken, false)
+		reflect_dmg = raw_damage * total_reflect_pct
+	else:
+		taken = GameManager.apply_damage(raw_damage)
+		enemy_attack_landed.emit(taken, false)
+		reflect_dmg = raw_damage * total_reflect_pct if total_reflect_pct > 0.0 else 0.0
 	if GameManager.has_dark_skill("thorn_apotheosis"):
-		dark_reflect_dmg += GameManager.get_max_hp() * 0.02
+		reflect_dmg += GameManager.get_max_hp() * 0.02
 	var thorns_pct: float = GameManager.get_active_buff_sum("thorns_pct")
 	var thorns_dmg: float = taken * thorns_pct if (thorns_pct > 0.0 and taken > 0.0) else 0.0
-	var total_reflected: float = reflector_dmg + dark_reflect_dmg + thorns_dmg
+	var total_reflected: float = reflect_dmg + thorns_dmg
 
 	if total_reflected > 0.0 and current_enemy != null and GameManager.current_hp > 0.0:
 		var reflected_final: float = maxf(1.0, total_reflected)
 		enemy_hp = maxf(0.0, enemy_hp - reflected_final)
 		enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
-		var ref_emoji: String = "🪞" if (reflector_dmg > 0.0 or dark_reflect_dmg > 0.0) else "🧣"
+		var ref_emoji: String = "🪞" if reflect_dmg > 0.0 else "🧣"
 		dot_tick_landed.emit(ref_emoji, "Отражение", reflected_final)
 		if enemy_hp <= 0.0:
 			_handle_enemy_defeated()
@@ -1063,16 +1075,13 @@ func _handle_enemy_defeated() -> void:
 			return
 		_player_attack_timer = 0.0
 		_enemy_attack_timer = 0.0
-		_spawn_timer = 0.8
+		_spawn_timer = 0.2
 		_set_state(State.SPAWNING)
 		return
 
-	var auto_advanced: bool = false
 	if defeated.id == GameManager.FINAL_BOSS_ID:
 		GameManager.on_final_boss_defeated()
 		GameManager.on_final_boss_killed_for_garden()
-		if GameManager.auto_advance_next_boss and GameManager.can_advance_to_next_boss():
-			auto_advanced = GameManager.advance_to_next_boss_in_run(false)
 	elif defeated.id == GameManager.CURSE_WARDEN_ID:
 		GameManager.on_curse_warden_defeated()
 
@@ -1084,8 +1093,6 @@ func _handle_enemy_defeated() -> void:
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
 	_spawn_timer = SPAWN_DELAY
-	if auto_advanced:
-		_pending_boss_duel = true
 	_set_state(State.SPAWNING)
 
 
@@ -1099,6 +1106,7 @@ func _roll_drops(enemy: EnemyData) -> void:
 			var amount: int = maxi(1, floori(float(item.shop_pack_amount) / 2.0)) if item.item_type == ItemData.ItemType.AMMO else 1
 			GameManager.add_item(item, amount, true, 100, 1, true)
 	GameManager.roll_rare_seed_drops(enemy)
+	GameManager.roll_difficulty_reset_item_drop()
 
 
 func _spawn_enemy() -> void:
@@ -1109,14 +1117,7 @@ func _spawn_enemy() -> void:
 		var location: LocationData = GameManager.current_location
 		if location == null:
 			return
-		if _pending_boss_duel and location.id == GameManager.FINAL_BOSS_LOCATION_ID:
-			for candidate: EnemyData in location.enemies:
-				if candidate != null and candidate.id == GameManager.FINAL_BOSS_ID:
-					next_enemy = candidate
-					break
-		_pending_boss_duel = false
-		if next_enemy == null:
-			next_enemy = location.pick_random_enemy()
+		next_enemy = location.pick_random_enemy()
 	if next_enemy == null:
 		return
 
@@ -1177,6 +1178,9 @@ func _spawn_enemy() -> void:
 	else:
 		enemy_stun_changed.emit(0.0)
 
+	if GameManager.has_hero_class("reflector") and current_state == State.FIGHTING:
+		_trigger_reflector_aura_pulse()
+
 
 func _reset_spirit_timers() -> void:
 	_spirit_fire_timer = 0.0
@@ -1190,9 +1194,7 @@ func _set_state(new_state: State) -> void:
 	state_changed.emit(int(current_state))
 
 
-func _on_location_changed(location: LocationData) -> void:
-	if location == null or location.id != GameManager.FINAL_BOSS_LOCATION_ID:
-		_pending_boss_duel = false
+func _on_location_changed(_location: LocationData) -> void:
 	_clear_combat_effects()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
@@ -1203,29 +1205,9 @@ func _on_location_changed(location: LocationData) -> void:
 		current_enemy = null
 		enemy_cleared.emit()
 		return
-	_spawn_enemy()
 	if current_state != State.RESTING:
 		_set_state(State.FIGHTING)
-
-
-func _on_next_boss_advanced(_new_difficulty: int, immediate_spawn: bool) -> void:
-	_pending_boss_duel = true
-	if not immediate_spawn:
-		return
-	_clear_combat_effects()
-	_player_attack_timer = 0.0
-	_enemy_attack_timer = 0.0
-	_spawn_timer = 0.0
-	enemy_troll_armor_shred = 0
-	troll_shred_updated.emit(0)
-	if not is_seeking_battle:
-		is_seeking_battle = true
-		battle_search_changed.emit(true)
-	if GameManager.current_hp <= 0.0:
-		_set_state(State.RESTING)
-	else:
-		_spawn_enemy()
-		_set_state(State.FIGHTING)
+	_spawn_enemy()
 
 
 func _on_wave_dungeon_changed() -> void:
@@ -1239,15 +1221,14 @@ func _on_wave_dungeon_changed() -> void:
 		troll_shred_updated.emit(0)
 		is_seeking_battle = true
 		battle_search_changed.emit(true)
-		_spawn_enemy()
 		_set_state(State.FIGHTING)
+		_spawn_enemy()
 	elif not GameManager.wave_dungeon_active:
 		_was_wave_dungeon_active = false
 
 
 func _on_game_reset() -> void:
 	is_seeking_battle = false
-	_pending_boss_duel = false
 	_was_wave_dungeon_active = false
 	_clear_combat_effects()
 	_player_attack_timer = 0.0

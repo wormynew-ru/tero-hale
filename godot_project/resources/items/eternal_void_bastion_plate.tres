@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "eternal_void_bastion_plate"
+item_name = "Вечная Броня Бастиона Пустоты"
+icon_emoji = "🛡️"
+description = "Ультимативная броня из Тёмной кузни (слияние Панциря Бездны и Доспеха Небесного Стража). НЕ сбрасывается в новом ране!"
+item_type = 1
+bonus_strength = 48
+bonus_agility = 36
+bonus_endurance = 160
+bonus_intellect = 0
+bonus_defense = 48.0
+is_dark_forged = true
+heal_amount = 0.0
+buy_price = 14500
+sell_value = 5800
+icon_color = Color(0.45, 0.85, 0.98, 1)

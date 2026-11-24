@@ -184,10 +184,11 @@ func _refresh() -> void:
 			var base_passive: String = str(entry["base_passive"])
 			if cid == "reflector":
 				var barrier_hp_conv: float = GameManager.get_raw_max_barrier()
-				passive_lbl.text = "%s\n📊 Стаки убийств: +%s Max HP | 🛡️ Конвертация Барьера 1:1 → +%s Max HP (действует только на Отражателе)" % [
+				passive_lbl.text = "%s\n📊 Стаки убийств: +%s (x20 → +%s Max HP) | 🛡️ Конвертация Барьера 1:1 (x20) → +%s Max HP (действует только на Отражателе)" % [
 					base_passive,
 					NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks)),
-					NumberFormatter.format_number(barrier_hp_conv),
+					NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks) * 20.0 * 1.3),
+					NumberFormatter.format_number(barrier_hp_conv * 20.0 * 1.3),
 				]
 			elif cid == "spirit":
 				passive_lbl.text = "%s\n📊 Уровни духов Спирита: 🔥%d / 🌪️%d / 🌿%d / 🪨%d (действуют только на Спирите)" % [

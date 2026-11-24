@@ -102,9 +102,9 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - **Расчётный DPS героя**:
   `dps = (damage * (1.0 + crit_chance * (crit_multiplier - 1.0))) / attack_interval`
 - **Шанс уклонения (Dodge)**:
-  `dodge_chance = clampf(float(total_agility) * 0.008, 0.0, 0.35)`
+  `dodge_chance = 0.0` для **🪞 Отражателя**; для остальных `clampf(float(total_agility) * 0.008 + bonuses, 0.0, 0.35)`
 - **Максимальное здоровье (Max HP)** *(4x прирост от Выносливости)*:
-  `max_hp = (100.0 + float(total_endurance) * 60.0) * (1.0 + hp_pct_bonuses)`
+  `max_hp = (100.0 + float(total_endurance) * 60.0) * (1.0 + hp_pct_bonuses)` (для **🪞 Отражателя**: `100.0 + total_hp_gain * 1.30 * 20.0`, где `20x` применяется ко всем приростам HP)
 - **Максимальная мана и регенерация маны героя** *(8x прирост манапула от статов)*:
   `max_mana = (40.0 + float(level) * 5.0 + float(total_endurance) * 16.0 + float(total_intellect) * 32.0 + skill_bonus("max_mana")) * ...`
   `mana_regen_per_sec = 2.5 + float(total_endurance) * 0.25 + float(total_intellect) * 0.45 + ...`
@@ -112,9 +112,9 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
   - Одиночный тап (<1 сек) кастует способность, если `cooldown <= 0` и `current_mana >= mana_cost`.
   - Удержание `1.0 сек` включает/выключает `auto_cast`. При нехватке маны автокаст **не отключается**, а ждёт накопления нужного количества маны.
 - **Снижение входящего урона (Броня) и Отражение**:
-  `armor_reduction = (float(total_endurance) * 0.6 + bonus_armor + void_plating) * (1.0 + armor_pct_bonuses)`
-  `reflection_pct = get_damage_reflection_pct()` (сумма пассивки Отражателя `20%` и узлов Тёмного древа `mirror_carapace` +25%, `thorn_apotheosis` +35% + ответный урон `2% Max HP`)
-  `final_damage_taken = maxf(1.0, raw_enemy_damage - armor_reduction)`
+  `armor_reduction = (float(total_endurance) * 0.6 + bonus_armor + weapon_bonus_defense + offhand_defense + void_plating) * (1.0 + armor_pct_bonuses)`
+  `reflection_pct = get_damage_reflection_pct()` (сумма пассивки Отражателя `20%`, узлов Тёмного древа `mirror_carapace` +25%, `thorn_apotheosis` +35% и баффа `buff_reflect_pct` +200% от `mirror_apotheosis.tres`)
+  У **🪞 Отражателя** рассеивание работает **до брони**: враг получает `raw_damage * reflection_pct`, а входящий по герою урон снижается до `raw_damage * (1.0 - minf(reflection_pct, 0.99))` и затем режется бронёй (`apply_damage`). Весь % отражения сверх `99%` всё равно усиливает обратный урон.
 - **Авто-зелье**:
   Срабатывает после получения удара врага, если `auto_potion_enabled == true` и `0 < current_hp / max_hp < 0.35`. Выбирается оптимальное лечебное зелье в рюкзаке.
 - **Множители фарма (из Дерева навыков)**:
@@ -150,15 +150,15 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
   - `spirit`: блокирует оружие/броню/снаряды, даёт `+35%` ко всем статам, `+50%` пассивной брони и 4 автономных духа природы в бою (Огонь, Ветер, Лес, Земля; их уровни `spirit_training_levels` действуют и сохраняются за Спиритом).
   - `abyss_ranger`: `+40%` урон дальнего боя, `60%` сохранение снарядов, `30%` двойной выстрел, криты игнорируют плоскую броню врага, крит-множитель `+1.5% * Ловкость`.
   - `blood_archmage`: **2x прирост интеллекта** (`total *= 2.0` в `get_total_intellect()`) и **в 3 раза больше маны от Инты** (`96.0` Max MP за `1` Инты вместо `32.0`), с шансом `10%` при ударе (`BLOOD_ARCHMAGE_QUICK_CAST_CHANCE = 0.10`) вместо обычной тычки (`_perform_player_attack`) кастует случайное заклинание из быстрого доступа (`_try_cast_random_quick_ability`, без постановки слотов на КД и с игнорированием их КД), `+75%` сила способностей, `-50%` манакост, `-30%` КД, каст за `8%` текущего HP при нехватке маны, базовые атаки снижают КД способностей на `0.5с`.
-  - `reflector`: `0` прямого урона оружием и атакующими чарами (только хил и баффы), `+30%` Max HP, `+40%` брони, отражение `20%` входящего урона, каждую `1.0с` аура `5%` своего Max HP + `0.1%` Max HP врага гниения; **за каждое убийство врага бесконечно стакает `+1 Max HP` (`reflector_kill_hp_stacks`, действует и сохраняется строго за Отражателем)**, а в бою и при переключении класса сбрасывается только полным сбросом прогресса.
+  - `reflector`: `0` прямого урона оружием и атакующими чарами (только хил, баффы и эксклюзив `mirror_apotheosis` на `+200%` отражения), **`0%` уклонения**, **`20x` прирост HP из всех источников**, `+30%` прироста HP, `+40%` брони, **до-броневое рассеивание** пропорционально `%` отражения (поглощение до `99%`, избыток сверх `99%` увеличивает обратный урон врагу), **моментальный триггер ауры на старте боя** (`_trigger_reflector_aura_pulse()` в `_spawn_enemy()`) и каждую `1.0с` (`5%` своего Max HP + `0.1%` Max HP врага гниения); **за каждое убийство врага бесконечно стакает `+1 Max HP` (`reflector_kill_hp_stacks`, действует с `x20` и сохраняется строго за Отражателем)**, а в бою и при переключении класса сбрасывается только полным сбросом прогресса.
 - **Путники / Питомцы (`PetData`, отдельный бессмертный слот без HP)**:
   - Постоянная покупка (`owned_pet_ids`) и выбор (`equipped_pet_id`) сохраняются между ранами.
   - `firework_spark`: оглушает врага в начале каждого боя на `5.0с` (1 раз за бой); другие 5 путников дают реген, золото, горение, ускорение/сброс КД или молнию + замедление врага.
 - **Горнило Проклятий (Сл. 100+)**:
   - Локация `abyss_crucible` всегда открыта после `max_unlocked_difficulty >= 100`.
   - Победа над `curse_warden` даёт `+1 curse_reroll_tokens` (реролл проклятия любого тира в `DifficultyUI`) и усиливает следующего босса в ране: `HP *= 1.85^kills`, `DMG *= 1.55^kills`, `DEF *= 1 + 0.45 * kills`.
-- **Книга заклинаний (26 заклинаний, максимум 3 активных слота)**:
-  - Всего **26 `AbilityData`** (`19` общих + `7` эксклюзивов `blood_archmage`), включая 6 усиленных высокоманазатратных заклинаний (`110–260 MP`: `arcane_cataclysm`, `astral_tempest`, `starfall_oblivion`, `sacred_revival`, `archmage_ascension`, `crimson_apocalypse`); активны в бою одновременно до 3 слотов (`equipped_ability_ids`).
+- **Книга заклинаний (27 заклинаний, максимум 3 активных слота)**:
+  - Всего **27 `AbilityData`** (`19` общих + `7` эксклюзивов `blood_archmage` + `1` эксклюзив `reflector` `mirror_apotheosis`), включая 6 усиленных высокоманазатратных заклинаний (`110–260 MP`: `arcane_cataclysm`, `astral_tempest`, `starfall_oblivion`, `sacred_revival`, `archmage_ascension`, `crimson_apocalypse`); активны в бою одновременно до 3 слотов (`equipped_ability_ids`).
   - Типы эффектов: прямой/мульти/пробивающий/добивающий урон, лечение, временные баффы (`active_buffs`), периодический урон (`dot`) и бёрст-перегрузка `soul_overload` (`overcharge_burn`: `12` тиков/с, до `12` тиков за `1.0с`; тик `t` сжигает `2^(t-1)` HP и `2^(t-1) + max(0, t-2)` маны, давая мана-опыт магии и взрывной урон `1.75^(t-1)`).
 - **Зелья маны, баффов, Карта деревни и Убежище (Сад + Зельеварение с Сл.10+, v0.15.0)**:
   - **Зелья маны и баффов**: `ItemData` поддерживает `mana_amount` и временные баффы (`buff_id`, `buff_duration`, `buff_damage_pct`, `buff_attack_speed_pct`, `buff_armor_pct`, `buff_dodge_bonus`, `buff_crit_chance_bonus`, `buff_crit_mult_bonus`, `buff_spell_power_pct`, `buff_mana_regen_pct`, `buff_lifesteal_pct`).
@@ -196,8 +196,11 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - **🦇 Тёмный магазин (`DarkShopUI.tscn/.gd`, v0.19.0)**:
   - За каждую победу над финальным боссом (`on_final_boss_defeated()`) игрок получает **🪙 Монеты Тёмного магазина (`dark_shop_coins`)** в размере пройденной сложности (`+difficulty_level`, напр. `+5 🪙` за Сл.5 и `+10 🪙` за Сл.10). В отличие от `🌑 Очков Тьмы`, монеты Тёмного магазина можно фармить **бесконечно при повторном прохождении любых сложностей**.
   - `dark_shop_coins` **сохраняются навсегда** между ранами, но купленные в Тёмном магазине ультимативные `%`-расходники (`heal_pct`, `mana_pct`, мощные баффы на сотни %) имеют `is_dark_forged = false` и **НЕ переносятся** в следующий ран при запуске `start_new_run()`.
-- **⏭️ Переход сразу на следующего босса (`advance_to_next_boss_in_run`, v0.20.0)**:
-  - После победы над Вечным титаном на текущей сложности (`boss_defeated_this_run == true`) игрок может сразу нажать **`⏭️ След. босс (Сл. N+1)`** (на боевой арене `BattleArenaUI` или в `DifficultyUI`) либо включить **`🔁 Авто-след. босс` (`auto_advance_next_boss`)**, чтобы без сброса уровня/вещей/талантов сразу перейти на `Сл.+1` и вступить в бой напрямую со следующим Вечным титаном (`_pending_boss_duel` в `CombatSystem`).
+- **Ускоренный старт боёв, массовая прокачка статов, 3 новых Ульт-рецепта и Сфера Сброса Сумрака (v0.23.0)**:
+  - `CombatSystem.SPAWN_DELAY = 0.25` (в Данже волн `_spawn_timer = 0.2`); переход к следующему боссу без сброса упразднён — для фарма `🌑` используется сброс пройденных сложностей или новый ран.
+  - В `StatsUI` доступны кнопки **`+1 / +10 / +25 / +50 / Макс`** для ОН (`upgrade_stat_with_skill_points_bulk`) и золота (`train_stat_with_gold_bulk`) по всем 4 статам.
+  - В Тёмной кузне доступны 3 новых Ультимативных рецепта (`eternal_void_bastion_plate`, `eternal_abyss_bulwark`, `eternal_bastion_greatsword`), а `get_armor_reduction()` учитывает `equipped_weapon.bonus_defense`.
+  - Вечная **`⏳ Сфера Сброса Сумрака` (`abyss_difficulty_reset_orb.tres`)** выпадает с любых врагов с шансом **`0.001%`** (`DIFFICULTY_RESET_DROP_CHANCE = 0.00001`) и при использовании очищает `dark_points_claimed_difficulties`, сохраняя `max_unlocked_difficulty`.
 
 ---
 
@@ -218,7 +221,6 @@ Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой �
 - `difficulty_changed()` — изменение сложности, проклятий, реролл-жетонов или статуса боссов.
 - `enchant_changed()` — улучшение заточки слота оружия или брони.
 - `final_boss_cleared(dark_points_gained: int, unlocked_difficulty: int)` — первая победа над Вечным титаном в текущем ране.
-- `next_boss_advanced(new_difficulty: int, immediate_spawn: bool)` — переход после победы над боссом сразу к следующему Вечному титану на `Сл.+1` без сброса рана.
 - `curse_warden_defeated(tokens_total: int, kills_in_run: int)` — победа над Хранителем Проклятий (+1 жетон реролла).
 - `mastery_changed(skill_id: String, new_level: int, leveled_up: bool)` — получение опыта/уровня в *Learn by Doing* (`melee`, `ranged`, `magic`).
 - `class_changed(class_data: HeroClassData)` — смена класса героя.

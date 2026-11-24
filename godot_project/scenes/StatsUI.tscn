@@ -167,93 +167,385 @@ vertical_alignment = 1
 [node name="HSeparator" type="HSeparator" parent="StatsVBox"]
 layout_mode = 2
 
-[node name="StrengthRow" type="HBoxContainer" parent="StatsVBox"]
+[node name="StrengthRow" type="VBoxContainer" parent="StatsVBox"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
-[node name="StrValueLabel" type="Label" parent="StatsVBox/StrengthRow"]
+[node name="StrengthSPRow" type="HBoxContainer" parent="StatsVBox/StrengthRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StrValueLabel" type="Label" parent="StatsVBox/StrengthRow/StrengthSPRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "💪 Сила: 5 (5 + 0)"
 
-[node name="StrSPButton" type="Button" parent="StatsVBox/StrengthRow"]
+[node name="StrSPButton" type="Button" parent="StatsVBox/StrengthRow/StrengthSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 44)
+layout_mode = 2
+text = "+1 ОН"
+
+[node name="StrSP10Button" type="Button" parent="StatsVBox/StrengthRow/StrengthSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+10"
+
+[node name="StrSP25Button" type="Button" parent="StatsVBox/StrengthRow/StrengthSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+25"
+
+[node name="StrSP50Button" type="Button" parent="StatsVBox/StrengthRow/StrengthSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+50"
+
+[node name="StrSPMaxButton" type="Button" parent="StatsVBox/StrengthRow/StrengthSPRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-text = "+1 (Очко)"
+text = "Макс"
 
-[node name="StrGoldButton" type="Button" parent="StatsVBox/StrengthRow"]
+[node name="StrengthGoldRow" type="HBoxContainer" parent="StatsVBox/StrengthRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StrGoldPrefixLabel" type="Label" parent="StatsVBox/StrengthRow/StrengthGoldRow"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.78, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = "   💰 За золото:"
+
+[node name="StrGoldButton" type="Button" parent="StatsVBox/StrengthRow/StrengthGoldRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 44)
+custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-text = "Тренир. (35 з.)"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+1 (35 з.)"
 
-[node name="AgilityRow" type="HBoxContainer" parent="StatsVBox"]
+[node name="StrGold10Button" type="Button" parent="StatsVBox/StrengthRow/StrengthGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-theme_override_constants/separation = 8
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+10"
 
-[node name="AgiValueLabel" type="Label" parent="StatsVBox/AgilityRow"]
+[node name="StrGold25Button" type="Button" parent="StatsVBox/StrengthRow/StrengthGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+25"
+
+[node name="StrGold50Button" type="Button" parent="StatsVBox/StrengthRow/StrengthGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+50"
+
+[node name="StrGoldMaxButton" type="Button" parent="StatsVBox/StrengthRow/StrengthGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Макс"
+
+[node name="AgilityRow" type="VBoxContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="AgilitySPRow" type="HBoxContainer" parent="StatsVBox/AgilityRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="AgiValueLabel" type="Label" parent="StatsVBox/AgilityRow/AgilitySPRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "⚡ Ловкость: 5 (5 + 0)"
 
-[node name="AgiSPButton" type="Button" parent="StatsVBox/AgilityRow"]
+[node name="AgiSPButton" type="Button" parent="StatsVBox/AgilityRow/AgilitySPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 44)
+layout_mode = 2
+text = "+1 ОН"
+
+[node name="AgiSP10Button" type="Button" parent="StatsVBox/AgilityRow/AgilitySPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+10"
+
+[node name="AgiSP25Button" type="Button" parent="StatsVBox/AgilityRow/AgilitySPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+25"
+
+[node name="AgiSP50Button" type="Button" parent="StatsVBox/AgilityRow/AgilitySPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+50"
+
+[node name="AgiSPMaxButton" type="Button" parent="StatsVBox/AgilityRow/AgilitySPRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-text = "+1 (Очко)"
+text = "Макс"
 
-[node name="AgiGoldButton" type="Button" parent="StatsVBox/AgilityRow"]
+[node name="AgilityGoldRow" type="HBoxContainer" parent="StatsVBox/AgilityRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="AgiGoldPrefixLabel" type="Label" parent="StatsVBox/AgilityRow/AgilityGoldRow"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.78, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = "   💰 За золото:"
+
+[node name="AgiGoldButton" type="Button" parent="StatsVBox/AgilityRow/AgilityGoldRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 44)
+custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-text = "Тренир. (35 з.)"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+1 (35 з.)"
 
-[node name="EnduranceRow" type="HBoxContainer" parent="StatsVBox"]
+[node name="AgiGold10Button" type="Button" parent="StatsVBox/AgilityRow/AgilityGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-theme_override_constants/separation = 8
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+10"
 
-[node name="EndValueLabel" type="Label" parent="StatsVBox/EnduranceRow"]
+[node name="AgiGold25Button" type="Button" parent="StatsVBox/AgilityRow/AgilityGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+25"
+
+[node name="AgiGold50Button" type="Button" parent="StatsVBox/AgilityRow/AgilityGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+50"
+
+[node name="AgiGoldMaxButton" type="Button" parent="StatsVBox/AgilityRow/AgilityGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Макс"
+
+[node name="EnduranceRow" type="VBoxContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="EnduranceSPRow" type="HBoxContainer" parent="StatsVBox/EnduranceRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="EndValueLabel" type="Label" parent="StatsVBox/EnduranceRow/EnduranceSPRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "🛡️ Выносливость: 5 (5 + 0)"
 
-[node name="EndSPButton" type="Button" parent="StatsVBox/EnduranceRow"]
+[node name="EndSPButton" type="Button" parent="StatsVBox/EnduranceRow/EnduranceSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 44)
+layout_mode = 2
+text = "+1 ОН"
+
+[node name="EndSP10Button" type="Button" parent="StatsVBox/EnduranceRow/EnduranceSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+10"
+
+[node name="EndSP25Button" type="Button" parent="StatsVBox/EnduranceRow/EnduranceSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+25"
+
+[node name="EndSP50Button" type="Button" parent="StatsVBox/EnduranceRow/EnduranceSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+50"
+
+[node name="EndSPMaxButton" type="Button" parent="StatsVBox/EnduranceRow/EnduranceSPRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-text = "+1 (Очко)"
+text = "Макс"
 
-[node name="EndGoldButton" type="Button" parent="StatsVBox/EnduranceRow"]
+[node name="EnduranceGoldRow" type="HBoxContainer" parent="StatsVBox/EnduranceRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="EndGoldPrefixLabel" type="Label" parent="StatsVBox/EnduranceRow/EnduranceGoldRow"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.78, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = "   💰 За золото:"
+
+[node name="EndGoldButton" type="Button" parent="StatsVBox/EnduranceRow/EnduranceGoldRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 44)
+custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-text = "Тренир. (35 з.)"
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+1 (35 з.)"
 
-[node name="IntellectRow" type="HBoxContainer" parent="StatsVBox"]
+[node name="EndGold10Button" type="Button" parent="StatsVBox/EnduranceRow/EnduranceGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-theme_override_constants/separation = 8
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+10"
 
-[node name="IntValueLabel" type="Label" parent="StatsVBox/IntellectRow"]
+[node name="EndGold25Button" type="Button" parent="StatsVBox/EnduranceRow/EnduranceGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+25"
+
+[node name="EndGold50Button" type="Button" parent="StatsVBox/EnduranceRow/EnduranceGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+50"
+
+[node name="EndGoldMaxButton" type="Button" parent="StatsVBox/EnduranceRow/EnduranceGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Макс"
+
+[node name="IntellectRow" type="VBoxContainer" parent="StatsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="IntellectSPRow" type="HBoxContainer" parent="StatsVBox/IntellectRow"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="IntValueLabel" type="Label" parent="StatsVBox/IntellectRow/IntellectSPRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "🧠 Инта: 5 (5 + 0)"
 
-[node name="IntSPButton" type="Button" parent="StatsVBox/IntellectRow"]
+[node name="IntSPButton" type="Button" parent="StatsVBox/IntellectRow/IntellectSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(78, 44)
+layout_mode = 2
+text = "+1 ОН"
+
+[node name="IntSP10Button" type="Button" parent="StatsVBox/IntellectRow/IntellectSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+10"
+
+[node name="IntSP25Button" type="Button" parent="StatsVBox/IntellectRow/IntellectSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+25"
+
+[node name="IntSP50Button" type="Button" parent="StatsVBox/IntellectRow/IntellectSPRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(58, 44)
+layout_mode = 2
+text = "+50"
+
+[node name="IntSPMaxButton" type="Button" parent="StatsVBox/IntellectRow/IntellectSPRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 44)
 layout_mode = 2
-text = "+1 (Очко)"
+text = "Макс"
 
-[node name="IntGoldButton" type="Button" parent="StatsVBox/IntellectRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 44)
+[node name="IntellectGoldRow" type="HBoxContainer" parent="StatsVBox/IntellectRow"]
 layout_mode = 2
-text = "Тренир. (35 з.)"
+theme_override_constants/separation = 6
+
+[node name="IntGoldPrefixLabel" type="Label" parent="StatsVBox/IntellectRow/IntellectGoldRow"]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.86, 0.78, 0.45, 1)
+theme_override_font_sizes/font_size = 13
+text = "   💰 За золото:"
+
+[node name="IntGoldButton" type="Button" parent="StatsVBox/IntellectRow/IntellectGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+1 (35 з.)"
+
+[node name="IntGold10Button" type="Button" parent="StatsVBox/IntellectRow/IntellectGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+10"
+
+[node name="IntGold25Button" type="Button" parent="StatsVBox/IntellectRow/IntellectGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+25"
+
+[node name="IntGold50Button" type="Button" parent="StatsVBox/IntellectRow/IntellectGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(96, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "+50"
+
+[node name="IntGoldMaxButton" type="Button" parent="StatsVBox/IntellectRow/IntellectGoldRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(104, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "Макс"
 
 [node name="SaveTransferSeparator" type="HSeparator" parent="StatsVBox"]
 layout_mode = 2

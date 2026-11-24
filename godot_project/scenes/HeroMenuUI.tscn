@@ -170,7 +170,7 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 17
 theme_override_styles/normal = SubResource("StyleBoxFlat_hub_btn")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hub_btn")
-text = "✨ Заклинания (26)"
+text = "✨ Заклинания (27)"
 
 [node name="OpenPetsButton" type="Button" parent="MenuMargin/MenuCard/MenuVBox/ContentStack/MenuHub/HubGrid"]
 unique_name_in_owner = true

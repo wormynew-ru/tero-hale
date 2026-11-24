@@ -31,6 +31,7 @@ const MAX_SPELL_LEVEL: int = 5
 @export var buff_mana_regen_pct: float = 0.0
 @export var buff_lifesteal_pct: float = 0.0
 @export var buff_thorns_pct: float = 0.0
+@export var buff_reflect_pct: float = 0.0
 
 
 func get_display_name() -> String:

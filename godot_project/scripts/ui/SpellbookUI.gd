@@ -128,7 +128,7 @@ func _refresh(force: bool = false) -> void:
 	var page_cnt: int = GameManager.get_dark_forge_material_count("ancient_page")
 	var class_note: String = "🩸 Класс Архимаг Крови активен — все 7 запретных чар доступны!" if blood_open else "🔒 Ещё 7 запретных заклинаний открывает класс «🩸 Архимаг Крови» (Сл.50+)."
 	if is_reflector:
-		class_note = "🪞 Отражатель: боевые заклинания урона заблокированы — доступны только лечение и баффы."
+		class_note = "🪞 Отражатель: боевые чары урона заблокированы — доступны хил, баффы и «🪩 Зеркальный апофеоз» (+200% отражения)!"
 	status_label.text = (
 		"✨ Открыто заклинаний: %d / %d (слотов: %d)  |  📜 Древних листов: %d  •  %s"
 		% [
@@ -370,6 +370,7 @@ func _update_spell_list() -> void:
 		var unlocked: bool = GameManager.is_ability_unlocked(ab)
 		var equipped_slot: int = GameManager.get_equipped_slot_for_ability(ab.id)
 		var is_blood: bool = ab.required_class_id == "blood_archmage"
+		var is_reflector_spell: bool = ab.required_class_id == "reflector"
 
 		var border_w: int = 2 if equipped_slot != -1 else 1
 		style.border_width_left = border_w
@@ -383,6 +384,9 @@ func _update_spell_list() -> void:
 		elif is_blood:
 			style.bg_color = Color(0.17, 0.10, 0.16, 0.95) if unlocked else Color(0.11, 0.08, 0.11, 0.78)
 			style.border_color = Color(0.84, 0.36, 0.62, 0.85) if unlocked else Color(0.45, 0.24, 0.36, 0.65)
+		elif is_reflector_spell:
+			style.bg_color = Color(0.10, 0.18, 0.22, 0.95) if unlocked else Color(0.08, 0.11, 0.14, 0.78)
+			style.border_color = Color(0.45, 0.88, 0.98, 0.88) if unlocked else Color(0.28, 0.44, 0.52, 0.65)
 		else:
 			style.bg_color = Color(0.11, 0.13, 0.17, 1.0)
 			style.border_color = Color(0.32, 0.36, 0.44, 1.0)
@@ -393,7 +397,11 @@ func _update_spell_list() -> void:
 		var mana_eff: float = GameManager.get_ability_mana_cost(ab)
 		var cd_eff: float = GameManager.get_ability_cooldown_duration(ab)
 		var type_tag: String = _get_type_tag(ab)
-		var blood_tag: String = "  |  🩸 Архимаг Крови" if is_blood else ""
+		var class_tag: String = ""
+		if is_blood:
+			class_tag = "  |  🩸 Архимаг Крови"
+		elif is_reflector_spell:
+			class_tag = "  |  🪞 Отражатель"
 
 		title_lbl.text = "%s %s [Ур.%d/%d]  [%s]  •  💧%.0f  ⏱️%.1fс%s" % [
 			ab.icon_emoji,
@@ -403,12 +411,14 @@ func _update_spell_list() -> void:
 			type_tag,
 			mana_eff,
 			cd_eff,
-			blood_tag,
+			class_tag,
 		]
 		if not unlocked:
 			title_lbl.modulate = Color(0.68, 0.56, 0.66, 1.0)
 		elif is_blood:
 			title_lbl.modulate = Color(0.98, 0.62, 0.84, 1.0)
+		elif is_reflector_spell:
+			title_lbl.modulate = Color(0.56, 0.94, 1.0, 1.0)
 		else:
 			title_lbl.modulate = Color(0.92, 0.95, 1.0, 1.0)
 
@@ -465,6 +475,7 @@ func _update_spell_list() -> void:
 			rune_desc_lbl.modulate = Color(0.70, 0.74, 0.82, 1.0)
 
 		if not unlocked:
+			lock_btn.text = "🔒 Нужен Отражатель" if is_reflector_spell else "🔒 Нужен Архимаг"
 			lock_btn.visible = true
 			for btn: Button in slot_buttons:
 				btn.visible = false

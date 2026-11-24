@@ -540,7 +540,10 @@ func _update_inventory_rows_in_place() -> void:
 
 		icon_label.text = item.icon_emoji
 
-		if item.item_type == ItemData.ItemType.CONSUMABLE:
+		if item.resets_claimed_difficulties:
+			action_btn.text = "⏳ Сбросить"
+			action_btn.disabled = GameManager.dark_points_claimed_difficulties.is_empty()
+		elif item.item_type == ItemData.ItemType.CONSUMABLE:
 			action_btn.text = "Выпить"
 			action_btn.disabled = GameManager.is_potions_blocked_by_challenge()
 		elif item.item_type == ItemData.ItemType.AMMO:
