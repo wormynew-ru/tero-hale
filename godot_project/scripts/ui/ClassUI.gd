@@ -190,6 +190,13 @@ func _refresh() -> void:
 					NumberFormatter.format_number(float(GameManager.reflector_kill_hp_stacks) * 20.0 * 1.3),
 					NumberFormatter.format_number(barrier_hp_conv * 20.0 * 1.3),
 				]
+			elif cid == "alchemist":
+				var gold_bonus: float = GameManager.gold * GameManager.ALCHEMIST_GOLD_REACTION_RATIO
+				passive_lbl.text = "%s\n📊 Золотая реакция: +%s к урону ручной атаки (5%% от %s з., действует на Алхимике)" % [
+					base_passive,
+					NumberFormatter.format_number(gold_bonus),
+					NumberFormatter.format_number(GameManager.gold),
+				]
 			elif cid == "spirit":
 				passive_lbl.text = "%s\n📊 Уровни духов Спирита: 🔥%d / 🌪️%d / 🌿%d / 🪨%d (действуют только на Спирите)" % [
 					base_passive,

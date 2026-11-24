@@ -932,18 +932,18 @@ func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -
 		var ammo_emoji: String = GameManager.equipped_ammo.icon_emoji if GameManager.equipped_ammo != null else "🏹"
 		var has_ammo: bool = GameManager.consume_one_ammo()
 		ranged_shot_fired.emit(ammo_emoji, has_ammo)
-		raw_damage = GameManager.get_player_damage(has_ammo) * power_scale
+		raw_damage = GameManager.get_basic_attack_damage(has_ammo) * power_scale
 		if has_ammo:
 			GameManager.add_mastery_xp("ranged", 1.0)
 	elif is_staff:
 		var tome_emoji: String = GameManager.equipped_ammo.icon_emoji if GameManager.equipped_ammo != null else "✨"
 		var has_tome: bool = GameManager.consume_one_ammo()
 		ranged_shot_fired.emit(tome_emoji, has_tome)
-		raw_damage = GameManager.get_player_damage(has_tome) * power_scale
+		raw_damage = GameManager.get_basic_attack_damage(has_tome) * power_scale
 		if has_tome:
 			GameManager.add_mastery_xp("magic", 1.0)
 	else:
-		raw_damage = GameManager.get_player_damage(true) * power_scale
+		raw_damage = GameManager.get_basic_attack_damage(true) * power_scale
 		GameManager.add_mastery_xp("melee", 1.0)
 
 	if GameManager.has_hero_class("troll"):

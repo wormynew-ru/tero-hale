@@ -1254,6 +1254,48 @@ test('v0.23.0 features: Reflector rework (20x HP, 0% dodge, pre-armor 99% cap, b
   assert.ok(invGd.includes('resets_claimed_difficulties') && invGd.includes('Сбросить'), 'InventoryUI.gd must support using the difficulty reset orb');
 });
 
+test('v0.24.0 Alchemist Golden Reaction passive adds 5% of current gold to basic/manual attack damage only', () => {
+  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  assert.ok(gmTxt.includes('const ALCHEMIST_GOLD_REACTION_RATIO: float = 0.05'), 'GameManager must define ALCHEMIST_GOLD_REACTION_RATIO = 0.05');
+  assert.ok(
+    /func get_alchemist_gold_reaction_bonus\(\) -> float:[\s\S]*?has_hero_class\("alchemist"\)[\s\S]*?gold \* ALCHEMIST_GOLD_REACTION_RATIO/.test(gmTxt),
+    'GameManager.get_alchemist_gold_reaction_bonus() must return 5% of current gold when Alchemist is active',
+  );
+  assert.ok(
+    /func get_basic_attack_damage\([\s\S]*?get_player_damage\(preview_ammo_ready\) \+ get_alchemist_gold_reaction_bonus\(\)/.test(gmTxt),
+    'GameManager.get_basic_attack_damage() must add get_alchemist_gold_reaction_bonus() on top of base weapon damage',
+  );
+  assert.ok(
+    /func get_player_dps\(\) -> float:[\s\S]*?get_basic_attack_damage\(\)/.test(gmTxt),
+    'GameManager.get_player_dps() must reflect get_basic_attack_damage()',
+  );
+
+  const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const perfAttackMatch = /func _perform_player_attack\([\s\S]*?\nfunc _perform_enemy_attack/.exec(combatTxt);
+  assert.ok(perfAttackMatch, 'CombatSystem must define _perform_player_attack()');
+  assert.ok(
+    perfAttackMatch[0].includes('get_basic_attack_damage(has_ammo)') &&
+      perfAttackMatch[0].includes('get_basic_attack_damage(has_tome)') &&
+      perfAttackMatch[0].includes('get_basic_attack_damage(true)'),
+    'CombatSystem._perform_player_attack() must use get_basic_attack_damage() for ranged, staff, and melee basic attacks',
+  );
+
+  const alchemistTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/classes/alchemist.tres'), 'utf-8');
+  assert.ok(alchemistTres.includes('Золотая реакция') && alchemistTres.includes('5%'), 'alchemist.tres must document Golden Reaction 5% gold passive');
+
+  const classUiGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/ClassUI.gd'), 'utf-8');
+  assert.ok(classUiGd.includes('cid == "alchemist"') && classUiGd.includes('Золотая реакция'), 'ClassUI.gd must display live Golden Reaction bonus');
+
+  const statsUiGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
+  assert.ok(statsUiGd.includes('get_basic_attack_damage()') && statsUiGd.includes('get_alchemist_gold_reaction_bonus()'), 'StatsUI.gd must display basic attack damage and Golden Reaction bonus');
+
+  const faqUiGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/FaqUI.gd'), 'utf-8');
+  assert.ok(faqUiGd.includes('Золотая реакция'), 'FaqUI.gd must document Alchemist Golden Reaction');
+
+  const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
+  assert.ok(changelogTxt.includes('## [0.24.0]'), 'CHANGELOG.md must include [0.24.0] entry');
+});
+
 
 
 

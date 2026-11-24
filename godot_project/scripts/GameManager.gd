@@ -48,6 +48,7 @@ const NORMAL_FPS_LIMIT: int = 60
 const DEFAULT_AFK_MAX_FPS: int = 20
 const AFK_FPS_OPTIONS: Array[int] = [15, 20, 30, 60]
 const AUTO_POTION_HP_THRESHOLD: float = 0.35
+const ALCHEMIST_GOLD_REACTION_RATIO: float = 0.05
 const MAX_ENCHANT_LEVEL: int = 100
 const ALCHEMIST_MAX_ENCHANT_LEVEL: int = 250
 const ALCHEMY_UNLOCK_DIFFICULTY: int = 10
@@ -3629,6 +3630,18 @@ func get_player_damage(preview_ammo_ready: bool = true) -> float:
 	return dmg
 
 
+func get_alchemist_gold_reaction_bonus() -> float:
+	if not has_hero_class("alchemist") or gold <= 0.0:
+		return 0.0
+	return gold * ALCHEMIST_GOLD_REACTION_RATIO
+
+
+func get_basic_attack_damage(preview_ammo_ready: bool = true) -> float:
+	if has_hero_class("reflector"):
+		return 0.0
+	return get_player_damage(preview_ammo_ready) + get_alchemist_gold_reaction_bonus()
+
+
 func get_player_armor_penetration() -> float:
 	if is_equipment_disabled() or is_gear_blocked_by_challenge():
 		return 0.0
@@ -3654,7 +3667,7 @@ func get_player_dps() -> float:
 	if has_hero_class("reflector"):
 		return 0.0
 	var avg_crit_factor: float = 1.0 + get_crit_chance() * (get_crit_multiplier() - 1.0)
-	return (get_player_damage() * avg_crit_factor) / get_player_attack_interval()
+	return (get_basic_attack_damage() * avg_crit_factor) / get_player_attack_interval()
 
 
 func get_dodge_chance() -> float:

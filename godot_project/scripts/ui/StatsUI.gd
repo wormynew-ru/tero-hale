@@ -190,7 +190,7 @@ func _refresh() -> void:
 	var total_str: int = GameManager.get_total_strength()
 	var total_agi: int = GameManager.get_total_agility()
 	var total_end: int = GameManager.get_total_endurance()
-	var dmg: float = GameManager.get_player_damage()
+	var dmg: float = GameManager.get_basic_attack_damage()
 	var dps: float = GameManager.get_player_dps()
 	var atk_interval: float = GameManager.get_player_attack_interval()
 	var armor: float = GameManager.get_armor_reduction()
@@ -236,6 +236,8 @@ func _refresh() -> void:
 		extra_tags.append("🔥 %s (%d:%02d)" % [str(ch_def.get("title", "")), r_min, r_sec])
 	if not GameManager.well_run_blessing.is_empty():
 		extra_tags.append("⛲ %s" % GameManager.get_well_blessing_label())
+	if GameManager.has_hero_class("alchemist"):
+		extra_tags.append("⚗️ Золотая реакция: +%s к ручной атаке" % NumberFormatter.format_number(GameManager.get_alchemist_gold_reaction_bonus()))
 	if GameManager.wave_dungeon_clears > 0:
 		extra_tags.append("🏰 Данжей: %d" % GameManager.wave_dungeon_clears)
 	var extra_suffix: String = ("  |  " + "  |  ".join(extra_tags)) if not extra_tags.is_empty() else ""
