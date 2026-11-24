@@ -36,9 +36,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
@@ -51,8 +48,8 @@ jobs:
 
       - name: Install Android SDK components (API 36, Build-Tools 36.1.0, NDK 29)
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager --install \
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
             "platform-tools" \
             "cmdline-tools;latest" \
             "build-tools;36.1.0" \
