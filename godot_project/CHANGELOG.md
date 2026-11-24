@@ -2,6 +2,16 @@
 
 Все значимые изменения проекта фиксируются в этом файле.
 
+## [0.25.0] — Облачная сборка Android Release APK через GitHub Actions (Godot 4.7.2-stable + Gradle)
+### Добавлено и обновлено
+- **Пресет экспорта Android (`godot_project/export_presets.cfg`)**:
+  - Настроен пресет `"Android"` под **Godot 4.7.2-stable** со сборкой через **Gradle** (`gradle_build/use_gradle_build=true`, `gradle_build/export_format=0` — `.apk`, `arm64-v8a` + `armeabi-v7a`, полноэкранный режим `immersive_mode=true`, `opengl_debug=false`) и пустыми полями keystore для безопасного хранения в Git.
+- **Workflow GitHub Actions (`.github/workflows/build-android.yml`)**:
+  - Настроен CI/CD пайплайн на `ubuntu-latest` (`workflow_dispatch`, `push` в `main`/`master` и теги `v*.*.*`): установка **JDK 17 (Temurin)**, **Android SDK** (`platforms;android-36`, `build-tools;36.1.0`, `ndk;29.0.14206865`), загрузка и кэширование **`Godot_v4.7.2-stable_linux.x86_64`** и шаблонов экспорта `4.7.2.stable`, распаковка `android_source.zip` в `godot_project/android/build`, headless-импорт ресурсов (`--import`), подписание release-ключом из GitHub Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_ALIAS`, `ANDROID_KEYSTORE_PASSWORD`) или временным release-keystore через `keytool` и сборка строго без debug (`godot --headless --export-release "Android"`).
+  - Готовый `hero-tale-release.apk` загружается в Artifacts запуска (и автоматически прикрепляется к GitHub Release при пуше тега `v*.*.*`).
+- **`.gitignore` и документация (`ROADMAP.md`, `README.md`)**:
+  - В `.gitignore` добавлены кэши и артефакты сборки (`godot_project/.godot/`, `godot_project/build/`, `godot_project/android/`, `*.apk`, `*.aab`, `*.keystore`, `*.jks`), обновлены карта файлов и инструкция по сборке APK.
+
 ## [0.24.0] — Пассивка Алхимика «Золотая реакция» (по ТЗ)
 ### Добавлено и обновлено
 - **Пассивка класса «⚗️ Алхимик» — «Золотая реакция» (`GameManager.gd`, `CombatSystem.gd`, `alchemist.tres`, `ClassUI.gd`, `StatsUI.gd`, `FaqUI.gd`)**:

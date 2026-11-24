@@ -4,11 +4,13 @@
 
 ## Корень проекта (`res://`)
 - `project.godot` — конфигурация Godot 4.7, Autoload `GameManager`, глобальная тема `mobile_theme.tres`, горизонтальные настройки экрана (1280x720, `canvas_items` + `expand`, `orientation=0` для телефона и ПК), `run/low_processor_mode=false` для фоновой работы, рендерер `gl_compatibility`.
+- `export_presets.cfg` — пресет Android-экспорта для Godot 4.7.2-stable (Gradle Release APK без debug, `arm64-v8a` + `armeabi-v7a`, без зашитых паролей keystore).
 - `icon.svg` — векторная иконка проекта для запуска и экспорта.
 - `CLAUDE.md` — обязательные правила работы с проектом, архитектура, формулы баланса и описание сигналов.
 - `ROADMAP.md` — текущая карта файлов проекта (обязательно обновлять при изменении структуры).
 - `CHANGELOG.md` — журнал прогрессии, версий и выполненных изменений.
 - `TZ.md` — техническое задание от пользователя (если файл пустой — игнорируется; если заполнен — задачи берутся в работу).
+- `../.github/workflows/build-android.yml` — пайплайн GitHub Actions для облачной сборки release `.apk` (Godot `4.7.2-stable` + Gradle без debug).
 
 ## Сцены (`res://scenes/`)
 - `scenes/Main.tscn` — корневая сцена-композиция (1280x720, тема `mobile_theme.tres`): содержит `CombatSystem` и инстансит модульные сцены (`BattleArenaUI`, `RightSidebarUI`, `HeroMenuUI`, `AfkOverlayUI`).

@@ -1296,6 +1296,33 @@ test('v0.24.0 Alchemist Golden Reaction passive adds 5% of current gold to basic
   assert.ok(changelogTxt.includes('## [0.24.0]'), 'CHANGELOG.md must include [0.24.0] entry');
 });
 
+test('v0.25.0 Android Release APK CI (Godot 4.7.2-stable + Gradle without debug) is configured securely', () => {
+  const presetsPath = path.join(GODOT_ROOT, 'export_presets.cfg');
+  assert.ok(fs.existsSync(presetsPath), 'godot_project/export_presets.cfg must exist');
+  const presetsTxt = fs.readFileSync(presetsPath, 'utf-8');
+
+  assert.ok(presetsTxt.includes('name="Android"'), 'export_presets.cfg must define Android preset');
+  assert.ok(presetsTxt.includes('platform="Android"'), 'export_presets.cfg must target Android platform');
+  assert.ok(presetsTxt.includes('gradle_build/use_gradle_build=true'), 'export_presets.cfg must enable Gradle build');
+  assert.ok(presetsTxt.includes('gradle_build/export_format=0'), 'export_presets.cfg must export APK format (0)');
+  assert.ok(presetsTxt.includes('graphics/opengl_debug=false'), 'export_presets.cfg must disable opengl_debug');
+  assert.ok(presetsTxt.includes('keystore/release_password=""'), 'export_presets.cfg must not commit hardcoded release keystore passwords');
+
+  const workflowPath = path.resolve(process.cwd(), '.github/workflows/build-android.yml');
+  assert.ok(fs.existsSync(workflowPath), '.github/workflows/build-android.yml must exist');
+  const wfTxt = fs.readFileSync(workflowPath, 'utf-8');
+
+  assert.ok(wfTxt.includes("GODOT_TAG: '4.7.2-stable'"), 'Workflow must target Godot 4.7.2-stable');
+  assert.ok(wfTxt.includes("GODOT_TEMPLATE_DIR: '4.7.2.stable'"), 'Workflow must target 4.7.2.stable export templates');
+  assert.ok(wfTxt.includes('--export-release "Android"'), 'Workflow must run --export-release for Android preset');
+  assert.ok(!wfTxt.includes('--export-debug'), 'Workflow must not build debug APKs');
+  assert.ok(wfTxt.includes('android_source.zip') && wfTxt.includes('.build_version'), 'Workflow must install Gradle Android build template');
+  assert.ok(wfTxt.includes('platforms;android-36') && wfTxt.includes('build-tools;36.1.0'), 'Workflow must install Android 36 SDK and Build-Tools 36.1.0 for Godot 4.7');
+
+  const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
+  assert.ok(changelogTxt.includes('## [0.25.0]'), 'CHANGELOG.md must include [0.25.0] entry');
+});
+
 
 
 

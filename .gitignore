@@ -6,3 +6,13 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Godot & Android build outputs
+.godot/
+godot_project/.godot/
+godot_project/build/
+godot_project/android/
+*.apk
+*.aab
+*.keystore
+*.jks

@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Godot Engine](https://img.shields.io/badge/Godot-4.7-478cbf.svg)](https://godotengine.org/)
-[![Version](https://img.shields.io/badge/Version-0.24.0-purple.svg)](godot_project/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.25.0-purple.svg)](godot_project/CHANGELOG.md)
 
 Кроссплатформенная 2D Idle RPG в духе **Hero Tale**, созданная на **Godot Engine 4.7** (`GL Compatibility`) с адаптивным горизонтальным интерфейсом (`1280×720`, `canvas_items` + `expand`, широкие мобильные скроллбары `mobile_theme.tres`) для **ПК и смартфонов**.
 
@@ -60,11 +60,14 @@
 
 ```text
 .
+├── .github/workflows/          # CI/CD: облачная сборка Release APK через Gradle
+│   └── build-android.yml       # Godot 4.7.2-stable (--export-release, без debug)
 ├── godot_project/              # Основной проект Godot 4.7
 │   ├── project.godot           # Конфигурация движка, mobile_theme.tres и Autoload GameManager
+│   ├── export_presets.cfg      # Пресет экспорта Android Release APK (Gradle, без секретов)
 │   ├── CLAUDE.md               # Архитектура, формулы баланса, сигналы и правила разработки
 │   ├── ROADMAP.md              # Карта всех сцен, скриптов и ресурсов
-│   ├── CHANGELOG.md            # Подробный журнал прогрессии (v0.1.0 — v0.24.0)
+│   ├── CHANGELOG.md            # Подробный журнал прогрессии (v0.1.0 — v0.25.0)
 │   ├── TZ.md                   # Пользовательское ТЗ для новых задач
 │   ├── assets/                 # Текстуры (village_map.jpg) и тема (mobile_theme.tres)
 │   ├── scenes/                 # 23 модульные .tscn сцены (Main, BattleArenaUI, HeroMenuUI, BestiaryUI и др.)
@@ -82,6 +85,7 @@
 
 | Версия | Ключевые изменения |
 | --- | --- |
+| **0.25.0** | Облачная сборка Android Release APK через GitHub Actions (`Godot 4.7.2-stable`, Gradle, `--export-release` без debug) |
 | **0.24.0** | Пассивка Алхимика «Золотая реакция» (`5%` от текущего золота добавляется к урону ручной атаки) |
 | **0.23.0** | Ребаланс Отражателя (`mirror_apotheosis.tres` +200% отражения, до-броневое рассеивание с капом 99% и полным уроном сверх, моментальная стартовая аура, `20x` HP, `0%` уклона), ускоренный спавн (`0.25с`), 3 новых ульт-рецепта Тёмной кузни + броня от оружия, массовая прокачка статов (`+10/+25/+50/Макс`), `0.001%` дроп Сферы Сброса Сумрака, упразднение перехода на босса без сброса |
 | **0.22.0** | Мобильные оптимизации (AFK FPS `15/20/30/60`, пропуск AFK HUD, `20 Гц` ромбы, кэш статов, пулы UI без `queue_free`, пауза арены при меню) + 10 механик: Качество `80–125%` и авто-разбор, Бестиарий, 4 Испытания, 3 Боевых комплекта, Слияние `★1–5` и 3 Ульт-рецепта, Вторая рука и Барьер, Авто-маршрут, Колодец Жадности, Прокачка и Руны чар, Экспедиции путников + Данж волн + Чекпоинты Шахты |
@@ -112,6 +116,20 @@
    ```
 3. Откройте проект и нажмите **F5** (главная сцена: `res://scenes/Main.tscn`).
 4. Для Android / iOS уже настроены альбомная ориентация (`orientation = 0`), эмуляция тача (`pointing/emulate_touch_from_mouse = true`), рендерер `gl_compatibility` и глобальная тема `mobile_theme.tres`.
+
+---
+
+## Облачная сборка Android `.apk` через GitHub Actions
+
+В репозитории настроен workflow [`.github/workflows/build-android.yml`](.github/workflows/build-android.yml), который собирает **Release `.apk`** на серверах GitHub (`ubuntu-latest`) с использованием **Godot `4.7.2-stable`** и **Gradle** (без debug-сборки, через `--export-release`).
+
+1. Запушьте изменения в ветку `main`/`master` (или откройте вкладку **Actions → Build Android Release APK (Godot 4.7.2-stable) → Run workflow**).
+2. По завершении сборки скачайте артефакт **`hero-tale-android-release-apk`** (`hero-tale-release.apk`). При пуше тега вида `v0.25.0` файл также автоматически прикрепится к GitHub Release.
+3. *(Необязательно, для постоянной подписи при обновлениях поверх уже установленной игры)* добавьте в **Settings → Secrets and variables → Actions** три секрета:
+   - `ANDROID_KEYSTORE_BASE64` — `base64` вашего `.keystore` файла;
+   - `ANDROID_KEYSTORE_ALIAS` — alias ключа;
+   - `ANDROID_KEYSTORE_PASSWORD` — пароль keystore и ключа.
+   Если секреты не заданы, workflow автоматически создаст временный release-keystore для подписи APK.
 
 ---
 
