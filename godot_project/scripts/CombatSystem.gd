@@ -11,6 +11,7 @@ enum State {
 signal state_changed(new_state: int)
 signal battle_search_changed(is_seeking: bool)
 signal enemy_spawned(enemy: EnemyData, current_hp: float, max_hp: float, current_mana: float, max_mana: float)
+signal enemy_pack_changed(alive_count: int, total_count: int)
 signal enemy_cleared
 signal enemy_hp_changed(current_hp: float, max_hp: float)
 signal enemy_mana_changed(current_mana: float, max_mana: float)
@@ -55,6 +56,13 @@ var enemy_attack_damage: float = 0.0
 var enemy_defense: float = 0.0
 var enemy_troll_armor_shred: int = 0
 
+var pack_total_count: int = 1
+var _unit_max_hp: float = 0.0
+var _pack_hps: Array[float] = []
+var _pack_max_hps: Array[float] = []
+var _pack_manas: Array[float] = []
+var _pack_atk_timers: Array[float] = []
+
 var _player_attack_timer: float = 0.0
 var _enemy_attack_timer: float = 0.0
 var _spawn_timer: float = 0.0
@@ -93,6 +101,8 @@ func _ready() -> void:
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.abilities_changed.connect(_on_abilities_changed)
 	GameManager.wave_dungeon_changed.connect(_on_wave_dungeon_changed)
+	GameManager.difficulty_run_auto_advanced.connect(_on_difficulty_run_auto_advanced)
+	GameManager.parallel_battle_changed.connect(_on_parallel_battle_changed)
 	GameManager.game_reset.connect(_on_game_reset)
 
 	is_seeking_battle = false
@@ -104,6 +114,7 @@ func _ready() -> void:
 		_set_state(State.IDLE)
 	battle_search_changed.emit(is_seeking_battle)
 	enemy_cleared.emit()
+	enemy_pack_changed.emit(0, 0)
 	troll_shred_updated.emit(0)
 	overcharge_state_changed.emit(false, -1, 0)
 
@@ -135,6 +146,7 @@ func toggle_battle_search() -> void:
 		_spawn_timer = 0.0
 		_reset_spirit_timers()
 		_clear_combat_effects()
+		_clear_pack_state()
 		current_enemy = null
 		enemy_hp = 0.0
 		enemy_max_hp = 0.0
@@ -142,6 +154,7 @@ func toggle_battle_search() -> void:
 		enemy_troll_armor_shred = 0
 		troll_shred_updated.emit(0)
 		enemy_cleared.emit()
+		enemy_pack_changed.emit(0, 0)
 		_emit_attack_progress(0.0, 0.0)
 		if GameManager.current_hp < GameManager.get_max_hp():
 			_set_state(State.RESTING)
@@ -208,6 +221,8 @@ func try_cast_ability(
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
+		if GameManager.is_training_grounds_location():
+			GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 2.5)
 		GameManager.record_ability_cast(ability.id)
 		if trigger_cooldown:
 			GameManager.start_ability_cooldown(slot_index, cd_duration)
@@ -225,6 +240,8 @@ func try_cast_ability(
 		if not _consume_spell_cost(mana_cost, use_blood_cast, blood_hp_cost):
 			return false
 		GameManager.add_mastery_xp("magic", mana_cost)
+		if GameManager.is_training_grounds_location():
+			GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 2.5)
 		GameManager.record_ability_cast(ability.id)
 		if trigger_cooldown:
 			GameManager.start_ability_cooldown(slot_index, 0.0 if _should_reset_ability_cooldown() else cd_duration)
@@ -288,6 +305,8 @@ func try_cast_ability(
 		GameManager.apply_rot_damage(extra_hp_sac)
 
 	GameManager.add_mastery_xp("magic", mana_cost)
+	if GameManager.is_training_grounds_location():
+		GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 2.5)
 	GameManager.record_ability_cast(ability.id)
 
 	if trigger_cooldown:
@@ -298,19 +317,21 @@ func try_cast_ability(
 	var rune_crit_bonus: float = float(rune_data.get("crit_bonus", 0.0))
 	var rune_lifesteal_bonus: float = float(rune_data.get("lifesteal_bonus", 0.0))
 	var bestiary_mult: float = 1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id)
+	var pack_boss_mult: float = GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
 
 	var hits: int = maxi(1, ability.hit_count) * cast_mult_count
 	var total_dealt: float = 0.0
 	for _h: int in range(hits):
-		if current_enemy == null or enemy_hp <= 0.0:
+		if current_enemy == null or current_state != State.FIGHTING or _get_alive_pack_count() <= 0:
 			break
+		var target_ratio: float = _get_active_target_hp_ratio()
 		var effective_power: float = power_mult
 		var ignore_pct: float = clampf(ability.armor_ignore_pct, 0.0, 1.0)
-		if ability.effect_type == "execute_damage" and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.40:
+		if ability.effect_type == "execute_damage" and target_ratio < 0.40:
 			effective_power *= 2.0
 			ignore_pct = 1.0
 
-		var raw_damage: float = GameManager.get_player_damage() * effective_power * bestiary_mult
+		var raw_damage: float = GameManager.get_player_damage() * effective_power * bestiary_mult * pack_boss_mult
 		if extra_hp_sac > 0.0:
 			raw_damage += extra_hp_sac * 2.5
 		if GameManager.has_dark_skill("arcane_echo"):
@@ -319,17 +340,16 @@ func try_cast_ability(
 		var is_crit: bool = randf() < (GameManager.get_crit_chance() + rune_crit_bonus)
 		if is_crit:
 			raw_damage *= GameManager.get_crit_multiplier()
-		if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
+		if GameManager.has_dark_skill("dark_execution") and target_ratio < 0.30:
 			raw_damage *= (1.0 + GameManager.get_dark_bonus("dark_execution"))
 
 		var full_def_bypass: bool = ignore_pct >= 0.999 or (is_crit and GameManager.has_hero_class("abyss_ranger"))
 		var eff_def: float = _get_effective_enemy_defense(full_def_bypass) * (1.0 - ignore_pct)
 		var final_damage: float = maxf(1.0, raw_damage - eff_def)
-		enemy_hp = maxf(0.0, enemy_hp - final_damage)
 		total_dealt += final_damage
-		enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 		player_attack_landed.emit(final_damage, is_crit)
 		_apply_vampirism(final_damage)
+		_apply_damage_to_pack_rollover(final_damage)
 
 	var effective_lifesteal: float = ability.lifesteal_ratio + rune_lifesteal_bonus
 	if effective_lifesteal > 0.0 and total_dealt > 0.0:
@@ -342,8 +362,6 @@ func try_cast_ability(
 		GameManager.restore_mana(ability.mana_restore_flat)
 
 	ability_casted.emit(slot_index, ability)
-	if enemy_hp <= 0.0:
-		_handle_enemy_defeated()
 	return true
 
 
@@ -393,6 +411,8 @@ func _execute_overcharge_tick() -> void:
 		return
 
 	GameManager.add_mastery_xp("magic", mana_burn)
+	if GameManager.is_training_grounds_location():
+		GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 1.5)
 	overcharge_tick_count = next_tick
 	overcharge_state_changed.emit(true, overcharge_slot_index, overcharge_tick_count)
 
@@ -402,27 +422,26 @@ func _execute_overcharge_tick() -> void:
 	var burst_scale: float = pow(1.75, float(next_tick - 1))
 	var raw_damage: float = (GameManager.get_player_damage() * power_mult + (hp_burn + mana_burn) * 4.0) * burst_scale
 	raw_damage *= (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
+	raw_damage *= GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
 	if GameManager.has_dark_skill("arcane_echo"):
 		raw_damage += GameManager.current_mana * GameManager.get_dark_bonus("arcane_echo")
 
 	var is_crit: bool = randf() < (GameManager.get_crit_chance() + oc_crit_bonus)
 	if is_crit:
 		raw_damage *= GameManager.get_crit_multiplier()
-	if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
+	if GameManager.has_dark_skill("dark_execution") and _get_active_target_hp_ratio() < 0.30:
 		raw_damage *= (1.0 + GameManager.get_dark_bonus("dark_execution"))
 
 	var ignore_pct: float = clampf(_overcharge_ability.armor_ignore_pct, 0.0, 1.0)
 	var eff_def: float = _get_effective_enemy_defense(false) * (1.0 - ignore_pct)
 	var final_damage: float = maxf(1.0, raw_damage - eff_def)
 
-	enemy_hp = maxf(0.0, enemy_hp - final_damage)
-	enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 	overcharge_tick_fired.emit(next_tick, hp_burn, mana_burn, final_damage)
 	_apply_vampirism(final_damage)
+	_apply_damage_to_pack_rollover(final_damage)
 
-	if enemy_hp <= 0.0:
+	if current_state != State.FIGHTING or current_enemy == null or _get_alive_pack_count() <= 0:
 		_stop_overcharge(true)
-		_handle_enemy_defeated()
 	elif overcharge_tick_count >= OVERCHARGE_MAX_TICKS:
 		_stop_overcharge(true)
 
@@ -484,20 +503,19 @@ func _process_enemy_dots(delta: float) -> void:
 		d["tick_timer"] = float(d["tick_timer"]) + delta
 		while float(d["tick_timer"]) >= 1.0 and current_enemy != null and current_state == State.FIGHTING:
 			d["tick_timer"] = float(d["tick_timer"]) - 1.0
-			var raw_dmg: float = GameManager.get_player_damage() * float(d["power_mult"]) * (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
-			if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
+			var alive_before: int = maxi(1, _get_alive_pack_count())
+			var raw_dmg: float = GameManager.get_player_damage() * float(d["power_mult"]) * (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id)) * GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
+			if GameManager.has_dark_skill("dark_execution") and _get_active_target_hp_ratio() < 0.30:
 				raw_dmg *= (1.0 + GameManager.get_dark_bonus("dark_execution"))
 			var eff_def: float = _get_effective_enemy_defense(false) * (1.0 - float(d["armor_ignore_pct"]))
 			var final_dmg: float = maxf(1.0, raw_dmg - eff_def)
-			enemy_hp = maxf(0.0, enemy_hp - final_dmg)
-			enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 			dot_tick_landed.emit(str(d["icon_emoji"]), str(d["title"]), final_dmg)
-			_apply_vampirism(final_dmg)
+			var total_dot_dealt: float = final_dmg * float(alive_before)
+			_apply_vampirism(total_dot_dealt)
 			var ls: float = float(d["lifesteal_ratio"])
 			if ls > 0.0:
-				GameManager.heal(final_dmg * ls * maxf(0.25, 1.0 - GameManager.get_curse_value("blood_tax")))
-			if enemy_hp <= 0.0:
-				_handle_enemy_defeated()
+				GameManager.heal(total_dot_dealt * ls * maxf(0.25, 1.0 - GameManager.get_curse_value("blood_tax")))
+			if _apply_damage_to_all_alive_in_pack(final_dmg):
 				return
 		if float(d["remaining"]) <= 0.0:
 			_enemy_dots.remove_at(i)
@@ -570,6 +588,7 @@ func _process_auto_potions(delta: float, is_in_combat: bool) -> void:
 
 func _handle_player_death() -> void:
 	_clear_combat_effects()
+	_clear_pack_state()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
 	_mine_ambient_timer = 0.0
@@ -585,6 +604,7 @@ func _handle_player_death() -> void:
 		enemy_troll_armor_shred = 0
 		troll_shred_updated.emit(0)
 		enemy_cleared.emit()
+		enemy_pack_changed.emit(0, 0)
 		battle_search_changed.emit(false)
 		route_event_triggered.emit("🏰 Поражение в Данже волн — возврат в локацию.")
 		_set_state(State.RESTING)
@@ -599,6 +619,7 @@ func _handle_player_death() -> void:
 		enemy_troll_armor_shred = 0
 		troll_shred_updated.emit(0)
 		enemy_cleared.emit()
+		enemy_pack_changed.emit(0, 0)
 		battle_search_changed.emit(false)
 		_set_state(State.RESTING)
 		GameManager.fail_mine_run()
@@ -623,6 +644,12 @@ func _process_fighting(delta: float) -> void:
 		combat_regen_pct += 0.02
 	if combat_regen_pct > 0.0 and GameManager.current_hp < GameManager.get_max_hp():
 		GameManager.heal(GameManager.get_max_hp() * combat_regen_pct * delta, false)
+
+	var bar_regen_pct: float = GameManager.get_barrier_regen_per_sec_pct()
+	if bar_regen_pct > 0.0 and not GameManager.has_hero_class("reflector"):
+		var max_bar_now: float = GameManager.get_max_barrier()
+		if max_bar_now > 0.0 and GameManager.current_barrier < max_bar_now:
+			GameManager.add_barrier(max_bar_now * bar_regen_pct * delta)
 
 	var rot_pct: float = GameManager.get_curse_value("rot")
 	if rot_pct > 0.0:
@@ -674,11 +701,17 @@ func _process_fighting(delta: float) -> void:
 
 	var enemy_mana_dirty: bool = false
 	var enemy_mana_full: bool = false
-	if current_enemy.max_mana > 0.0 and enemy_mana < current_enemy.max_mana:
-		enemy_mana = minf(current_enemy.max_mana, enemy_mana + ENEMY_MANA_REGEN_PER_SEC * delta)
-		enemy_mana_dirty = true
-		if enemy_mana >= current_enemy.max_mana:
-			enemy_mana_full = true
+	var first_alive_idx: int = _get_first_alive_pack_index()
+	if current_enemy.max_mana > 0.0:
+		for i: int in range(_pack_hps.size()):
+			if _pack_hps[i] > 0.0 and _pack_manas[i] < current_enemy.max_mana:
+				_pack_manas[i] = minf(current_enemy.max_mana, _pack_manas[i] + ENEMY_MANA_REGEN_PER_SEC * delta)
+				if i == first_alive_idx:
+					enemy_mana_dirty = true
+					if _pack_manas[i] >= current_enemy.max_mana:
+						enemy_mana_full = true
+		if first_alive_idx >= 0:
+			enemy_mana = _pack_manas[first_alive_idx]
 
 	var player_interval: float = GameManager.get_player_attack_interval()
 	var frenzy: float = GameManager.get_curse_value("abyss_frenzy")
@@ -701,7 +734,12 @@ func _process_fighting(delta: float) -> void:
 		if _enemy_stun_timer <= 0.0:
 			stun_finished = true
 	else:
-		_enemy_attack_timer += delta
+		var lead_timer: float = 0.0
+		for i: int in range(_pack_hps.size()):
+			if _pack_hps[i] > 0.0:
+				_pack_atk_timers[i] += delta
+				lead_timer = maxf(lead_timer, _pack_atk_timers[i])
+		_enemy_attack_timer = lead_timer
 
 	_enemy_hud_sync_timer += delta
 	_attack_progress_sync_timer += delta
@@ -724,30 +762,35 @@ func _process_fighting(delta: float) -> void:
 			_player_attack_timer -= player_interval
 			player_hits += 1
 			_perform_player_attack()
-			if current_state != State.FIGHTING:
+			if current_state != State.FIGHTING or current_enemy == null:
 				return
 
 	if _enemy_stun_timer <= 0.0:
-		var enemy_hits: int = 0
-		while _enemy_attack_timer >= enemy_interval and enemy_hits < 4:
-			_enemy_attack_timer -= enemy_interval
-			enemy_hits += 1
-			_perform_enemy_attack()
-			if current_state != State.FIGHTING:
-				return
+		for i: int in range(_pack_hps.size()):
+			if i >= _pack_hps.size() or _pack_hps[i] <= 0.0:
+				continue
+			var enemy_hits: int = 0
+			while i < _pack_atk_timers.size() and _pack_atk_timers[i] >= enemy_interval and enemy_hits < 4:
+				_pack_atk_timers[i] -= enemy_interval
+				enemy_hits += 1
+				_perform_enemy_attack(i)
+				if current_state != State.FIGHTING or current_enemy == null:
+					return
+				if i >= _pack_hps.size() or _pack_hps[i] <= 0.0:
+					break
 
 
 func _trigger_reflector_aura_pulse() -> void:
-	if current_enemy == null:
+	if current_enemy == null or _get_alive_pack_count() <= 0:
 		return
 	var hp_aura_dmg: float = maxf(1.0, GameManager.get_max_hp() * 0.05)
-	var rot_dmg: float = enemy_max_hp * 0.001
-	var total_dmg: float = hp_aura_dmg + rot_dmg
-	enemy_hp = maxf(0.0, enemy_hp - total_dmg)
-	enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
+	var rot_dmg: float = _unit_max_hp * 0.001
+	var aura_mult: float = (1.0 + GameManager.get_dark_bonus("reflect_fortress")) * GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
+	var total_dmg: float = (hp_aura_dmg + rot_dmg) * aura_mult
+	if GameManager.is_training_grounds_location():
+		GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 2.5)
 	dot_tick_landed.emit("🪞", "Аура 5% HP + Гниение 0.1%", total_dmg)
-	if enemy_hp <= 0.0:
-		_handle_enemy_defeated()
+	_apply_damage_to_all_alive_in_pack(total_dmg)
 
 
 func _process_reflector_aura(delta: float) -> void:
@@ -773,24 +816,18 @@ func _process_pet_combat(delta: float) -> void:
 			_pet_pulse_timer += delta
 			while _pet_pulse_timer >= 1.0 and current_enemy != null and current_state == State.FIGHTING:
 				_pet_pulse_timer -= 1.0
-				var burn_dmg: float = maxf(1.0, enemy_max_hp * GameManager.get_pet_effect_value("enemy_burn"))
-				enemy_hp = maxf(0.0, enemy_hp - burn_dmg)
-				enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
+				var burn_dmg: float = maxf(1.0, _unit_max_hp * GameManager.get_pet_effect_value("enemy_burn")) * GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
 				dot_tick_landed.emit(pet.icon_emoji, pet.pet_name, burn_dmg)
-				if enemy_hp <= 0.0:
-					_handle_enemy_defeated()
+				if _apply_damage_to_all_alive_in_pack(burn_dmg):
 					return
 		"crit_lightning":
 			_pet_lightning_timer += delta
 			while _pet_lightning_timer >= 4.0 and current_enemy != null and current_state == State.FIGHTING:
 				_pet_lightning_timer -= 4.0
 				var bolt_mult: float = GameManager.get_pet_training_multiplier(pet.id)
-				var bolt_dmg: float = maxf(1.0, (GameManager.get_max_hp() * 0.08 + GameManager.get_player_damage() * 1.6) * bolt_mult)
-				enemy_hp = maxf(0.0, enemy_hp - bolt_dmg)
-				enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
+				var bolt_dmg: float = maxf(1.0, (GameManager.get_max_hp() * 0.08 + GameManager.get_player_damage() * 1.6) * bolt_mult) * GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
 				dot_tick_landed.emit(pet.icon_emoji, "Молния", bolt_dmg)
-				if enemy_hp <= 0.0:
-					_handle_enemy_defeated()
+				if _apply_damage_to_all_alive_in_pack(bolt_dmg):
 					return
 
 
@@ -837,25 +874,23 @@ func _process_spirit_companions(delta: float) -> void:
 
 
 func _deal_spirit_damage(spirit_name: String, emoji: String, raw_base: float, def_factor: float, mastery_id: String) -> void:
-	if current_enemy == null:
+	if current_enemy == null or _get_alive_pack_count() <= 0:
 		return
-	var raw_damage: float = raw_base * (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
+	var raw_damage: float = raw_base * (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id)) * GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
 	var is_crit: bool = randf() < GameManager.get_crit_chance()
 	if is_crit:
 		raw_damage *= GameManager.get_crit_multiplier()
-	if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
+	if GameManager.has_dark_skill("dark_execution") and _get_active_target_hp_ratio() < 0.30:
 		raw_damage *= (1.0 + GameManager.get_dark_bonus("dark_execution"))
 
 	var eff_def: float = _get_effective_enemy_defense(false) * def_factor
 	var final_damage: float = maxf(1.0, raw_damage - eff_def)
-	enemy_hp = maxf(0.0, enemy_hp - final_damage)
-	enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 	spirit_action_performed.emit(spirit_name, emoji, final_damage, false)
 	GameManager.add_mastery_xp(mastery_id, 1.0)
+	if GameManager.is_training_grounds_location():
+		GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 2.0)
 	_apply_vampirism(final_damage)
-
-	if enemy_hp <= 0.0:
-		_handle_enemy_defeated()
+	_apply_damage_to_pack_rollover(final_damage)
 
 
 func _process_auto_abilities() -> void:
@@ -913,13 +948,13 @@ func _try_cast_random_quick_ability(power_scale: float = 1.0) -> bool:
 
 
 func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -> void:
-	if current_enemy == null:
+	if current_enemy == null or _get_alive_pack_count() <= 0:
 		return
 
 	if GameManager.has_hero_class("blood_archmage") and randf() < BLOOD_ARCHMAGE_QUICK_CAST_CHANCE:
 		if _try_cast_random_quick_ability(power_scale):
 			GameManager.reduce_all_ability_cooldowns(0.5)
-			if allow_echo and current_enemy != null and current_state == State.FIGHTING and enemy_hp > 0.0:
+			if allow_echo and current_enemy != null and current_state == State.FIGHTING and _get_alive_pack_count() > 0:
 				if GameManager.has_dark_skill("echo_strike") and randf() < GameManager.get_dark_bonus("echo_strike"):
 					_perform_player_attack(0.75, false)
 			return
@@ -946,29 +981,31 @@ func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -
 		raw_damage = GameManager.get_basic_attack_damage(true) * power_scale
 		GameManager.add_mastery_xp("melee", 1.0)
 
+	if GameManager.is_training_grounds_location():
+		GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 2.5)
+
 	if GameManager.has_hero_class("troll"):
 		enemy_troll_armor_shred += 1
 		troll_shred_updated.emit(enemy_troll_armor_shred)
 
 	raw_damage *= (1.0 + GameManager.get_bestiary_damage_bonus(current_enemy.id))
+	raw_damage *= GameManager.get_pack_or_boss_damage_mult(current_enemy.id, pack_total_count)
 	var is_crit: bool = randf() < GameManager.get_crit_chance()
 	if is_crit:
 		raw_damage *= GameManager.get_crit_multiplier()
-	if GameManager.has_dark_skill("dark_execution") and enemy_max_hp > 0.0 and (enemy_hp / enemy_max_hp) < 0.30:
+	if GameManager.has_dark_skill("dark_execution") and _get_active_target_hp_ratio() < 0.30:
 		raw_damage *= (1.0 + GameManager.get_dark_bonus("dark_execution"))
 
 	var ignore_armor: bool = is_crit and (GameManager.has_hero_class("abyss_ranger") or (is_ranged and GameManager.has_dark_skill("piercing_volley")))
 	var final_damage: float = maxf(1.0, raw_damage - _get_effective_enemy_defense(ignore_armor))
-	enemy_hp = maxf(0.0, enemy_hp - final_damage)
-	enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 	player_attack_landed.emit(final_damage, is_crit)
 	_apply_vampirism(final_damage)
 
 	if GameManager.has_hero_class("blood_archmage"):
 		GameManager.reduce_all_ability_cooldowns(0.5)
 
-	if enemy_hp <= 0.0:
-		_handle_enemy_defeated()
+	_apply_damage_to_pack_rollover(final_damage)
+	if current_state != State.FIGHTING or current_enemy == null or _get_alive_pack_count() <= 0:
 		return
 
 	if allow_echo:
@@ -983,8 +1020,8 @@ func _perform_player_attack(power_scale: float = 1.0, allow_echo: bool = true) -
 				_perform_player_attack(0.80, false)
 
 
-func _perform_enemy_attack() -> void:
-	if current_enemy == null:
+func _perform_enemy_attack(attacker_idx: int = 0) -> void:
+	if current_enemy == null or attacker_idx < 0 or attacker_idx >= _pack_hps.size() or _pack_hps[attacker_idx] <= 0.0:
 		return
 
 	if randf() < GameManager.get_dodge_chance():
@@ -992,9 +1029,12 @@ func _perform_enemy_attack() -> void:
 		return
 
 	var raw_damage: float = enemy_attack_damage
-	if current_enemy.max_mana > 0.0 and enemy_mana >= ENEMY_SPELL_MANA_COST:
-		enemy_mana = maxf(0.0, enemy_mana - ENEMY_SPELL_MANA_COST)
-		enemy_mana_changed.emit(enemy_mana, current_enemy.max_mana)
+	if current_enemy.max_mana > 0.0 and _pack_manas[attacker_idx] >= ENEMY_SPELL_MANA_COST:
+		_pack_manas[attacker_idx] = maxf(0.0, _pack_manas[attacker_idx] - ENEMY_SPELL_MANA_COST)
+		var lead_idx: int = _get_first_alive_pack_index()
+		if attacker_idx == lead_idx:
+			enemy_mana = _pack_manas[attacker_idx]
+			enemy_mana_changed.emit(enemy_mana, current_enemy.max_mana)
 		raw_damage *= 1.35
 
 	var total_reflect_pct: float = GameManager.get_damage_reflection_pct()
@@ -1016,22 +1056,26 @@ func _perform_enemy_attack() -> void:
 	var thorns_dmg: float = taken * thorns_pct if (thorns_pct > 0.0 and taken > 0.0) else 0.0
 	var total_reflected: float = reflect_dmg + thorns_dmg
 
-	if total_reflected > 0.0 and current_enemy != null and GameManager.current_hp > 0.0:
+	if GameManager.is_training_grounds_location():
+		GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 2.5)
+
+	if total_reflected > 0.0 and current_enemy != null and GameManager.current_hp > 0.0 and attacker_idx < _pack_hps.size() and _pack_hps[attacker_idx] > 0.0:
 		var reflected_final: float = maxf(1.0, total_reflected)
-		enemy_hp = maxf(0.0, enemy_hp - reflected_final)
+		_pack_hps[attacker_idx] = maxf(0.0, _pack_hps[attacker_idx] - reflected_final)
+		_sync_pack_totals()
 		enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
 		var ref_emoji: String = "🪞" if reflect_dmg > 0.0 else "🧣"
 		dot_tick_landed.emit(ref_emoji, "Отражение", reflected_final)
-		if enemy_hp <= 0.0:
-			_handle_enemy_defeated()
-			return
+		if _pack_hps[attacker_idx] <= 0.0:
+			if _process_single_pack_kill(attacker_idx):
+				return
 
 	if GameManager.current_hp <= 0.0:
 		_handle_player_death()
 	else:
 		GameManager.try_auto_use_all_potions(true)
 		var max_hp_now: float = maxf(1.0, GameManager.get_max_hp())
-		if GameManager.auto_route_enabled and not GameManager.wave_dungeon_active and not GameManager.is_mine_location():
+		if GameManager.auto_route_enabled and not GameManager.wave_dungeon_active and not GameManager.is_mine_location() and not GameManager.is_training_grounds_location():
 			if (GameManager.current_hp / max_hp_now) < 0.20 and GameManager.get_total_potion_count() <= 0:
 				var retreat_msg: String = GameManager.retreat_to_safer_location()
 				if not retreat_msg.is_empty():
@@ -1039,8 +1083,98 @@ func _perform_enemy_attack() -> void:
 					return
 
 
-func _handle_enemy_defeated() -> void:
+func _clear_pack_state() -> void:
+	_pack_hps.clear()
+	_pack_max_hps.clear()
+	_pack_manas.clear()
+	_pack_atk_timers.clear()
+	pack_total_count = 1
+	_unit_max_hp = 0.0
+
+
+func _get_alive_pack_count() -> int:
+	var alive: int = 0
+	for hp_val: float in _pack_hps:
+		if hp_val > 0.0:
+			alive += 1
+	return alive
+
+
+func _get_first_alive_pack_index() -> int:
+	for i: int in range(_pack_hps.size()):
+		if _pack_hps[i] > 0.0:
+			return i
+	return -1
+
+
+func _get_active_target_hp_ratio() -> float:
+	var idx: int = _get_first_alive_pack_index()
+	if idx >= 0 and idx < _pack_max_hps.size() and _pack_max_hps[idx] > 0.0:
+		return clampf(_pack_hps[idx] / _pack_max_hps[idx], 0.0, 1.0)
+	if enemy_max_hp > 0.0:
+		return clampf(enemy_hp / enemy_max_hp, 0.0, 1.0)
+	return 1.0
+
+
+func _sync_pack_totals() -> void:
+	var sum_hp: float = 0.0
+	var sum_max: float = 0.0
+	for i: int in range(_pack_hps.size()):
+		sum_hp += maxf(0.0, _pack_hps[i])
+		sum_max += maxf(0.0, _pack_max_hps[i])
+	enemy_hp = sum_hp
+	enemy_max_hp = sum_max
+	var first_idx: int = _get_first_alive_pack_index()
+	if first_idx >= 0 and first_idx < _pack_manas.size():
+		enemy_mana = _pack_manas[first_idx]
+
+
+func _apply_damage_to_pack_rollover(damage: float) -> void:
+	if damage <= 0.0 or current_enemy == null:
+		return
+	var remaining_dmg: float = damage
+	for i: int in range(_pack_hps.size()):
+		if remaining_dmg <= 0.0 or current_enemy == null or current_state != State.FIGHTING:
+			break
+		var unit_hp: float = _pack_hps[i]
+		if unit_hp <= 0.0:
+			continue
+		if remaining_dmg >= unit_hp:
+			remaining_dmg -= unit_hp
+			_pack_hps[i] = 0.0
+			_sync_pack_totals()
+			enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
+			if _process_single_pack_kill(i):
+				return
+		else:
+			_pack_hps[i] = unit_hp - remaining_dmg
+			remaining_dmg = 0.0
+			_sync_pack_totals()
+			enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
+
+
+func _apply_damage_to_all_alive_in_pack(dmg_amount: float) -> bool:
+	if dmg_amount <= 0.0 or current_enemy == null:
+		return false
+	var killed_indices: Array[int] = []
+	for i: int in range(_pack_hps.size()):
+		if _pack_hps[i] > 0.0:
+			_pack_hps[i] = maxf(0.0, _pack_hps[i] - dmg_amount)
+			if _pack_hps[i] <= 0.0:
+				killed_indices.append(i)
+	_sync_pack_totals()
+	enemy_hp_changed.emit(enemy_hp, enemy_max_hp)
+	for kill_idx: int in killed_indices:
+		if _process_single_pack_kill(kill_idx):
+			return true
+	return false
+
+
+func _process_single_pack_kill(_unit_idx: int) -> bool:
 	var defeated: EnemyData = current_enemy
+	if defeated == null:
+		return true
+
 	var xp_earned: float = round(float(defeated.xp_reward) * GameManager.get_xp_multiplier())
 	var bestiary_gold_mult: float = 1.0 + GameManager.get_bestiary_gold_bonus(defeated.id)
 	var gold_earned: float = round(float(defeated.gold_reward) * GameManager.get_gold_multiplier() * bestiary_gold_mult)
@@ -1050,8 +1184,7 @@ func _handle_enemy_defeated() -> void:
 		gold_earned *= 2.0
 		pet_action_performed.emit("🪙", "x2 Золото!", Color(0.98, 0.85, 0.28, 1.0))
 
-	_clear_combat_effects()
-	GameManager.record_kill()
+	GameManager.record_kill(defeated)
 	GameManager.record_bestiary_kill(defeated.id)
 	if GameManager.is_mine_location():
 		GameManager.record_mine_kill()
@@ -1060,6 +1193,28 @@ func _handle_enemy_defeated() -> void:
 	GameManager.record_afk_rewards(xp_earned, gold_earned)
 	enemy_defeated_reward.emit(xp_earned, gold_earned)
 	_roll_drops(defeated)
+
+	var kill_bar_pct: float = GameManager.get_on_kill_barrier_restore_pct()
+	if kill_bar_pct > 0.0 and not GameManager.has_hero_class("reflector"):
+		GameManager.add_barrier(GameManager.get_max_barrier() * kill_bar_pct)
+	var kill_heal_pct: float = GameManager.get_dark_bonus("kill_barrier_heal")
+	if kill_heal_pct > 0.0:
+		GameManager.heal(GameManager.get_max_hp() * kill_heal_pct, false)
+
+	if GameManager.is_training_grounds_location():
+		GameManager.add_dark_mastery_xp(GameManager.active_dark_mastery_id, 10.0)
+
+	var alive_left: int = _get_alive_pack_count()
+	enemy_pack_changed.emit(alive_left, pack_total_count)
+	if alive_left <= 0:
+		_finish_pack_victory(defeated)
+		return true
+	return false
+
+
+func _finish_pack_victory(defeated: EnemyData) -> void:
+	_clear_combat_effects()
+	_clear_pack_state()
 
 	if GameManager.wave_dungeon_active:
 		var wd_res: Dictionary = GameManager.advance_wave_dungeon_on_kill()
@@ -1080,8 +1235,11 @@ func _handle_enemy_defeated() -> void:
 		return
 
 	if defeated.id == GameManager.FINAL_BOSS_ID:
+		var will_auto_advance: bool = GameManager.auto_advance_next_boss and not GameManager.wave_dungeon_active
 		GameManager.on_final_boss_defeated()
 		GameManager.on_final_boss_killed_for_garden()
+		if will_auto_advance:
+			return
 	elif defeated.id == GameManager.CURSE_WARDEN_ID:
 		GameManager.on_curse_warden_defeated()
 
@@ -1123,14 +1281,12 @@ func _spawn_enemy() -> void:
 
 	GameManager.restore_barrier_full()
 	_enemy_dots.clear()
+	_clear_pack_state()
 	current_enemy = next_enemy
 	enemy_troll_armor_shred = 0
 	troll_shred_updated.emit(0)
 
-	enemy_max_hp = round(current_enemy.max_hp * GameManager.get_difficulty_enemy_hp_mult())
-	enemy_hp = enemy_max_hp
-	enemy_mana = current_enemy.max_mana
-
+	var single_max_hp: float = round(current_enemy.max_hp * GameManager.get_difficulty_enemy_hp_mult())
 	var blood_tax_mult: float = 1.0 + GameManager.get_curse_value("blood_tax")
 	enemy_attack_damage = current_enemy.attack_damage * GameManager.get_difficulty_enemy_dmg_mult() * blood_tax_mult
 
@@ -1139,22 +1295,28 @@ func _spawn_enemy() -> void:
 
 	if GameManager.wave_dungeon_active:
 		var wave_scale: float = 1.0 + float(maxi(0, GameManager.wave_dungeon_wave - 1)) * 0.15
-		enemy_max_hp = round(enemy_max_hp * wave_scale)
-		enemy_hp = enemy_max_hp
+		single_max_hp = round(single_max_hp * wave_scale)
 		enemy_attack_damage *= wave_scale
 		enemy_defense *= wave_scale
 	elif current_enemy.id == GameManager.CURSE_WARDEN_ID and GameManager.reroll_boss_kills_in_run > 0:
 		var kills_f: float = float(GameManager.reroll_boss_kills_in_run)
-		enemy_max_hp = round(enemy_max_hp * pow(1.85, kills_f))
-		enemy_hp = enemy_max_hp
+		single_max_hp = round(single_max_hp * pow(1.85, kills_f))
 		enemy_attack_damage *= pow(1.55, kills_f)
 		enemy_defense *= (1.0 + kills_f * 0.45)
 	elif GameManager.is_mine_location() and GameManager.mine_depth > 0:
 		var depth_scale: float = 1.0 + float(GameManager.mine_depth) * 0.08
-		enemy_max_hp = round(enemy_max_hp * depth_scale)
-		enemy_hp = enemy_max_hp
+		single_max_hp = round(single_max_hp * depth_scale)
 		enemy_attack_damage *= depth_scale
 		enemy_defense *= depth_scale
+
+	_unit_max_hp = maxf(1.0, single_max_hp)
+	pack_total_count = GameManager.get_effective_parallel_battle_count(current_enemy)
+	for i: int in range(pack_total_count):
+		_pack_hps.append(_unit_max_hp)
+		_pack_max_hps.append(_unit_max_hp)
+		_pack_manas.append(current_enemy.max_mana)
+		_pack_atk_timers.append(0.0)
+	_sync_pack_totals()
 
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
@@ -1168,6 +1330,7 @@ func _spawn_enemy() -> void:
 	_reset_spirit_timers()
 
 	enemy_spawned.emit(current_enemy, enemy_hp, enemy_max_hp, enemy_mana, current_enemy.max_mana)
+	enemy_pack_changed.emit(pack_total_count, pack_total_count)
 
 	var pet: PetData = GameManager.get_equipped_pet()
 	if pet != null and pet.effect_type == "start_stun" and not _pet_stun_used_this_fight:
@@ -1196,6 +1359,7 @@ func _set_state(new_state: State) -> void:
 
 func _on_location_changed(_location: LocationData) -> void:
 	_clear_combat_effects()
+	_clear_pack_state()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
 	_mine_ambient_timer = 0.0
@@ -1204,6 +1368,7 @@ func _on_location_changed(_location: LocationData) -> void:
 	if not is_seeking_battle:
 		current_enemy = null
 		enemy_cleared.emit()
+		enemy_pack_changed.emit(0, 0)
 		return
 	if current_state != State.RESTING:
 		_set_state(State.FIGHTING)
@@ -1214,6 +1379,7 @@ func _on_wave_dungeon_changed() -> void:
 	if GameManager.wave_dungeon_active and not _was_wave_dungeon_active:
 		_was_wave_dungeon_active = true
 		_clear_combat_effects()
+		_clear_pack_state()
 		_player_attack_timer = 0.0
 		_enemy_attack_timer = 0.0
 		_spawn_timer = 0.0
@@ -1227,10 +1393,42 @@ func _on_wave_dungeon_changed() -> void:
 		_was_wave_dungeon_active = false
 
 
+func _on_difficulty_run_auto_advanced(new_diff: int) -> void:
+	_clear_combat_effects()
+	_clear_pack_state()
+	_player_attack_timer = 0.0
+	_enemy_attack_timer = 0.0
+	_mine_ambient_timer = 0.0
+	current_enemy = null
+	enemy_hp = 0.0
+	enemy_max_hp = 0.0
+	enemy_mana = 0.0
+	enemy_troll_armor_shred = 0
+	troll_shred_updated.emit(0)
+	enemy_cleared.emit()
+	enemy_pack_changed.emit(0, 0)
+	_spawn_timer = SPAWN_DELAY
+	if is_seeking_battle:
+		if GameManager.current_hp <= 0.0:
+			_set_state(State.RESTING)
+		else:
+			_set_state(State.SPAWNING)
+	else:
+		_set_state(State.IDLE)
+	route_event_triggered.emit("⏩ Авто-сложность: Ран на Сл.%d!" % new_diff)
+
+
+func _on_parallel_battle_changed(_cnt: int) -> void:
+	if current_state == State.FIGHTING and current_enemy != null and enemy_max_hp > 0.0 and enemy_hp >= enemy_max_hp * 0.999:
+		if GameManager.get_effective_parallel_battle_count(current_enemy) != pack_total_count:
+			_spawn_enemy()
+
+
 func _on_game_reset() -> void:
 	is_seeking_battle = false
 	_was_wave_dungeon_active = false
 	_clear_combat_effects()
+	_clear_pack_state()
 	_player_attack_timer = 0.0
 	_enemy_attack_timer = 0.0
 	_spawn_timer = 0.0
@@ -1251,4 +1449,5 @@ func _on_game_reset() -> void:
 	troll_shred_updated.emit(0)
 	battle_search_changed.emit(false)
 	enemy_cleared.emit()
+	enemy_pack_changed.emit(0, 0)
 	_set_state(State.IDLE)

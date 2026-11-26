@@ -11,6 +11,7 @@ signal new_run_started
 @onready var diff_plus_button: Button = %DiffPlusButton
 @onready var diff_max_button: Button = %DiffMaxButton
 @onready var multipliers_preview_label: Label = %MultipliersPreviewLabel
+@onready var auto_advance_button: Button = %AutoAdvanceButton
 @onready var start_new_run_button: Button = %StartNewRunButton
 @onready var selected_challenge_label: Label = %SelectedChallengeLabel
 @onready var challenges_rows_vbox: VBoxContainer = %ChallengesRowsVBox
@@ -43,6 +44,7 @@ func _ready() -> void:
 	HoldAutoClicker.attach(diff_minus_button, 50.0)
 	HoldAutoClicker.attach(diff_plus_button, 50.0)
 	diff_max_button.pressed.connect(func() -> void: _set_selected_difficulty(GameManager.max_unlocked_difficulty))
+	auto_advance_button.pressed.connect(func() -> void: GameManager.set_auto_advance_next_boss(not GameManager.auto_advance_next_boss))
 	start_new_run_button.pressed.connect(_on_start_new_run_pressed)
 
 	_build_challenge_cards_once()
@@ -366,6 +368,10 @@ func _refresh() -> void:
 		_fmt_mult(gold_m),
 		_fmt_mult(xp_m),
 	]
+
+	var ad_on: bool = GameManager.auto_advance_next_boss
+	auto_advance_button.text = "⏩ Авто-переход на Сл.+1 после Титана: ВКЛ" if ad_on else "⏩ Авто-переход на Сл.+1 после Титана: ВЫКЛ"
+	auto_advance_button.modulate = Color(0.55, 0.96, 0.72, 1.0) if ad_on else Color.WHITE
 
 	if _confirm_deadline_ms == 0:
 		_refresh_start_button_text()

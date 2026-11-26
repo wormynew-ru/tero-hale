@@ -33,6 +33,9 @@ signal bestiary_changed
 signal challenge_changed
 signal loadouts_changed
 signal wave_dungeon_changed
+signal difficulty_run_auto_advanced(new_difficulty: int)
+signal parallel_battle_changed(count: int)
+signal dark_mastery_changed(mastery_id: String, new_level: int, leveled_up: bool)
 signal game_reset
 
 const SAVE_PATH: String = "user://save.tres"
@@ -75,6 +78,16 @@ const HP_THRESHOLD_PRESETS: Array[int] = [20, 35, 50, 70, 85]
 const MANA_THRESHOLD_PRESETS: Array[int] = [15, 30, 50, 70]
 const DIFFICULTY_RESET_DROP_CHANCE: float = 0.00001
 const DIFFICULTY_RESET_ITEM_PATH: String = "res://resources/items/abyss_difficulty_reset_orb.tres"
+const PARALLEL_BATTLE_OPTIONS: Array[int] = [1, 3, 5, 10]
+const DARK_MASTERY_KEYS: Array[String] = ["dark_melee", "dark_ranged", "dark_magic", "dark_reflect", "dark_armor", "dark_temper"]
+const DARK_MASTERY_CATALOG: Array[Dictionary] = [
+	{"id": "dark_melee", "title": "⚔️ Тёмный ближний бой", "desc": "+4% урона ближнего боя за ур.", "per_level": 0.04},
+	{"id": "dark_ranged", "title": "🏹 Тёмный дальний бой", "desc": "+4% урона дальнего боя за ур.", "per_level": 0.04},
+	{"id": "dark_magic", "title": "🔮 Тёмная магия", "desc": "+4% силы заклинаний за ур.", "per_level": 0.04},
+	{"id": "dark_reflect", "title": "🪞 Тёмное отражение", "desc": "+4% отражения урона за ур.", "per_level": 0.04},
+	{"id": "dark_armor", "title": "🛡️ Тёмная устойчивость", "desc": "+6% брони и +5% Барьера за ур.", "per_level": 0.06},
+	{"id": "dark_temper", "title": "❤️ Тёмный закал", "desc": "+5% Max HP за ур.", "per_level": 0.05},
+]
 
 const BESTIARY_MILESTONES: Array[Dictionary] = [
 	{"kills": 100, "dmg_bonus": 0.02, "label": "I (100 уб.): +2% урона по виду"},
@@ -407,6 +420,18 @@ const DARK_FORGE_RECIPES: Array[Dictionary] = [
 		"amount": 1,
 		"eternal": true,
 	},
+	{
+		"id": "ultimate_mirror_monolith",
+		"title": "🪞 УЛЬТ: Вечный Монолит Отражения",
+		"desc": "Вершина щитов (+12000 Барьер, +45/Вын, +45% Отражение, +140 Броня, +175 Вын). Нужны Эгида бастиона + Панцирь бездны + Небесная эгида.",
+		"dark_points": 10,
+		"abyss_ore": 16,
+		"ancient_page": 6,
+		"required_items": {"aegis_bulwark_shield": 1, "abyssal_carapace": 1, "celestial_aegis": 1},
+		"result_path": "res://resources/items/eternal_mirror_monolith.tres",
+		"amount": 1,
+		"eternal": true,
+	},
 ]
 
 const CROP_PATHS: Array[String] = [
@@ -600,6 +625,7 @@ const LOCATION_PATHS: Array[String] = [
 	"res://resources/locations/astral_spire.tres",
 	"res://resources/locations/celestial_throne.tres",
 	"res://resources/locations/abyss_crucible.tres",
+	"res://resources/locations/training_grounds.tres",
 ]
 const SHOP_ITEM_PATHS: Array[String] = [
 	"res://resources/items/small_healing_potion.tres",
@@ -695,6 +721,12 @@ const SKILL_PATHS: Array[String] = [
 	"res://resources/skills/wind_grace.tres",
 	"res://resources/skills/titan_endurance_node.tres",
 	"res://resources/skills/eternal_aegis_node.tres",
+	"res://resources/skills/barrier_bulwark.tres",
+	"res://resources/skills/reflect_stance.tres",
+	"res://resources/skills/barrier_mending.tres",
+	"res://resources/skills/iron_shell.tres",
+	"res://resources/skills/lethal_fury.tres",
+	"res://resources/skills/vital_fortitude.tres",
 ]
 const DARK_SKILL_PATHS: Array[String] = [
 	"res://resources/dark_skills/abyss_awakening.tres",
@@ -728,6 +760,12 @@ const DARK_SKILL_PATHS: Array[String] = [
 	"res://resources/dark_skills/mirror_carapace.tres",
 	"res://resources/dark_skills/obsidian_bulwark.tres",
 	"res://resources/dark_skills/thorn_apotheosis.tres",
+	"res://resources/dark_skills/obsidian_barrier_core.tres",
+	"res://resources/dark_skills/aegis_regeneration.tres",
+	"res://resources/dark_skills/mirror_apocalypse.tres",
+	"res://resources/dark_skills/pack_slayer.tres",
+	"res://resources/dark_skills/abyssal_haste.tres",
+	"res://resources/dark_skills/crimson_harvest_dark.tres",
 ]
 const ABILITY_PATHS: Array[String] = [
 	"res://resources/abilities/fireball.tres",
@@ -802,6 +840,7 @@ const ENEMY_PATHS: Array[String] = [
 	"res://resources/enemies/fallen_seraph.tres",
 	"res://resources/enemies/curse_warden.tres",
 	"res://resources/enemies/eternal_titan.tres",
+	"res://resources/enemies/training_construct.tres",
 ]
 
 const CURSE_CATALOG: Array[Dictionary] = [
@@ -1006,6 +1045,25 @@ var brewing_slots: Array[Dictionary] = []
 var alchemist_next_mistake_safe: bool = false
 var pet_training_levels: Dictionary = {}
 var spirit_training_levels: Dictionary = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}
+var auto_advance_next_boss: bool = false
+var parallel_battle_count: int = 1
+var active_dark_mastery_id: String = "dark_melee"
+var dark_mastery_levels: Dictionary = {
+	"dark_melee": 0,
+	"dark_ranged": 0,
+	"dark_magic": 0,
+	"dark_reflect": 0,
+	"dark_armor": 0,
+	"dark_temper": 0,
+}
+var dark_mastery_xp: Dictionary = {
+	"dark_melee": 0.0,
+	"dark_ranged": 0.0,
+	"dark_magic": 0.0,
+	"dark_reflect": 0.0,
+	"dark_armor": 0.0,
+	"dark_temper": 0.0,
+}
 
 var _autosave_timer: float = 0.0
 var _afk_ui_sync_timer: float = 0.0
@@ -1176,6 +1234,8 @@ func _emit_all_refresh_signals() -> void:
 	challenge_changed.emit()
 	loadouts_changed.emit()
 	wave_dungeon_changed.emit()
+	parallel_battle_changed.emit(parallel_battle_count)
+	dark_mastery_changed.emit(active_dark_mastery_id, get_dark_mastery_level(active_dark_mastery_id), false)
 	mastery_changed.emit("melee", melee_level, false)
 	mastery_changed.emit("ranged", ranged_level, false)
 	mastery_changed.emit("magic", magic_level, false)
@@ -1432,6 +1492,12 @@ func _init_full_reset_state() -> void:
 	alchemist_next_mistake_safe = false
 	pet_training_levels.clear()
 	spirit_training_levels = {"fire": 0, "wind": 0, "forest": 0, "earth": 0}
+	auto_advance_next_boss = false
+	parallel_battle_count = 1
+	active_dark_mastery_id = "dark_melee"
+	for dmk: String in DARK_MASTERY_KEYS:
+		dark_mastery_levels[dmk] = 0
+		dark_mastery_xp[dmk] = 0.0
 	equipped_ability_ids = DEFAULT_EQUIPPED_ABILITIES.duplicate()
 	ability_casts.clear()
 	ability_levels.clear()
@@ -2056,6 +2122,96 @@ func add_mastery_xp(skill_id: String, base_amount: float) -> void:
 		stats_changed.emit()
 
 
+func get_dark_mastery_level(mastery_id: String) -> int:
+	return maxi(0, int(dark_mastery_levels.get(mastery_id, 0)))
+
+
+func get_dark_mastery_xp(mastery_id: String) -> float:
+	return maxf(0.0, float(dark_mastery_xp.get(mastery_id, 0.0)))
+
+
+func get_dark_mastery_xp_required(lvl: int) -> float:
+	return 30.0 + float(maxi(0, lvl)) * 25.0
+
+
+func get_dark_mastery_bonus(mastery_id: String) -> float:
+	var lvl: int = get_dark_mastery_level(mastery_id)
+	if lvl <= 0:
+		return 0.0
+	for entry: Dictionary in DARK_MASTERY_CATALOG:
+		if str(entry.get("id", "")) == mastery_id:
+			return float(lvl) * float(entry.get("per_level", 0.04))
+	return float(lvl) * 0.04
+
+
+func set_active_dark_mastery(mastery_id: String) -> void:
+	if not DARK_MASTERY_KEYS.has(mastery_id):
+		return
+	active_dark_mastery_id = mastery_id
+	dark_mastery_changed.emit(active_dark_mastery_id, get_dark_mastery_level(active_dark_mastery_id), false)
+	save_game()
+
+
+func add_dark_mastery_xp(mastery_id: String, base_amount: float) -> void:
+	if base_amount <= 0.0 or not DARK_MASTERY_KEYS.has(mastery_id):
+		return
+	var gained: float = base_amount * get_mastery_xp_multiplier()
+	var cur_xp: float = get_dark_mastery_xp(mastery_id) + gained
+	var cur_lvl: int = get_dark_mastery_level(mastery_id)
+	var leveled_up: bool = false
+	while cur_xp >= get_dark_mastery_xp_required(cur_lvl):
+		cur_xp -= get_dark_mastery_xp_required(cur_lvl)
+		cur_lvl += 1
+		leveled_up = true
+	dark_mastery_levels[mastery_id] = cur_lvl
+	dark_mastery_xp[mastery_id] = cur_xp
+	dark_mastery_changed.emit(mastery_id, cur_lvl, leveled_up)
+	if leveled_up:
+		mark_stats_dirty()
+		stats_changed.emit()
+		hp_changed.emit(current_hp, get_max_hp())
+		barrier_changed.emit(current_barrier, get_max_barrier())
+
+
+func is_training_grounds_location(loc: LocationData = null) -> bool:
+	var target: LocationData = loc if loc != null else current_location
+	return target != null and target.is_training_grounds
+
+
+func set_auto_advance_next_boss(enabled: bool) -> void:
+	if auto_advance_next_boss == enabled:
+		return
+	auto_advance_next_boss = enabled
+	difficulty_changed.emit()
+	stats_changed.emit()
+	save_game()
+
+
+func set_parallel_battle_count(cnt: int) -> void:
+	var next_cnt: int = cnt if PARALLEL_BATTLE_OPTIONS.has(cnt) else 1
+	if parallel_battle_count == next_cnt:
+		return
+	parallel_battle_count = next_cnt
+	parallel_battle_changed.emit(parallel_battle_count)
+	stats_changed.emit()
+	save_game()
+
+
+func cycle_parallel_battle_count() -> int:
+	var idx: int = PARALLEL_BATTLE_OPTIONS.find(parallel_battle_count)
+	var next_cnt: int = PARALLEL_BATTLE_OPTIONS[(idx + 1) % PARALLEL_BATTLE_OPTIONS.size()] if idx >= 0 else 1
+	set_parallel_battle_count(next_cnt)
+	return next_cnt
+
+
+func get_effective_parallel_battle_count(enemy: EnemyData = null) -> int:
+	if wave_dungeon_active or is_training_grounds_location():
+		return 1
+	if enemy != null and (enemy.id == FINAL_BOSS_ID or enemy.id == CURSE_WARDEN_ID or enemy.id == "mine_overseer"):
+		return 1
+	return parallel_battle_count if PARALLEL_BATTLE_OPTIONS.has(parallel_battle_count) else 1
+
+
 # --- Difficulty & Curses ---
 
 func get_difficulty_enemy_hp_mult() -> float:
@@ -2251,7 +2407,14 @@ func on_final_boss_defeated() -> void:
 	difficulty_changed.emit()
 	stats_changed.emit()
 	final_boss_cleared.emit(gained, max_unlocked_difficulty)
-	save_game()
+	if auto_advance_next_boss and not wave_dungeon_active:
+		total_runs_completed += 1
+		_init_run_state(difficulty_level + 1, "")
+		save_game(true)
+		_emit_all_refresh_signals()
+		difficulty_run_auto_advanced.emit(difficulty_level)
+	else:
+		save_game()
 
 
 func get_location_by_id(location_id: String) -> LocationData:
@@ -3117,9 +3280,41 @@ func get_raw_max_barrier() -> float:
 		var total_alvl: int = get_total_slot_enchant_level(ItemData.ItemType.ARMOR)
 		var amult: float = get_enchant_power_multiplier(total_alvl) * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
 		raw_bar += (equipped_armor.bonus_barrier + equipped_armor.bonus_barrier_scale * float(get_total_endurance())) * amult
+	var bar_pct_bonus: float = get_skill_bonus("barrier_pct") + get_dark_bonus("barrier_fortress") + float(get_dark_mastery_level("dark_armor")) * 0.05
+	if bar_pct_bonus > 0.0:
+		raw_bar *= (1.0 + bar_pct_bonus)
 	if well_run_blessing == "barrier_surge":
 		raw_bar *= 1.25
 	return maxf(0.0, raw_bar)
+
+
+func get_barrier_regen_per_sec_pct() -> float:
+	return get_skill_bonus("barrier_regen_pct") + get_dark_bonus("barrier_regen")
+
+
+func get_on_kill_barrier_restore_pct() -> float:
+	var pct: float = 0.10 if has_dark_skill("barrier_regen") or has_dark_skill("aegis_regeneration") else 0.0
+	pct += get_dark_bonus("kill_barrier_heal")
+	return pct
+
+
+func get_equipped_reflection_bonus() -> float:
+	if is_equipment_disabled() or is_gear_blocked_by_challenge():
+		return 0.0
+	var ref_sum: float = 0.0
+	if equipped_offhand != null and equipped_offhand.bonus_reflect_pct > 0.0:
+		var total_elvl: int = get_total_slot_enchant_level(ItemData.ItemType.OFFHAND)
+		var slot_mult: float = (1.0 + float(total_elvl) * 0.015) * get_quality_multiplier(equipped_offhand_quality) * get_star_multiplier(equipped_offhand_stars)
+		ref_sum += equipped_offhand.bonus_reflect_pct * slot_mult
+	if equipped_armor != null and equipped_armor.bonus_reflect_pct > 0.0:
+		var armor_elvl: int = get_total_slot_enchant_level(ItemData.ItemType.ARMOR)
+		var armor_mult: float = (1.0 + float(armor_elvl) * 0.015) * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
+		ref_sum += equipped_armor.bonus_reflect_pct * armor_mult
+	if equipped_weapon != null and equipped_weapon.bonus_reflect_pct > 0.0:
+		var weapon_elvl: int = get_total_slot_enchant_level(ItemData.ItemType.WEAPON)
+		var weapon_mult: float = (1.0 + float(weapon_elvl) * 0.015) * get_quality_multiplier(equipped_weapon_quality) * get_star_multiplier(equipped_weapon_stars)
+		ref_sum += equipped_weapon.bonus_reflect_pct * weapon_mult
+	return maxf(0.0, ref_sum)
 
 
 func get_max_barrier() -> float:
@@ -3156,9 +3351,9 @@ func get_max_hp() -> float:
 	if not _stats_cache_dirty and _stats_cache.has("max_hp"):
 		return float(_stats_cache["max_hp"])
 	var hp_val: float = 100.0 + float(get_total_endurance()) * 60.0
-	var dark_hp_mult: float = get_dark_bonus("immortal_pact") + get_dark_bonus("abyssal_vitality") + get_dark_bonus("obsidian_bulwark")
-	if dark_hp_mult > 0.0:
-		hp_val *= (1.0 + dark_hp_mult)
+	var hp_mult: float = get_dark_bonus("immortal_pact") + get_dark_bonus("abyssal_vitality") + get_dark_bonus("obsidian_bulwark") + get_skill_bonus("max_hp_pct") + get_dark_mastery_bonus("dark_temper")
+	if hp_mult > 0.0:
+		hp_val *= (1.0 + hp_mult)
 	if well_run_blessing == "barrier_surge":
 		hp_val *= 1.12
 	if has_hero_class("troll"):
@@ -3499,6 +3694,8 @@ func get_ability_cooldown_duration(ability: AbilityData) -> float:
 	var cd: float = ability.cooldown
 	if has_dark_skill("swift_runes"):
 		cd *= 0.75
+	if has_dark_skill("abyssal_haste"):
+		cd *= 0.85
 	cd *= maxf(0.35, 1.0 - get_skill_bonus("ability_cd_red"))
 	if has_hero_class("blood_archmage"):
 		cd *= 0.70
@@ -3518,7 +3715,7 @@ func get_ability_power_multiplier(ability: AbilityData) -> float:
 	var rune_data: Dictionary = get_ability_rune_data(ability.id)
 	mult *= float(rune_data.get("power_mult", 1.0))
 	mult *= get_mastery_bonus_multiplier("magic")
-	var spell_bonus: float = get_skill_bonus("spell_power") + get_active_buff_sum("spell_power_pct") + get_equipped_spell_power_bonus() + float(get_total_intellect()) * 0.015
+	var spell_bonus: float = get_skill_bonus("spell_power") + get_active_buff_sum("spell_power_pct") + get_equipped_spell_power_bonus() + get_dark_mastery_bonus("dark_magic") + float(get_total_intellect()) * 0.015
 	if is_challenge_completed("staff_master"):
 		spell_bonus += 0.12
 	if well_run_blessing == "arcane_overdrive":
@@ -3604,7 +3801,7 @@ func get_player_damage(preview_ammo_ready: bool = true) -> float:
 			if equipped_ammo != null:
 				dmg += equipped_ammo.bonus_damage
 			dmg *= get_mastery_bonus_multiplier("ranged")
-			dmg *= (1.0 + get_skill_bonus("ranged_dmg"))
+			dmg *= (1.0 + get_skill_bonus("ranged_dmg") + get_dark_mastery_bonus("dark_ranged"))
 			dmg *= (1.0 + get_dark_bonus("shadow_quiver"))
 			if has_dark_skill("deadeye_abyss"):
 				dmg *= 1.40
@@ -3617,17 +3814,26 @@ func get_player_damage(preview_ammo_ready: bool = true) -> float:
 			if equipped_ammo != null:
 				dmg += equipped_ammo.bonus_damage
 			dmg *= get_mastery_bonus_multiplier("magic")
-			dmg *= (1.0 + get_skill_bonus("spell_power") * 0.5 + get_equipped_spell_power_bonus() * 0.5)
+			dmg *= (1.0 + get_skill_bonus("spell_power") * 0.5 + get_equipped_spell_power_bonus() * 0.5 + get_dark_mastery_bonus("dark_magic"))
 		else:
 			dmg *= 0.45
 	else:
 		dmg *= get_mastery_bonus_multiplier("melee")
-		dmg *= (1.0 + get_skill_bonus("melee_dmg"))
+		dmg *= (1.0 + get_skill_bonus("melee_dmg") + get_dark_mastery_bonus("dark_melee"))
 
 	dmg *= (1.0 + get_dark_bonus("awakening_power") + get_soul_harvest_bonus() + get_berserk_bonus() + get_active_buff_sum("damage_pct") + get_pet_secondary_value("enemy_burn"))
 	if well_run_blessing == "damage_surge":
 		dmg *= 1.15
 	return dmg
+
+
+func get_pack_or_boss_damage_mult(enemy_id: String, pack_count: int = 1) -> float:
+	var bonus: float = get_dark_bonus("pack_slayer_dmg")
+	if bonus <= 0.0:
+		return 1.0
+	if pack_count > 1 or enemy_id == FINAL_BOSS_ID or enemy_id == CURSE_WARDEN_ID or enemy_id == "mine_overseer":
+		return 1.0 + bonus
+	return 1.0
 
 
 func get_alchemist_gold_reaction_bonus() -> float:
@@ -3655,7 +3861,7 @@ func get_player_armor_penetration() -> float:
 
 func get_player_attack_interval() -> float:
 	var base_interval: float = maxf(0.42, 2.4 / (1.0 + float(get_total_agility()) * 0.08))
-	var wind_speed: float = get_dark_bonus("wind_mastery_dark") + get_active_buff_sum("attack_speed_pct")
+	var wind_speed: float = get_dark_bonus("wind_mastery_dark") + get_dark_bonus("abyssal_haste") + get_active_buff_sum("attack_speed_pct")
 	if is_challenge_completed("speedrun_titan"):
 		wind_speed += 0.08
 	if wind_speed > 0.0:
@@ -3685,9 +3891,9 @@ func get_armor_reduction() -> float:
 			raw_armor += equipped_armor.bonus_defense * get_enchant_power_multiplier(get_total_slot_enchant_level(ItemData.ItemType.ARMOR)) * get_quality_multiplier(equipped_armor_quality) * get_star_multiplier(equipped_armor_stars)
 		if equipped_offhand != null and equipped_offhand.bonus_defense > 0.0:
 			raw_armor += equipped_offhand.bonus_defense * get_enchant_power_multiplier(get_total_slot_enchant_level(ItemData.ItemType.OFFHAND)) * get_quality_multiplier(equipped_offhand_quality) * get_star_multiplier(equipped_offhand_stars)
-	var dark_armor_pct: float = (0.25 if has_dark_skill("void_plating") else 0.0) + (0.35 if has_dark_skill("obsidian_bulwark") else 0.0)
-	if dark_armor_pct > 0.0:
-		raw_armor *= (1.0 + dark_armor_pct)
+	var total_armor_pct: float = (0.25 if has_dark_skill("void_plating") else 0.0) + (0.35 if has_dark_skill("obsidian_bulwark") else 0.0) + get_skill_bonus("armor_pct") + get_dark_mastery_bonus("dark_armor")
+	if total_armor_pct > 0.0:
+		raw_armor *= (1.0 + total_armor_pct)
 	if has_hero_class("spirit"):
 		raw_armor *= 1.50
 	elif has_hero_class("reflector"):
@@ -3699,7 +3905,7 @@ func get_armor_reduction() -> float:
 
 func get_damage_reflection_pct() -> float:
 	var base_reflect: float = 0.20 if has_hero_class("reflector") else 0.0
-	return base_reflect + get_dark_bonus("mirror_carapace") + get_dark_bonus("thorn_apotheosis") + get_active_buff_sum("reflect_pct")
+	return base_reflect + get_equipped_reflection_bonus() + get_skill_bonus("reflect_pct") + get_dark_bonus("mirror_carapace") + get_dark_bonus("thorn_apotheosis") + get_dark_bonus("reflect_fortress") + get_dark_mastery_bonus("dark_reflect") + get_active_buff_sum("reflect_pct")
 
 
 func get_reflector_mitigation_pct() -> float:
@@ -3724,7 +3930,7 @@ func get_crit_chance() -> float:
 
 func get_crit_multiplier() -> float:
 	var penalty: float = 0.25 if get_curse_value("dull_edge") > 0.0 else 0.0
-	var bonus: float = get_dark_bonus("piercing_volley") + get_active_buff_sum("crit_mult_bonus")
+	var bonus: float = get_skill_bonus("crit_mult") + get_dark_bonus("piercing_volley") + get_active_buff_sum("crit_mult_bonus")
 	if has_hero_class("abyss_ranger"):
 		bonus += float(get_total_agility()) * 0.015
 	return maxf(1.25, CRIT_MULTIPLIER + bonus - penalty)
@@ -4121,7 +4327,7 @@ func set_auto_route_settings(enabled: bool, threshold: int) -> void:
 
 
 func record_location_win_for_auto_route() -> String:
-	if wave_dungeon_active or is_mine_location():
+	if wave_dungeon_active or is_mine_location() or is_training_grounds_location():
 		return ""
 	consecutive_location_wins += 1
 	if not auto_route_enabled or consecutive_location_wins < auto_route_wins_threshold:
@@ -4131,7 +4337,7 @@ func record_location_win_for_auto_route() -> String:
 		return ""
 	for next_i: int in range(cur_idx + 1, locations.size()):
 		var candidate: LocationData = locations[next_i]
-		if candidate != null and not candidate.is_one_attempt_mine and is_location_unlocked(candidate):
+		if candidate != null and not candidate.is_one_attempt_mine and not candidate.is_training_grounds and is_location_unlocked(candidate):
 			if select_location(candidate):
 				return "🧭 Авто-маршрут: переход в «%s»!" % candidate.location_name
 	return ""
@@ -4146,7 +4352,7 @@ func retreat_to_safer_location() -> String:
 		return ""
 	for prev_i: int in range(cur_idx - 1, -1, -1):
 		var candidate: LocationData = locations[prev_i]
-		if candidate != null and not candidate.is_one_attempt_mine and is_location_unlocked(candidate):
+		if candidate != null and not candidate.is_one_attempt_mine and not candidate.is_training_grounds and is_location_unlocked(candidate):
 			select_location(candidate)
 			heal(get_max_hp() * 0.25)
 			return "🧭 Отступление в «%s» при критическом HP!" % candidate.location_name
@@ -4429,7 +4635,7 @@ func get_wave_dungeon_enemy_for_wave(wave_idx: int) -> EnemyData:
 			return _enemies_by_id["curse_warden"] as EnemyData
 	var unlocked_pool: Array[EnemyData] = []
 	for loc: LocationData in locations:
-		if loc != null and not loc.is_one_attempt_mine and loc.id != FINAL_BOSS_LOCATION_ID and is_location_unlocked(loc):
+		if loc != null and not loc.is_one_attempt_mine and not loc.is_training_grounds and loc.id != FINAL_BOSS_LOCATION_ID and is_location_unlocked(loc):
 			for e: EnemyData in loc.enemies:
 				if e != null and not unlocked_pool.has(e):
 					unlocked_pool.append(e)
@@ -4549,15 +4755,23 @@ func add_gold(amount: float) -> void:
 	stats_changed.emit()
 
 
-func record_kill() -> void:
+func record_kill(defeated_enemy: EnemyData = null) -> void:
 	enemies_defeated += 1
 	kills_in_run += 1
 	if has_hero_class("reflector"):
+		var stack_gain: int = 1
+		if defeated_enemy != null:
+			if defeated_enemy.id == FINAL_BOSS_ID:
+				stack_gain = 50
+			elif defeated_enemy.id == CURSE_WARDEN_ID:
+				stack_gain = 15
+			elif defeated_enemy.id == "mine_overseer":
+				stack_gain = 5
 		var prev_max_hp: float = get_max_hp()
-		reflector_kill_hp_stacks += 1
+		reflector_kill_hp_stacks += stack_gain
 		mark_stats_dirty()
 		var new_max_hp: float = get_max_hp()
-		var hp_gain: float = maxf(20.0, new_max_hp - prev_max_hp)
+		var hp_gain: float = maxf(20.0 * float(stack_gain), new_max_hp - prev_max_hp)
 		current_hp = minf(new_max_hp, current_hp + hp_gain)
 		hp_changed.emit(current_hp, new_max_hp)
 	stats_changed.emit()
@@ -5062,7 +5276,17 @@ func use_or_equip_item(item: ItemData, quality_pct: int = -1, star_level: int = 
 				target_q = 100
 			if target_s < 1:
 				target_s = 1
-			if remove_item(item, 1, target_q, target_s):
+			var removed_ok: bool = remove_item(item, 1, target_q, target_s)
+			if not removed_ok:
+				for fb_entry: Dictionary in inventory:
+					var fb_item: ItemData = fb_entry["item"] as ItemData
+					if fb_item != null and fb_item.id == item.id and int(fb_entry.get("count", 0)) > 0:
+						target_q = get_entry_quality(fb_entry)
+						target_s = get_entry_stars(fb_entry)
+						removed_ok = remove_item(item, 1, target_q, target_s)
+						if removed_ok:
+							break
+			if removed_ok:
 				if item.item_type == ItemData.ItemType.WEAPON:
 					if equipped_weapon != null:
 						add_item(equipped_weapon, 1, false, equipped_weapon_quality, equipped_weapon_stars, false)
@@ -5094,6 +5318,7 @@ func use_or_equip_item(item: ItemData, quality_pct: int = -1, star_level: int = 
 				enchant_changed.emit()
 				save_game()
 				return "Экипировано: %s (%d%% ★%d)." % [item.get_display_name(), target_q, target_s]
+			return "Предмет %s не найден в рюкзаке." % item.get_display_name()
 		ItemData.ItemType.AMMO:
 			if is_equipment_disabled():
 				return "Класс Спирит не может использовать снаряды."
@@ -6021,6 +6246,11 @@ func _build_save_data() -> SaveData:
 	save_data.unlocked_mine_checkpoints = unlocked_mine_checkpoints.duplicate()
 	save_data.mine_start_depth = mine_start_depth
 	save_data.wave_dungeon_clears = wave_dungeon_clears
+	save_data.auto_advance_next_boss = auto_advance_next_boss
+	save_data.parallel_battle_count = parallel_battle_count
+	save_data.active_dark_mastery_id = active_dark_mastery_id
+	save_data.dark_mastery_levels = dark_mastery_levels.duplicate(true)
+	save_data.dark_mastery_xp = dark_mastery_xp.duplicate(true)
 
 	for entry: Dictionary in inventory:
 		var item: ItemData = entry["item"] as ItemData
@@ -6189,6 +6419,12 @@ func _apply_save_data(save_data: SaveData) -> void:
 		if MINE_CHECKPOINT_DEPTHS.has(cp) and not unlocked_mine_checkpoints.has(cp):
 			unlocked_mine_checkpoints.append(cp)
 	mine_start_depth = save_data.mine_start_depth if is_mine_checkpoint_unlocked(save_data.mine_start_depth) else 1
+	auto_advance_next_boss = save_data.auto_advance_next_boss
+	parallel_battle_count = save_data.parallel_battle_count if PARALLEL_BATTLE_OPTIONS.has(save_data.parallel_battle_count) else 1
+	active_dark_mastery_id = save_data.active_dark_mastery_id if DARK_MASTERY_KEYS.has(save_data.active_dark_mastery_id) else "dark_melee"
+	for dmk: String in DARK_MASTERY_KEYS:
+		dark_mastery_levels[dmk] = maxi(0, int(save_data.dark_mastery_levels.get(dmk, 0))) if save_data.dark_mastery_levels is Dictionary else 0
+		dark_mastery_xp[dmk] = maxf(0.0, float(save_data.dark_mastery_xp.get(dmk, 0.0))) if save_data.dark_mastery_xp is Dictionary else 0.0
 
 	equipped_weapon = null
 	equipped_weapon_quality = clampi(save_data.equipped_weapon_quality, 80, 125)
@@ -6380,6 +6616,11 @@ func _save_data_to_dict(save_data: SaveData) -> Dictionary:
 		"unlocked_mine_checkpoints": save_data.unlocked_mine_checkpoints.duplicate(),
 		"mine_start_depth": save_data.mine_start_depth,
 		"wave_dungeon_clears": save_data.wave_dungeon_clears,
+		"auto_advance_next_boss": save_data.auto_advance_next_boss,
+		"parallel_battle_count": save_data.parallel_battle_count,
+		"active_dark_mastery_id": save_data.active_dark_mastery_id,
+		"dark_mastery_levels": save_data.dark_mastery_levels.duplicate(true),
+		"dark_mastery_xp": save_data.dark_mastery_xp.duplicate(true),
 	}
 
 
@@ -6545,6 +6786,15 @@ func _dict_to_save_data(data: Dictionary) -> SaveData:
 			save_data.unlocked_mine_checkpoints.append(int(cp))
 	save_data.mine_start_depth = int(data.get("mine_start_depth", 1))
 	save_data.wave_dungeon_clears = int(data.get("wave_dungeon_clears", 0))
+	save_data.auto_advance_next_boss = bool(data.get("auto_advance_next_boss", false))
+	save_data.parallel_battle_count = int(data.get("parallel_battle_count", 1))
+	save_data.active_dark_mastery_id = str(data.get("active_dark_mastery_id", "dark_melee"))
+	if data.get("dark_mastery_levels") is Dictionary:
+		for dmk: String in DARK_MASTERY_KEYS:
+			save_data.dark_mastery_levels[dmk] = maxi(0, int((data["dark_mastery_levels"] as Dictionary).get(dmk, 0)))
+	if data.get("dark_mastery_xp") is Dictionary:
+		for dmk: String in DARK_MASTERY_KEYS:
+			save_data.dark_mastery_xp[dmk] = maxf(0.0, float((data["dark_mastery_xp"] as Dictionary).get(dmk, 0.0)))
 
 	return save_data
 

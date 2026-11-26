@@ -16,6 +16,7 @@ signal reset_triggered
 @onready var magic_mastery_label: Label = %MagicMasteryLabel
 @onready var magic_xp_bar: ProgressBar = %MagicXPBar
 @onready var magic_xp_label: Label = %MagicXPLabel
+@onready var dark_mastery_rows_vbox: VBoxContainer = %DarkMasteryRowsVBox
 
 @onready var str_value_label: Label = %StrValueLabel
 @onready var str_sp_button: Button = %StrSPButton
@@ -78,6 +79,7 @@ var _reset_confirm_deadline_ms: int = 0
 var _paste_confirm_deadline_ms: int = 0
 var _dirty: bool = true
 var _refresh_queued: bool = false
+var _dark_mastery_rows: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -86,9 +88,16 @@ func _ready() -> void:
 	GameManager.skills_changed.connect(_on_state_updated)
 	GameManager.dark_skills_changed.connect(_on_state_updated)
 	GameManager.difficulty_changed.connect(_on_state_updated)
+	GameManager.parallel_battle_changed.connect(func(_c: int) -> void: _on_state_updated())
 	GameManager.mastery_changed.connect(func(_s: String, _l: int, _up: bool) -> void:
 		if is_visible_in_tree():
 			_refresh_masteries()
+		else:
+			_dirty = true
+	)
+	GameManager.dark_mastery_changed.connect(func(_m: String, _l: int, _up: bool) -> void:
+		if is_visible_in_tree():
+			_refresh_dark_masteries()
 		else:
 			_dirty = true
 	)
@@ -131,6 +140,7 @@ func _ready() -> void:
 	paste_txt_button.pressed.connect(_on_paste_txt_pressed)
 
 	reset_button.pressed.connect(_on_reset_button_pressed)
+	_build_dark_mastery_rows_once()
 	_refresh()
 
 
@@ -240,6 +250,11 @@ func _refresh() -> void:
 		extra_tags.append("⚗️ Золотая реакция: +%s к ручной атаке" % NumberFormatter.format_number(GameManager.get_alchemist_gold_reaction_bonus()))
 	if GameManager.wave_dungeon_clears > 0:
 		extra_tags.append("🏰 Данжей: %d" % GameManager.wave_dungeon_clears)
+	var reflect_total_pct: float = GameManager.get_damage_reflection_pct() * 100.0
+	if reflect_total_pct > 0.0:
+		extra_tags.append("🪞 Отражение: %.0f%%" % reflect_total_pct)
+	if GameManager.parallel_battle_count > 1:
+		extra_tags.append("⚔️ Бои: x%d" % GameManager.parallel_battle_count)
 	var extra_suffix: String = ("  |  " + "  |  ".join(extra_tags)) if not extra_tags.is_empty() else ""
 
 	computed_stats_label.text = (
@@ -269,6 +284,7 @@ func _refresh() -> void:
 	)
 
 	_refresh_masteries()
+	_refresh_dark_masteries()
 
 	var bonus_str: int = total_str - GameManager.base_strength
 	var bonus_agi: int = total_agi - GameManager.base_agility
@@ -342,6 +358,83 @@ func _refresh_masteries() -> void:
 	magic_xp_bar.max_value = g_req
 	magic_xp_bar.value = g_xp
 	magic_xp_label.text = "%.0f / %.0f XP" % [g_xp, g_req]
+
+
+func _build_dark_mastery_rows_once() -> void:
+	if dark_mastery_rows_vbox == null or not _dark_mastery_rows.is_empty():
+		return
+	for entry: Dictionary in GameManager.DARK_MASTERY_CATALOG:
+		var mid: String = str(entry.get("id", ""))
+		var row: HBoxContainer = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+
+		var lbl: Label = Label.new()
+		lbl.custom_minimum_size = Vector2(240.0, 0.0)
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.add_theme_font_size_override("font_size", 12)
+		row.add_child(lbl)
+
+		var bar: ProgressBar = ProgressBar.new()
+		bar.custom_minimum_size = Vector2(120.0, 22.0)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.show_percentage = false
+
+		var xp_lbl: Label = Label.new()
+		xp_lbl.layout_mode = 1
+		xp_lbl.anchors_preset = Control.PRESET_FULL_RECT
+		xp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		xp_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		xp_lbl.add_theme_font_size_override("font_size", 11)
+		xp_lbl.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.9))
+		xp_lbl.add_theme_constant_override("outline_size", 2)
+		bar.add_child(xp_lbl)
+		row.add_child(bar)
+
+		var sel_btn: Button = Button.new()
+		sel_btn.custom_minimum_size = Vector2(118.0, 44.0)
+		sel_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var target_mid: String = mid
+		sel_btn.pressed.connect(func() -> void: GameManager.set_active_dark_mastery(target_mid))
+		row.add_child(sel_btn)
+
+		dark_mastery_rows_vbox.add_child(row)
+		_dark_mastery_rows.append({
+			"id": mid,
+			"title": str(entry.get("title", mid)),
+			"desc": str(entry.get("desc", "")),
+			"lbl": lbl,
+			"bar": bar,
+			"xp_lbl": xp_lbl,
+			"btn": sel_btn,
+		})
+
+
+func _refresh_dark_masteries() -> void:
+	if _dark_mastery_rows.is_empty():
+		_build_dark_mastery_rows_once()
+	for row_item: Dictionary in _dark_mastery_rows:
+		var mid: String = str(row_item["id"])
+		var lvl: int = GameManager.get_dark_mastery_level(mid)
+		var xp_val: float = GameManager.get_dark_mastery_xp(mid)
+		var xp_req: float = GameManager.get_dark_mastery_xp_required(lvl)
+		var bonus_pct: int = roundi(GameManager.get_dark_mastery_bonus(mid) * 100.0)
+		var is_active: bool = GameManager.active_dark_mastery_id == mid
+
+		var lbl: Label = row_item["lbl"] as Label
+		var bar: ProgressBar = row_item["bar"] as ProgressBar
+		var xp_lbl: Label = row_item["xp_lbl"] as Label
+		var btn: Button = row_item["btn"] as Button
+
+		lbl.text = "%s Ур.%d (+%d%% | %s)" % [str(row_item["title"]), lvl, bonus_pct, str(row_item["desc"])]
+		lbl.modulate = Color(0.88, 0.72, 1.0, 1.0) if is_active else Color.WHITE
+		bar.max_value = xp_req
+		bar.value = xp_val
+		xp_lbl.text = "%.0f / %.0f XP" % [xp_val, xp_req]
+		btn.text = "✅ Активно" if is_active else "Тренировать"
+		btn.modulate = Color(0.55, 0.96, 0.72, 1.0) if is_active else Color.WHITE
+		btn.disabled = is_active
 
 
 func _set_transfer_status(message: String, is_success: bool) -> void:

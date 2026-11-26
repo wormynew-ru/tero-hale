@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "vital_fortitude"
+title = "Жизненная стойкость"
+icon_emoji = "❤️"
+description = "Закаляет тело космической энергией, увеличивая максимальное здоровье на +25%."
+grid_position = Vector2(3, 6)
+prerequisites = Array[String](["cosmic_enlightenment"])
+cost_skill_points = 1
+bonus_type = "max_hp_pct"
+bonus_value = 0.25

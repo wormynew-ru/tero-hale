@@ -4,6 +4,8 @@ extends PanelContainer
 @onready var locations_row: VBoxContainer = %LocationsRow
 @onready var auto_route_toggle_button: Button = %AutoRouteToggleButton
 @onready var auto_route_wins_button: Button = %AutoRouteWinsButton
+@onready var auto_diff_button: Button = %AutoDiffButton
+@onready var parallel_battle_button: Button = %ParallelBattleButton
 @onready var wave_dungeon_button: Button = %WaveDungeonButton
 @onready var mine_cp1_button: Button = %MineCp1Button
 @onready var mine_cp10_button: Button = %MineCp10Button
@@ -59,6 +61,7 @@ func _ready() -> void:
 	GameManager.inventory_changed.connect(_request_refresh)
 	GameManager.location_changed.connect(_on_location_changed)
 	GameManager.difficulty_changed.connect(_request_refresh)
+	GameManager.parallel_battle_changed.connect(func(_c: int) -> void: _request_refresh())
 	GameManager.mine_state_changed.connect(_request_refresh)
 	GameManager.wave_dungeon_changed.connect(_request_refresh)
 	GameManager.challenge_changed.connect(_request_refresh)
@@ -66,6 +69,8 @@ func _ready() -> void:
 
 	auto_route_toggle_button.pressed.connect(_on_auto_route_toggle_pressed)
 	auto_route_wins_button.pressed.connect(_on_auto_route_wins_pressed)
+	auto_diff_button.pressed.connect(_on_auto_diff_pressed)
+	parallel_battle_button.pressed.connect(_on_parallel_battle_pressed)
 	wave_dungeon_button.pressed.connect(_on_wave_dungeon_pressed)
 	mine_cp1_button.pressed.connect(func() -> void: _on_mine_checkpoint_pressed(1))
 	mine_cp10_button.pressed.connect(func() -> void: _on_mine_checkpoint_pressed(10))
@@ -126,7 +131,9 @@ func _on_slot_pressed(slot_index: int) -> void:
 	var entry: Dictionary = GameManager.inventory[slot_index]
 	var item: ItemData = entry["item"] as ItemData
 	if item != null:
-		GameManager.use_or_equip_item(item)
+		var msg: String = GameManager.use_or_equip_item(item, GameManager.get_entry_quality(entry), GameManager.get_entry_stars(entry))
+		if not msg.is_empty():
+			_set_sidebar_status(msg)
 
 
 func _request_refresh() -> void:
@@ -159,7 +166,9 @@ func _refresh_inventory_slots() -> void:
 			var item: ItemData = entry["item"] as ItemData
 			var count: int = int(entry["count"])
 			if item != null:
-				var slot_sig: String = "%s:%d:%s:%s" % [item.id, count, item.icon_emoji, item.item_name]
+				var q_pct: int = GameManager.get_entry_quality(entry)
+				var s_lvl: int = GameManager.get_entry_stars(entry)
+				var slot_sig: String = "%s:%d:%d:%d:%s:%s" % [item.id, count, q_pct, s_lvl, item.icon_emoji, item.item_name]
 				if _last_slot_sigs[i] == slot_sig:
 					continue
 				_last_slot_sigs[i] = slot_sig
@@ -206,6 +215,17 @@ func _on_auto_route_wins_pressed() -> void:
 	_set_sidebar_status("🧭 Порог авто-маршрута: %d побед подряд" % next_val)
 
 
+func _on_auto_diff_pressed() -> void:
+	var next_val: bool = not GameManager.auto_advance_next_boss
+	GameManager.set_auto_advance_next_boss(next_val)
+	_set_sidebar_status("⏩ Авто-сложность после Титана: %s" % ("ВКЛ" if next_val else "ВЫКЛ"))
+
+
+func _on_parallel_battle_pressed() -> void:
+	var next_cnt: int = GameManager.cycle_parallel_battle_count()
+	_set_sidebar_status("⚔️ Параллельные бои: x%d врагов в бою" % next_cnt)
+
+
 func _on_wave_dungeon_pressed() -> void:
 	if GameManager.wave_dungeon_active:
 		GameManager.abort_wave_dungeon()
@@ -240,6 +260,14 @@ func _refresh_expedition_and_route_controls() -> void:
 	auto_route_toggle_button.text = "🧭 Маршрут: ВКЛ (%d/%d)" % [GameManager.consecutive_location_wins, GameManager.auto_route_wins_threshold] if ar_on else "🧭 Маршрут: ВЫКЛ"
 	auto_route_toggle_button.modulate = Color(0.56, 0.96, 0.72, 1.0) if ar_on else Color.WHITE
 	auto_route_wins_button.text = "%d поб." % GameManager.auto_route_wins_threshold
+
+	var ad_on: bool = GameManager.auto_advance_next_boss
+	auto_diff_button.text = "⏩ Авто-Сл: ВКЛ" if ad_on else "⏩ Авто-Сл: ВЫКЛ"
+	auto_diff_button.modulate = Color(0.56, 0.96, 0.72, 1.0) if ad_on else Color.WHITE
+
+	var pb_cnt: int = GameManager.parallel_battle_count
+	parallel_battle_button.text = "⚔️ Враги: x%d" % pb_cnt
+	parallel_battle_button.modulate = Color(0.98, 0.82, 0.45, 1.0) if pb_cnt > 1 else Color.WHITE
 
 	if GameManager.wave_dungeon_active:
 		wave_dungeon_button.text = "🏳️ Выйти из Данжа (%d/%d)" % [GameManager.wave_dungeon_wave, GameManager.WAVE_DUNGEON_TOTAL_WAVES]

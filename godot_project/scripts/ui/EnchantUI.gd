@@ -240,7 +240,14 @@ func _refresh_slot(
 	var dark_tag: String = " | 🌑+%d" % dark_lvl if dark_lvl > 0 else ""
 	header_lbl.text = "%s [+%d%s | %d%% ★%d]: %s" % [slot_title, elvl, dark_tag, item_q, item_stars, item.get_display_name()]
 	var bonuses: Dictionary = GameManager.get_equipped_stat_bonuses(slot_type)
-	var extra_bar: String = " | +%s Барьер" % NumberFormatter.format_number(GameManager.get_raw_max_barrier()) if slot_type == ItemData.ItemType.OFFHAND else ""
+	var extra_bar: String = ""
+	if slot_type == ItemData.ItemType.OFFHAND:
+		extra_bar = " | +%s Барьер" % NumberFormatter.format_number(GameManager.get_raw_max_barrier())
+		if item.bonus_reflect_pct > 0.0:
+			var ref_mult: float = (1.0 + float(elvl + dark_lvl) * 0.015) * GameManager.get_quality_multiplier(item_q) * GameManager.get_star_multiplier(item_stars)
+			var ref_pct: int = roundi(item.bonus_reflect_pct * ref_mult * 100.0)
+			if ref_pct > 0:
+				extra_bar += " | +%d%% Отражение" % ref_pct
 	stats_lbl.text = "Итоговые бонусы (x%.2f): +%d Сила, +%d Ловкость, +%d Выносливость, +%d Инта%s" % [
 		total_mult,
 		int(bonuses["strength"]),

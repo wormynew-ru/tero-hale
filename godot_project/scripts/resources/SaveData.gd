@@ -115,3 +115,22 @@ extends Resource
 @export var mine_start_depth: int = 1
 @export var wave_dungeon_clears: int = 0
 
+# v0.26.0: Parallel battles & Persistent Dark Masteries (Training Grounds)
+@export var parallel_battle_count: int = 1
+@export var active_dark_mastery_id: String = "dark_melee"
+@export var dark_mastery_levels: Dictionary = {
+	"dark_melee": 0,
+	"dark_ranged": 0,
+	"dark_magic": 0,
+	"dark_reflect": 0,
+	"dark_armor": 0,
+	"dark_temper": 0,
+}
+@export var dark_mastery_xp: Dictionary = {
+	"dark_melee": 0.0,
+	"dark_ranged": 0.0,
+	"dark_magic": 0.0,
+	"dark_reflect": 0.0,
+	"dark_armor": 0.0,
+	"dark_temper": 0.0,
+}

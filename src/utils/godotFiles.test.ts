@@ -155,7 +155,7 @@ test('all res:// paths in GameManager.gd, .tscn, and .tres files resolve on disk
 
 test('skill tree and dark skill tree have zero overlapping nodes, valid prereqs, and wind_step is reachable', () => {
   const skillFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/skills'), '.tres');
-  assert.equal(skillFiles.length, 44, 'Expected expanded 44-node regular skill tree');
+  assert.equal(skillFiles.length, 50, 'Expected expanded 50-node regular skill tree');
   const skills = skillFiles.map(parseSkillTres);
 
   const skillPosSet = new Set<string>();
@@ -182,7 +182,7 @@ test('skill tree and dark skill tree have zero overlapping nodes, valid prereqs,
   assert.ok(reachableSkills.has('wind_step'), 'wind_step must be reachable and non-overlapping');
 
   const darkFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/dark_skills'), '.tres');
-  assert.equal(darkFiles.length, 31, 'Expected expanded 31-node dark skill tree');
+  assert.equal(darkFiles.length, 37, 'Expected expanded 37-node dark skill tree');
   const darkSkills = darkFiles.map(parseSkillTres);
 
   const darkPosSet = new Set<string>();
@@ -322,13 +322,13 @@ test('Reflector class and 6 immortal Pets (including Firework 5s start-of-battle
   assert.ok(combatContent.includes('raw_damage * total_reflect_pct'), 'CombatSystem must reflect total_reflect_pct of raw incoming damage for Reflector');
   assert.ok(combatContent.includes('get_reflector_mitigation_pct()'), 'CombatSystem must disperse incoming damage before armor using get_reflector_mitigation_pct()');
   assert.ok(combatContent.includes('get_max_hp() * 0.05'), 'CombatSystem must pulse 5% Max HP/s for Reflector');
-  assert.ok(combatContent.includes('enemy_max_hp * 0.001'), 'CombatSystem must apply 0.1% enemy Max HP/s rot for Reflector');
+  assert.ok(combatContent.includes('_unit_max_hp * 0.001'), 'CombatSystem must apply 0.1% single-unit enemy Max HP/s rot for Reflector (even across parallel packs)');
   assert.ok(combatContent.includes('start_stun'), 'CombatSystem must trigger start_stun pet effect on enemy spawn');
 });
 
-test('all 44 regular skills cost 1 SP with empowered bonuses, XP curve is steepened, and Dark Points are capped at 1 claim per difficulty', () => {
+test('all 50 regular skills cost 1 SP with empowered bonuses, XP curve is steepened, and Dark Points are capped at 1 claim per difficulty', () => {
   const skillFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/skills'), '.tres');
-  assert.equal(skillFiles.length, 44);
+  assert.equal(skillFiles.length, 50);
 
   for (const filePath of skillFiles) {
     const txt = fs.readFileSync(filePath, 'utf-8');
@@ -360,7 +360,7 @@ test('all 44 regular skills cost 1 SP with empowered bonuses, XP curve is steepe
 
 test('mana potions, buff potions, village map hotspots, Diff-10 Sanctuary garden/brewing, scarlet petal (2000 boss kills), and deterministic Alchemist safety flag are implemented', () => {
   const itemFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/items'), '.tres');
-  assert.equal(itemFiles.length, 100, 'Expected 100 item resources (including mage gear, offhand shields/talismans, mine materials, eternal dark-forged gear + 6 ultimates, 6 Dark Shop consumables, and abyss_difficulty_reset_orb)');
+  assert.equal(itemFiles.length, 101, 'Expected 101 item resources (including mage gear, offhand shields/talismans, eternal_mirror_monolith, mine materials, eternal dark-forged gear + 7 ultimates, 6 Dark Shop consumables, and abyss_difficulty_reset_orb)');
 
   const cropFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/crops'), '.tres');
   assert.equal(cropFiles.length, 10, 'Expected 10 Sanctuary crop resources (4 light + 6 dark)');
@@ -642,9 +642,9 @@ test('Mage staffs & 2 tome types, Dark Forge (25%->20%->min 15% + eternal items)
   const mineLoc = fs.readFileSync(path.join(GODOT_ROOT, 'resources/locations/abandoned_mine.tres'), 'utf-8');
   assert.ok(/is_one_attempt_mine\s*=\s*true/.test(mineLoc), 'abandoned_mine.tres must set is_one_attempt_mine = true');
   const locFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/locations'), '.tres');
-  assert.equal(locFiles.length, 12, 'Expected 12 locations including abandoned_mine');
+  assert.equal(locFiles.length, 13, 'Expected 13 locations including abandoned_mine and training_grounds');
   const enemyFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/enemies'), '.tres');
-  assert.equal(enemyFiles.length, 26, 'Expected 26 enemies including 4 Mine enemies');
+  assert.equal(enemyFiles.length, 27, 'Expected 27 enemies including 4 Mine enemies and training_construct');
   assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items/abyss_ore.tres')), 'abyss_ore.tres must exist');
   assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items/ancient_page.tres')), 'ancient_page.tres must exist');
 
@@ -945,7 +945,7 @@ test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Sho
 
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
   assert.ok(
-    /func record_kill\([\s\S]*?has_hero_class\("reflector"\)[\s\S]*?reflector_kill_hp_stacks \+= 1/.test(gmTxt),
+    /func record_kill\([\s\S]*?has_hero_class\("reflector"\)[\s\S]*?reflector_kill_hp_stacks \+= stack_gain/.test(gmTxt),
     'record_kill() must increment reflector_kill_hp_stacks infinitely only while Reflector is active',
   );
   assert.ok(
@@ -992,35 +992,29 @@ test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Sho
   assert.ok(classUiGd.includes('reflector_kill_hp_stacks'), 'ClassUI.gd must show Reflector kill HP stacks');
 });
 
-test('next-boss-without-reset mechanic is completely removed across scripts and scenes (only SaveData legacy field retained)', () => {
+test('v0.26.0 auto-difficulty progression toggles cleanly via DifficultyUI/RightSidebarUI while manual NextBossButton stays removed', () => {
   const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
-  assert.ok(saveTxt.includes('@export var auto_advance_next_boss: bool = false'), 'SaveData must retain inert auto_advance_next_boss for save compatibility');
+  assert.ok(saveTxt.includes('@export var auto_advance_next_boss: bool = false'), 'SaveData must persist auto_advance_next_boss');
 
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  for (const removedSym of [
-    'next_boss_advanced',
-    'can_advance_to_next_boss',
-    'set_auto_advance_next_boss',
-    'advance_to_next_boss_in_run',
-  ]) {
-    assert.ok(!gmTxt.includes(removedSym), `GameManager.gd must NOT contain removed symbol ${removedSym}`);
-  }
+  assert.ok(gmTxt.includes('signal difficulty_run_auto_advanced('), 'GameManager must declare difficulty_run_auto_advanced signal');
+  assert.ok(gmTxt.includes('func set_auto_advance_next_boss('), 'GameManager must implement set_auto_advance_next_boss');
+  assert.ok(!gmTxt.includes('advance_to_next_boss_in_run') && !gmTxt.includes('next_boss_advanced'), 'GameManager must keep legacy manual next-boss-button symbols removed');
 
   const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
-  assert.ok(!combatTxt.includes('_pending_boss_duel') && !combatTxt.includes('_on_next_boss_advanced') && !combatTxt.includes('advance_to_next_boss_in_run'), 'CombatSystem must NOT contain next-boss-without-reset logic');
+  assert.ok(!combatTxt.includes('_pending_boss_duel') && !combatTxt.includes('_on_next_boss_advanced'), 'CombatSystem must NOT contain legacy manual _pending_boss_duel');
+  assert.ok(combatTxt.includes('_on_difficulty_run_auto_advanced'), 'CombatSystem must listen for difficulty_run_auto_advanced');
 
   const arenaTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/BattleArenaUI.tscn'), 'utf-8');
-  assert.ok(!arenaTscn.includes('NextBossButton'), 'BattleArenaUI.tscn must NOT expose NextBossButton');
-  const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
-  assert.ok(!arenaGd.includes('next_boss_button') && !arenaGd.includes('next_boss_advanced'), 'BattleArenaUI.gd must NOT reference next-boss-without-reset');
+  assert.ok(!arenaTscn.includes('NextBossButton'), 'BattleArenaUI.tscn must NOT expose legacy NextBossButton');
 
   const diffTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/DifficultyUI.tscn'), 'utf-8');
-  assert.ok(!diffTscn.includes('NextBossButton') && !diffTscn.includes('AutoAdvanceButton'), 'DifficultyUI.tscn must NOT expose NextBossButton or AutoAdvanceButton');
+  assert.ok(!diffTscn.includes('NextBossButton') && diffTscn.includes('AutoAdvanceButton'), 'DifficultyUI.tscn must expose AutoAdvanceButton without legacy NextBossButton');
   const diffGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/DifficultyUI.gd'), 'utf-8');
-  assert.ok(!diffGd.includes('next_boss_started') && !diffGd.includes('advance_to_next_boss_in_run'), 'DifficultyUI.gd must NOT reference next-boss-without-reset');
+  assert.ok(diffGd.includes('auto_advance_button') && diffGd.includes('set_auto_advance_next_boss'), 'DifficultyUI.gd must wire AutoAdvanceButton to set_auto_advance_next_boss');
 
-  const heroMenuGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/HeroMenuUI.gd'), 'utf-8');
-  assert.ok(!heroMenuGd.includes('next_boss_started'), 'HeroMenuUI.gd must NOT connect next_boss_started');
+  const sidebarTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/RightSidebarUI.tscn'), 'utf-8');
+  assert.ok(sidebarTscn.includes('AutoDiffButton'), 'RightSidebarUI.tscn must expose quick AutoDiffButton');
 });
 
 test('Blood Archmage gets 2x intellect and 3x mana per intellect, and README.md reflects CHANGELOG.md', () => {
@@ -1044,11 +1038,11 @@ test('Blood Archmage gets 2x intellect and 3x mana per intellect, and README.md 
   assert.ok(faqGd.includes('2x прирост Инты') && faqGd.includes('3x маны от Инты'), 'FaqUI.gd must document Blood Archmage 2x Int and 3x mana from Int');
 
   const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
-  assert.ok(changelogTxt.includes('## [0.21.0]') && changelogTxt.includes('## [0.23.0]'), 'CHANGELOG.md must include [0.21.0] and [0.23.0] entries');
+  assert.ok(changelogTxt.includes('## [0.21.0]') && changelogTxt.includes('## [0.23.0]') && changelogTxt.includes('## [0.26.0]'), 'CHANGELOG.md must include [0.21.0], [0.23.0], and [0.26.0] entries');
 
   const readmeTxt = fs.readFileSync(path.resolve(GODOT_ROOT, '../README.md'), 'utf-8');
   assert.ok(!readmeTxt.includes('2 FPS') && !readmeTxt.includes('34 узлов'), 'README.md must not contain stale pre-0.17.3 claims');
-  for (const keyFeature of ['0.23.0', '2x прирост интеллекта', 'Тёмный магазин', 'Древняя Шахта', '44 узла', '31 постоянный узел', '27 чар', '100 предметов', 'Бестиарий']) {
+  for (const keyFeature of ['0.26.0', '2x прирост интеллекта', 'Тёмный магазин', 'Древняя Шахта', '50 узлов', '37 постоянных узлов', '27 чар', '101 предмет', '13 локаций', '27 врагов', 'Полигон тренировок', 'Вечного Монолита Отражения', 'Бестиарий']) {
     assert.ok(readmeTxt.includes(keyFeature), `README.md must include updated feature "${keyFeature}"`);
   }
 });
@@ -1321,6 +1315,105 @@ test('v0.25.0 Android Release APK CI (Godot 4.7.2-stable + Gradle without debug)
 
   const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
   assert.ok(changelogTxt.includes('## [0.25.0]'), 'CHANGELOG.md must include [0.25.0] entry');
+});
+
+test('v0.26.0 TZ features: offhand fix + reflect on all offhands, Reflector boss stacks + parallel battles, Barrier buff, 50/37 nodes, Training Grounds + 6 Dark Masteries, and Eternal Mirror Monolith', () => {
+  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
+  const itemDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/ItemData.gd'), 'utf-8');
+  const locDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/LocationData.gd'), 'utf-8');
+
+  // 1 & 6a. Offhand equip fallback, quality/stars preservation & bonus_reflect_pct on ALL offhands
+  assert.ok(itemDataTxt.includes('@export var bonus_reflect_pct: float = 0.0'), 'ItemData.gd must declare bonus_reflect_pct');
+  assert.ok(
+    /func use_or_equip_item\([\s\S]*?item\.id[\s\S]*?ItemData\.ItemType\.OFFHAND/.test(gmTxt),
+    'GameManager.use_or_equip_item must support ID fallback and OFFHAND equipping',
+  );
+  assert.ok(gmTxt.includes('func get_equipped_reflection_bonus() -> float:'), 'GameManager must compute equipped reflection bonus');
+  const invGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/InventoryUI.gd'), 'utf-8');
+  assert.ok(invGd.includes('equipped_offhand') && invGd.includes('bonus_reflect_pct'), 'InventoryUI must track equipped offhand in sig and display reflection %');
+  const sidebarGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/RightSidebarUI.gd'), 'utf-8');
+  assert.ok(sidebarGd.includes('use_or_equip_item(item, GameManager.get_entry_quality(entry), GameManager.get_entry_stars(entry))') && sidebarGd.includes('%ParallelBattleButton'), 'RightSidebarUI quick slots must pass quality/stars and wire ParallelBattleButton');
+  const enchantGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/EnchantUI.gd'), 'utf-8');
+  const darkForgeGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/DarkForgeUI.gd'), 'utf-8');
+  assert.ok(enchantGd.includes('bonus_reflect_pct') && darkForgeGd.includes('bonus_reflect_pct'), 'EnchantUI and DarkForgeUI must display offhand bonus_reflect_pct');
+
+  const offhandFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'resources/items'), '.tres').filter((f) =>
+    /^item_type\s*=\s*7$/m.test(fs.readFileSync(f, 'utf-8')),
+  );
+  assert.equal(offhandFiles.length, 9, 'Expected 9 offhand items (8 existing + eternal_mirror_monolith)');
+  for (const offPath of offhandFiles) {
+    const txt = fs.readFileSync(offPath, 'utf-8');
+    const reflectMatch = /^bonus_reflect_pct\s*=\s*([0-9.]+)/m.exec(txt);
+    assert.ok(reflectMatch && parseFloat(reflectMatch[1]) > 0, `Offhand ${path.basename(offPath)} must have bonus_reflect_pct > 0`);
+    const barrierMatch = /^bonus_barrier\s*=\s*([0-9.]+)/m.exec(txt);
+    assert.ok(barrierMatch && parseFloat(barrierMatch[1]) >= 135, `Offhand ${path.basename(offPath)} must have buffed bonus_barrier >= 135`);
+  }
+
+  // 3. Reflector boss stacks (+50 Titan, +15 Curse Warden, +5 Overseer) & Parallel Battles (1/3/5/10)
+  assert.ok(
+    /func record_kill\([\s\S]*?stack_gain = 50[\s\S]*?stack_gain = 15[\s\S]*?stack_gain = 5/.test(gmTxt),
+    'record_kill() must award +50 stacks on eternal_titan, +15 on curse_warden, and +5 on mine_overseer',
+  );
+  assert.ok(gmTxt.includes('const PARALLEL_BATTLE_OPTIONS: Array[int] = [1, 3, 5, 10]') && gmTxt.includes('func set_parallel_battle_count('), 'GameManager must define PARALLEL_BATTLE_OPTIONS [1, 3, 5, 10]');
+  assert.ok(saveTxt.includes('@export var parallel_battle_count: int = 1'), 'SaveData must persist parallel_battle_count');
+  assert.ok(
+    combatTxt.includes('signal enemy_pack_changed(') &&
+      combatTxt.includes('func _apply_damage_to_pack_rollover(') &&
+      combatTxt.includes('func _apply_damage_to_all_alive_in_pack('),
+    'CombatSystem must simulate enemy packs with single-target rollover and AoE multi-target damage',
+  );
+  const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
+  assert.ok(arenaGd.includes('enemy_pack_changed') && arenaGd.includes('training_grounds'), 'BattleArenaUI must show pack counts [xAlive/Total] and style training_grounds');
+
+  // 4. Buffed Barrier (combat regen + on-kill restore + % scaling)
+  assert.ok(
+    gmTxt.includes('func get_barrier_regen_per_sec_pct() -> float:') &&
+      gmTxt.includes('func get_on_kill_barrier_restore_pct() -> float:') &&
+      gmTxt.includes('bar_pct_bonus'),
+    'GameManager must implement Barrier % scaling, combat regen, and on-kill restore',
+  );
+  assert.ok(combatTxt.includes('get_barrier_regen_per_sec_pct()') && combatTxt.includes('get_on_kill_barrier_restore_pct()'), 'CombatSystem must trigger Barrier combat regen and on-kill Barrier restore');
+
+  // 5. 6 new regular skills (50) + 6 new dark skills (37)
+  const newRegSkills = ['barrier_bulwark', 'reflect_stance', 'barrier_mending', 'iron_shell', 'lethal_fury', 'vital_fortitude'];
+  for (const id of newRegSkills) {
+    assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/skills', `${id}.tres`)), `${id}.tres must exist`);
+    assert.ok(gmTxt.includes(`skills/${id}.tres`), `GameManager must register skills/${id}.tres`);
+  }
+  const newDarkSkills = ['obsidian_barrier_core', 'aegis_regeneration', 'mirror_apocalypse', 'pack_slayer', 'abyssal_haste', 'crimson_harvest_dark'];
+  for (const id of newDarkSkills) {
+    assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/dark_skills', `${id}.tres`)), `${id}.tres must exist`);
+    assert.ok(gmTxt.includes(`dark_skills/${id}.tres`), `GameManager must register dark_skills/${id}.tres`);
+  }
+
+  // 6b. Training Grounds + 6 persistent Dark Masteries
+  assert.ok(locDataTxt.includes('@export var is_training_grounds: bool = false'), 'LocationData.gd must declare is_training_grounds');
+  const tgPath = path.join(GODOT_ROOT, 'resources/locations/training_grounds.tres');
+  assert.ok(fs.existsSync(tgPath), 'training_grounds.tres must exist');
+  assert.ok(/is_training_grounds\s*=\s*true/.test(fs.readFileSync(tgPath, 'utf-8')), 'training_grounds.tres must set is_training_grounds = true');
+  assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/enemies/training_construct.tres')), 'training_construct.tres must exist');
+  assert.ok(gmTxt.includes('training_grounds.tres') && gmTxt.includes('const DARK_MASTERY_CATALOG'), 'GameManager must register training_grounds.tres and DARK_MASTERY_CATALOG');
+  for (const key of ['dark_melee', 'dark_ranged', 'dark_magic', 'dark_reflect', 'dark_armor', 'dark_temper']) {
+    assert.ok(gmTxt.includes(`"${key}"`), `DARK_MASTERY_CATALOG must define ${key}`);
+  }
+  for (const field of ['dark_mastery_levels', 'dark_mastery_xp', 'active_dark_mastery_id']) {
+    assert.ok(saveTxt.includes(field), `SaveData must persist ${field}`);
+  }
+  const initRunMatch = /func _init_run_state\([^)]*\) -> void:\n([\s\S]*?)\nfunc start_new_run/.exec(gmTxt);
+  assert.ok(initRunMatch && !initRunMatch[1].includes('dark_mastery_levels ='), '_init_run_state() must preserve Dark Masteries permanently across runs');
+  const statsTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/StatsUI.tscn'), 'utf-8');
+  const statsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
+  assert.ok(statsTscn.includes('DarkMasteryCard') && statsTscn.includes('DarkMasteryRowsVBox'), 'StatsUI.tscn must include DarkMasteryCard and DarkMasteryRowsVBox');
+  assert.ok(statsGd.includes('set_active_dark_mastery') && !statsGd.includes('queue_free('), 'StatsUI.gd must pool Dark Mastery rows without queue_free()');
+
+  // 7. Ultimate shield: Вечный Монолит Отражения
+  const monolithPath = path.join(GODOT_ROOT, 'resources/items/eternal_mirror_monolith.tres');
+  assert.ok(fs.existsSync(monolithPath), 'eternal_mirror_monolith.tres must exist');
+  const monolithTxt = fs.readFileSync(monolithPath, 'utf-8');
+  assert.ok(/is_dark_forged\s*=\s*true/.test(monolithTxt) && /bonus_reflect_pct\s*=\s*0\.45/.test(monolithTxt), 'eternal_mirror_monolith.tres must be eternal and grant +45% reflection');
+  assert.ok(gmTxt.includes('ultimate_mirror_monolith') && gmTxt.includes('eternal_mirror_monolith.tres'), 'GameManager must register Dark Forge ultimate_mirror_monolith recipe');
 });
 
 

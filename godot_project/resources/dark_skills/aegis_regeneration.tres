@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "aegis_regeneration"
+title = "Регенерация Эгиды"
+icon_emoji = "🔰"
+branch_name = "Бастион отражения"
+description = "Барьер восстанавливается на +5%/с прямо в бою и мгновенно получает +10% за каждое убийство врага."
+grid_position = Vector2(1, 5)
+prerequisites = Array[String](["obsidian_bulwark"])
+cost_dark_points = 2
+effect_type = "barrier_regen"
+effect_value = 0.05

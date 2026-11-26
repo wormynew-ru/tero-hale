@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/SkillNodeData.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+id = "reflect_stance"
+title = "Зеркальная стойка"
+icon_emoji = "🪞"
+description = "Боевая стойка отражения: возвращает +8% входящего урона врагу при каждой атаке."
+grid_position = Vector2(9, 4)
+prerequisites = Array[String](["guardian_aegis"])
+cost_skill_points = 1
+bonus_type = "reflect_pct"
+bonus_value = 0.08

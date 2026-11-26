@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "pack_slayer"
+title = "Истребитель полчищ"
+icon_emoji = "⚔️"
+branch_name = "Владыка Бездны"
+description = "Позволяет сокрушать толпы врагов и гигантов: +30% урона в параллельных боях (x3/x5/x10) и против боссов."
+grid_position = Vector2(4, 5)
+prerequisites = Array[String](["ancient_memory"])
+cost_dark_points = 2
+effect_type = "pack_slayer_dmg"
+effect_value = 0.30

@@ -113,6 +113,28 @@ focus_mode = 0
 theme_override_font_sizes/font_size = 12
 text = "5 поб."
 
+[node name="BattleSettingsRow" type="HBoxContainer" parent="SidebarVBox/MapPanel/MapVBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AutoDiffButton" type="Button" parent="SidebarVBox/MapPanel/MapVBox/BattleSettingsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "⏩ Авто-Сл: ВЫКЛ"
+
+[node name="ParallelBattleButton" type="Button" parent="SidebarVBox/MapPanel/MapVBox/BattleSettingsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+text = "⚔️ Враги: x1"
+
 [node name="WaveDungeonButton" type="Button" parent="SidebarVBox/MapPanel/MapVBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 34)

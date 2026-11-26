@@ -113,6 +113,12 @@ theme_override_font_sizes/font_size = 13
 text = "Множители..."
 autowrap_mode = 3
 
+[node name="AutoAdvanceButton" type="Button" parent="DiffVBox/SelectorCard/SelectorVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+text = "⏩ Авто-переход на Сл.+1 после Титана: ВЫКЛ"
+
 [node name="StartRunRow" type="HBoxContainer" parent="DiffVBox/SelectorCard/SelectorVBox"]
 layout_mode = 2
 theme_override_constants/separation = 12

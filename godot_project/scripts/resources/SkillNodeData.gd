@@ -31,7 +31,13 @@ extends Resource
 	"mana_cost_red",
 	"ability_cd_red",
 	"garden_mastery",
-	"alchemy_cauldron"
+	"alchemy_cauldron",
+	"barrier_pct",
+	"reflect_pct",
+	"barrier_regen_pct",
+	"armor_pct",
+	"crit_mult",
+	"max_hp_pct"
 )
 var bonus_type: String = "strength"
 @export var bonus_value: float = 0.0
@@ -79,4 +85,16 @@ func get_bonus_summary() -> String:
 			return "+%d%% скорости роста сада и +1 грядка" % roundi(bonus_value * 100.0)
 		"alchemy_cauldron":
 			return "+1 котёл зельеварения и +%d%% мощи зелий" % roundi(bonus_value * 100.0)
+		"barrier_pct":
+			return "+%d%% к макс. Барьеру" % roundi(bonus_value * 100.0)
+		"reflect_pct":
+			return "+%d%% к отражению урона" % roundi(bonus_value * 100.0)
+		"barrier_regen_pct":
+			return "+%d%%/с регена Барьера в бою" % roundi(bonus_value * 100.0)
+		"armor_pct":
+			return "+%d%% к общей броне" % roundi(bonus_value * 100.0)
+		"crit_mult":
+			return "+%d%% к критическому урону" % roundi(bonus_value * 100.0)
+		"max_hp_pct":
+			return "+%d%% к макс. HP" % roundi(bonus_value * 100.0)
 	return ""

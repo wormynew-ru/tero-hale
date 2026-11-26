@@ -55,6 +55,7 @@ enum OffhandKind {
 @export var bonus_defense: float = 0.0
 @export var bonus_barrier: float = 0.0
 @export var bonus_barrier_scale: float = 0.0
+@export var bonus_reflect_pct: float = 0.0
 @export var shop_pack_amount: int = 1
 
 @export_group("Mage & Dark Forge")
@@ -168,6 +169,8 @@ func get_summary_text() -> String:
 	if bonus_barrier_scale > 0.0:
 		var scale_stat: String = "Инт" if offhand_kind == OffhandKind.TALISMAN else "Вын"
 		parts.append("+%.1f Барьер/%s" % [bonus_barrier_scale, scale_stat])
+	if bonus_reflect_pct > 0.0:
+		parts.append("+%d%% Отражение" % roundi(bonus_reflect_pct * 100.0))
 	if bonus_strength > 0:
 		parts.append("+%d Сила" % bonus_strength)
 	if bonus_agility > 0:

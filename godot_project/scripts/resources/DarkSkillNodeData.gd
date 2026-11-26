@@ -43,7 +43,13 @@ extends Resource
 	"void_plating",
 	"mirror_carapace",
 	"obsidian_bulwark",
-	"thorn_apotheosis"
+	"thorn_apotheosis",
+	"barrier_fortress",
+	"barrier_regen",
+	"reflect_fortress",
+	"pack_slayer_dmg",
+	"abyssal_haste",
+	"kill_barrier_heal"
 )
 var effect_type: String = "awakening_power"
 @export var effect_value: float = 0.0
@@ -113,4 +119,16 @@ func get_effect_summary() -> String:
 			return "+%d%% Max HP и +35%% к общей броне навсегда" % roundi(effect_value * 100.0)
 		"thorn_apotheosis":
 			return "+%d%% к отражению урона и удар на 2%% от Max HP при получении атаки" % roundi(effect_value * 100.0)
+		"barrier_fortress":
+			return "+%d%% к макс. Барьеру навсегда" % roundi(effect_value * 100.0)
+		"barrier_regen":
+			return "+%d%%/с реген Барьера в бою и +10%% при убийстве" % roundi(effect_value * 100.0)
+		"reflect_fortress":
+			return "+%d%% к отражению урона и усиление ауры Рефлектора навсегда" % roundi(effect_value * 100.0)
+		"pack_slayer_dmg":
+			return "+%d%% урона против групп врагов и боссов навсегда" % roundi(effect_value * 100.0)
+		"abyssal_haste":
+			return "+%d%% скорости атак и -15%% КД способностей навсегда" % roundi(effect_value * 100.0)
+		"kill_barrier_heal":
+			return "Восстанавливает %d%% Max HP и Барьера за каждое убийство" % roundi(effect_value * 100.0)
 	return description

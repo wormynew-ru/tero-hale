@@ -274,7 +274,14 @@ func _refresh_dark_enchant_slot(
 	var mult: float = GameManager.get_enchant_power_multiplier(total_lvl)
 	var bonuses: Dictionary = GameManager.get_equipped_stat_bonuses(slot_type)
 	header_lbl.text = "%s [🌑+%d | Всего +%d]: %s" % [slot_title, dark_lvl, total_lvl, item.get_display_name()]
-	var extra_bar: String = " | +%s Барьер" % NumberFormatter.format_number(GameManager.get_raw_max_barrier()) if slot_type == ItemData.ItemType.OFFHAND else ""
+	var extra_bar: String = ""
+	if slot_type == ItemData.ItemType.OFFHAND:
+		extra_bar = " | +%s Барьер" % NumberFormatter.format_number(GameManager.get_raw_max_barrier())
+		if item.bonus_reflect_pct > 0.0:
+			var ref_mult: float = (1.0 + float(total_lvl) * 0.015) * GameManager.get_quality_multiplier(GameManager.equipped_offhand_quality) * GameManager.get_star_multiplier(GameManager.equipped_offhand_stars)
+			var ref_pct: int = roundi(item.bonus_reflect_pct * ref_mult * 100.0)
+			if ref_pct > 0:
+				extra_bar += " | +%d%% Отражение" % ref_pct
 	stats_lbl.text = "Итоговые бонусы слота (x%.2f): +%d Сил, +%d Лов, +%d Вын, +%d Инт%s" % [
 		mult,
 		int(bonuses["strength"]),

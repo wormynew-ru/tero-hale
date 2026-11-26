@@ -73,6 +73,8 @@ var _search_btn_tween: Tween = null
 var _base_enemy_name: String = ""
 var _enemy_shred_stacks: int = 0
 var _enemy_stun_remaining: float = 0.0
+var _enemy_pack_alive: int = 1
+var _enemy_pack_total: int = 1
 var _enemy_avatar_style: StyleBoxFlat = null
 var _hud_refresh_queued: bool = false
 var _last_hp_bar_str: String = ""
@@ -174,6 +176,7 @@ func bind_combat_system(combat: CombatSystem) -> void:
 	_combat_system.state_changed.connect(_on_combat_state_changed)
 	_combat_system.battle_search_changed.connect(_on_battle_search_changed)
 	_combat_system.enemy_spawned.connect(_on_enemy_spawned)
+	_combat_system.enemy_pack_changed.connect(_on_enemy_pack_changed)
 	_combat_system.enemy_cleared.connect(_on_enemy_cleared)
 	_combat_system.enemy_hp_changed.connect(_on_enemy_hp_changed)
 	_combat_system.enemy_mana_changed.connect(_on_enemy_mana_changed)
@@ -196,6 +199,7 @@ func bind_combat_system(combat: CombatSystem) -> void:
 	_on_battle_search_changed(_combat_system.is_seeking_battle)
 	_on_combat_state_changed(int(_combat_system.current_state))
 	if _combat_system.current_enemy != null:
+		_on_enemy_pack_changed(_combat_system.pack_total_count, _combat_system.pack_total_count)
 		_on_enemy_spawned(
 			_combat_system.current_enemy,
 			_combat_system.enemy_hp,
@@ -563,7 +567,15 @@ func _on_enemy_cleared() -> void:
 	_base_enemy_name = ""
 	_enemy_shred_stacks = 0
 	_enemy_stun_remaining = 0.0
+	_enemy_pack_alive = 1
+	_enemy_pack_total = 1
 	enemy_attack_diamond.set_progress(0.0)
+
+
+func _on_enemy_pack_changed(alive_count: int, total_count: int) -> void:
+	_enemy_pack_alive = alive_count
+	_enemy_pack_total = total_count
+	_update_enemy_name_label()
 
 
 func _on_troll_shred_updated(stacks: int) -> void:
@@ -587,6 +599,8 @@ func _update_enemy_name_label() -> void:
 	if _base_enemy_name.is_empty():
 		return
 	var label_txt: String = _base_enemy_name
+	if _enemy_pack_total > 1:
+		label_txt += " [x%d/%d]" % [_enemy_pack_alive, _enemy_pack_total]
 	if _enemy_shred_stacks > 0:
 		label_txt += " [🦴-%d]" % _enemy_shred_stacks
 	if _enemy_stun_remaining > 0.05:
@@ -873,6 +887,8 @@ func _on_location_changed(location: LocationData) -> void:
 			backdrop_tint.color = Color(0.26, 0.20, 0.04, 0.42)
 		"abyss_crucible":
 			backdrop_tint.color = Color(0.24, 0.04, 0.28, 0.58)
+		"training_grounds":
+			backdrop_tint.color = Color(0.14, 0.08, 0.24, 0.50)
 		_:
 			backdrop_tint.color = Color(location.background_color.r, location.background_color.g, location.background_color.b, 0.35)
 

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DarkSkillNodeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/DarkSkillNodeData.gd" id="1_dark_skill"]
+
+[resource]
+script = ExtResource("1_dark_skill")
+id = "obsidian_barrier_core"
+title = "Обсидиановое ядро барьера"
+icon_emoji = "💠"
+branch_name = "Бастион отражения"
+description = "Пробуждает тёмный кристалл щита: увеличивает максимальный Барьер на +75% навсегда."
+grid_position = Vector2(2, 6)
+prerequisites = Array[String](["obsidian_bulwark"])
+cost_dark_points = 2
+effect_type = "barrier_fortress"
+effect_value = 0.75

@@ -386,10 +386,33 @@ func _compute_inventory_sig() -> String:
 	parts.append("E:%s" % ("1" if GameManager.is_equipment_disabled() else "0"))
 	parts.append("A:%s" % ("1" if GameManager.is_alchemy_unlocked() else "0"))
 	parts.append("CH:%s" % GameManager.active_challenge_id)
+	parts.append("EW:%s:%d:%d:%d" % [
+		GameManager.equipped_weapon.id if GameManager.equipped_weapon != null else "",
+		GameManager.equipped_weapon_quality,
+		GameManager.equipped_weapon_stars,
+		GameManager.weapon_enchant_level,
+	])
+	parts.append("EA:%s:%d:%d:%d" % [
+		GameManager.equipped_armor.id if GameManager.equipped_armor != null else "",
+		GameManager.equipped_armor_quality,
+		GameManager.equipped_armor_stars,
+		GameManager.armor_enchant_level,
+	])
+	parts.append("EO:%s:%d:%d:%d" % [
+		GameManager.equipped_offhand.id if GameManager.equipped_offhand != null else "",
+		GameManager.equipped_offhand_quality,
+		GameManager.equipped_offhand_stars,
+		GameManager.offhand_enchant_level,
+	])
+	parts.append("EM:%s:%d" % [
+		GameManager.equipped_ammo.id if GameManager.equipped_ammo != null else "",
+		GameManager.equipped_ammo_count,
+	])
 	for entry: Dictionary in GameManager.inventory:
 		var item: ItemData = entry["item"] as ItemData
+		var cnt: int = int(entry.get("count", 0))
 		if item != null:
-			parts.append("%s:%d:%d" % [item.id, GameManager.get_entry_quality(entry), GameManager.get_entry_stars(entry)])
+			parts.append("%s:%d:%d:%d" % [item.id, cnt, GameManager.get_entry_quality(entry), GameManager.get_entry_stars(entry)])
 	return "|".join(parts)
 
 
@@ -462,7 +485,13 @@ func _rebuild_inventory(force: bool = false) -> void:
 	elif GameManager.equipped_offhand != null:
 		var ob: Dictionary = GameManager.get_equipped_stat_bonuses(ItemData.ItemType.OFFHAND)
 		var o_int_txt: String = ", +%d Инт" % int(ob["intellect"]) if int(ob["intellect"]) > 0 else ""
-		offhand_slot_label.text = "🔰 Оффхенд [+%d%s | %d%% ★%d]: %s (+%s Барьер, +%d Вын%s)" % [
+		var o_ref_txt: String = ""
+		if GameManager.equipped_offhand.bonus_reflect_pct > 0.0:
+			var o_ref_mult: float = (1.0 + float(o_ench + o_dark) * 0.015) * GameManager.get_quality_multiplier(GameManager.equipped_offhand_quality) * GameManager.get_star_multiplier(GameManager.equipped_offhand_stars)
+			var o_ref_pct: int = roundi(GameManager.equipped_offhand.bonus_reflect_pct * o_ref_mult * 100.0)
+			if o_ref_pct > 0:
+				o_ref_txt = ", +%d%% Отр." % o_ref_pct
+		offhand_slot_label.text = "🔰 Оффхенд [+%d%s | %d%% ★%d]: %s (+%s Барьер, +%d Вын%s%s)" % [
 			o_ench,
 			o_dark_tag,
 			GameManager.equipped_offhand_quality,
@@ -471,6 +500,7 @@ func _rebuild_inventory(force: bool = false) -> void:
 			NumberFormatter.format_number(GameManager.get_raw_max_barrier()),
 			int(ob["endurance"]),
 			o_int_txt,
+			o_ref_txt,
 		]
 		unequip_offhand_button.disabled = false
 	else:

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+[ext_resource type="Script" path="res://scripts/resources/EnemyData.gd" id="2_enemy_script"]
+[ext_resource type="Resource" path="res://resources/enemies/training_construct.tres" id="3_dummy"]
+
+[resource]
+script = ExtResource("1_loc")
+id = "training_grounds"
+location_name = "Полигон тренировок"
+icon_emoji = "🥋"
+description = "Специальная арена для закалки 6 Тёмных Мастерств (ближний, дальний, магия, отражение, устойчивость и закал). Прогресс Тёмных Мастерств НЕ сбрасывается между ранами!"
+required_level = 1
+required_difficulty = 1
+always_open_once_unlocked = true
+is_training_grounds = true
+enemies = Array[ExtResource("2_enemy_script")]([ExtResource("3_dummy")])
+background_color = Color(0.14, 0.11, 0.24, 1)

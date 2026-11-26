@@ -2,6 +2,26 @@
 
 Все значимые изменения проекта фиксируются в этом файле.
 
+## [0.26.0] — Починка оффхендов, Параллельные бои, Авто-сложность, Бафф Барьера, 50/37 узлов, Полигон тренировок и Вечный Монолит Отражения (по ТЗ)
+### Добавлено и исправлено
+- **1. Починка экипировки любой второй руки (`GameManager.gd`, `InventoryUI.gd`, `RightSidebarUI.gd`)**:
+  - Устранены проблемы с экипировкой оффхендов: в `GameManager.use_or_equip_item()` добавлен безопасный fallback-поиск слота по `item_id` (когда индекс/объект сместился), в `InventoryUI._compute_inventory_sig()` включены суммарный счётчик и экипированные слоты с качеством/звёздами, а быстрые слоты `RightSidebarUI` (`1–6`) теперь корректно передают `quality`/`stars` и показывают обратную связь.
+- **2. Автопрохождение сложностей после Вечного титана (`GameManager.gd`, `CombatSystem.gd`, `DifficultyUI.tscn/.gd`, `RightSidebarUI.tscn/.gd`)**:
+  - Добавлен переключатель **`⏩ Авто-переход на Сл.+1 после Титана`** (`auto_advance_next_boss` / `set_auto_advance_next_boss()`), доступный и в окне сложности (`AutoAdvanceButton`), и в правой панели (`AutoDiffButton`). При победе над `eternal_titan` запускается бесшовный переход на сложность `N+1` без остановки боя (`difficulty_run_auto_advanced`).
+- **3. Параллельные бои (`x1/x3/x5/x10`) и ускоренный фарм стаков Отражателя (`GameManager.gd`, `CombatSystem.gd`, `RightSidebarUI.tscn/.gd`, `BattleArenaUI.gd`)**:
+  - В `record_kill()` для `🪞 Отражателя` стаки Max HP за убийство усилены для боссов: **`+50`** за `eternal_titan`, **`+15`** за `curse_warden`, **`+5`** за `mine_overseer`, **`+1`** за обычного врага.
+  - Реализованы **Параллельные бои (`PARALLEL_BATTLE_OPTIONS = [1, 3, 5, 10]`)** через `ParallelBattleButton` и пачку врагов в `CombatSystem.gd` (`_pack_hps`, `_pack_max_hps`, `_pack_manas`, `_pack_atk_timers`, перенос избыточного одиночного урона `_apply_damage_to_pack_rollover`, AoE-урон по всем живым врагам в пачке, `_unit_max_hp * 0.001` для гниения Отражателя и отображение `[xAlive/Total]` в `BattleArenaUI`).
+- **4. Глобальное усиление 🛡️ Барьера (`resources/items/*.tres`, `GameManager.gd`, `CombatSystem.gd`)**:
+  - Усилены `bonus_barrier` и `bonus_barrier_scale` на всех 8 существующих оффхендах, добавлены процентный скейл Барьера, **пассивная регенерация Барьера в бою** (`get_barrier_regen_per_sec_pct()`) и **восстановление Барьера за убийство** (`get_on_kill_barrier_restore_pct()`).
+- **5. Расширение обоих древ навыков (`44 → 50` обычных, `31 → 37` тёмных) (`resources/skills/*.tres`, `resources/dark_skills/*.tres`, `GameManager.gd`)**:
+  - Добавлены **6 обычных узлов**: `barrier_bulwark`, `reflect_stance`, `barrier_mending`, `iron_shell`, `lethal_fury`, `vital_fortitude`.
+  - Добавлены **6 тёмных узлов**: `obsidian_barrier_core`, `aegis_regeneration`, `mirror_apocalypse`, `pack_slayer`, `abyssal_haste`, `crimson_harvest_dark`.
+- **6. +Отражение на всех оффхендах + «🥋 Полигон тренировок» и 6 постоянных Тёмных Мастерств (`ItemData.gd`, `LocationData.gd`, `SaveData.gd`, `GameManager.gd`, `CombatSystem.gd`, `StatsUI.tscn/.gd`, `InventoryUI.gd`, `EnchantUI.gd`, `DarkForgeUI.gd`)**:
+  - Всем оффхендам добавлен стат `bonus_reflect_pct` (масштабируется заточкой, качеством и звёздами в `get_equipped_reflection_bonus()`, отображается в Инвентаре, Кузне и Тёмной кузне).
+  - Добавлены локация **`training_grounds.tres` (`🥋 Полигон тренировок`, 13 локаций)** и враг **`training_construct.tres` (27 врагов)**, где тренируются **6 постоянных Тёмных Мастерств (`DARK_MASTERY_CATALOG`)**: `dark_melee`, `dark_ranged`, `dark_magic`, `dark_reflect`, `dark_armor` (+броня/+Барьер) и `dark_temper` (+Max HP). Они выбираются в `StatsUI` (`DarkMasteryCard`) и **сохраняются между ранами навсегда**.
+- **7. Ультимативный щит — `🪞 Вечный Монолит Отражения` (`eternal_mirror_monolith.tres`, `GameManager.gd`)**:
+  - Добавлен топ-щит Тёмной кузни (`+60` Силы, `+175` Выносливости, `12000 + 45×Вын` Барьера, **`+45%` отражения**, `+140` брони, `101` предмет) и 7-й ультимативный рецепт `"ultimate_mirror_monolith"`.
+
 ## [0.25.0] — Облачная сборка Android Release APK через GitHub Actions (Godot 4.7.2-stable + Gradle)
 ### Добавлено и обновлено
 - **Пресет экспорта Android (`godot_project/export_presets.cfg`)**:
