@@ -194,8 +194,8 @@ func import_save_from_text(raw_text: String) -> Dictionary:
 	_gm.ensure_curses_for_difficulty(_gm.difficulty_level)
 	_gm._invalidate_progression_caches()
 	save_game(true)
-	_gm._emit_all_refresh_signals()
 	_gm.game_reset.emit()
+	_gm._emit_all_refresh_signals()
 	_gm.save_status_changed.emit("Импортировано из .txt")
 	return {
 		"success": true,

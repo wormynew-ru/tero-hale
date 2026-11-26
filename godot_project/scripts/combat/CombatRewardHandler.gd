@@ -71,21 +71,18 @@ func finish_pack_victory(defeated: EnemyData) -> void:
 	_cs.clear_pack_state()
 
 	if GameManager.wave_dungeon_active:
+		var is_final_wave: bool = GameManager.wave_dungeon_wave >= GameManager.WAVE_DUNGEON_TOTAL_WAVES
+		_cs.schedule_next_spawn(CombatSystem.SPAWN_DELAY if is_final_wave else 0.2, is_final_wave)
 		var wd_res: Dictionary = GameManager.advance_wave_dungeon_on_kill()
 		var wd_msg: String = str(wd_res.get("message", ""))
 		if not wd_msg.is_empty():
 			_cs.route_event_triggered.emit(wd_msg)
-		if bool(wd_res.get("completed", false)):
-			_cs.schedule_next_spawn(CombatSystem.SPAWN_DELAY, true)
-			return
-		_cs.schedule_next_spawn(0.2, false)
 		return
 
 	if defeated.id == GameManager.FINAL_BOSS_ID:
-		var will_auto_advance: bool = GameManager.auto_advance_next_boss and not GameManager.wave_dungeon_active
-		GameManager.on_final_boss_defeated()
+		var did_auto_advance: bool = GameManager.on_final_boss_defeated()
 		GameManager.on_final_boss_killed_for_garden()
-		if will_auto_advance:
+		if did_auto_advance:
 			return
 	elif defeated.id == GameManager.CURSE_WARDEN_ID:
 		GameManager.on_curse_warden_defeated()

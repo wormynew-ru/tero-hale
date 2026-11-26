@@ -2,6 +2,14 @@
 
 Все значимые изменения проекта фиксируются в этом файле.
 
+## [0.27.1] — Исправление зависания боя с врагом 0/1 или 1/1 HP при активном путнике и смене событий
+### Исправлено
+- **Зависание боя и отображение `0/1` HP после победы над Вечным титаном / смены событий (`DifficultyAndChallengeService.gd`, `CombatRewardHandler.gd`, `CombatSystem.gd`, `CombatClassAndPetHandler.gd`)**:
+  - Устранена рассинхронизация в `finish_pack_victory()` и `on_final_boss_defeated()`: при повторном убийстве `eternal_titan` в том же ране с включённым `⏩ Авто-переходом` (`boss_defeated_this_run == true`) теперь корректно выполняется автопереход на следующую сложность без зависания `CombatSystem` в `State.FIGHTING` с пустой пачкой (`_pack_hps = []`), из-за которого тики путников (`ember_fox`, `thunder_griffin`) сбрасывали `enemy_max_hp` в `0` и оставляли на экране неатакующего врага с `0/1` HP.
+  - Исправлен порядок эмита сигналов в `DifficultyAndChallengeService.on_final_boss_defeated()`, `RunAndDifficultyService` и `SaveService` (`difficulty_run_auto_advanced` / `game_reset` до `_emit_all_refresh_signals()`), а также переход в `CombatRewardHandler.finish_pack_victory()` при завершении 10-й волны Данжа волн (`_on_location_changed` больше не спавнит фантомного врага с триггером оглушения путника во время `State.SPAWNING` или `State.RESTING`).
+  - В `CombatSystem.gd`, `CombatClassAndPetHandler.gd` и `CombatAbilityHandler.gd` добавлены защитные проверки состояния `State.FIGHTING`, наличия живых целей (`get_alive_pack_count() > 0`) и ненулевого `enemy_max_hp` / `_unit_max_hp`, а также автовосстановление боя при пустой пачке.
+  - В `BattleArenaUI.gd` скрывается мёртвый/неинициализированный враг при обновлении HUD во время `State.SPAWNING` и предотвращается отображение некорректного `0 / 1` при `max_hp <= 0`.
+
 ## [0.27.0] — Модульная декомпозиция ядра, боевой системы и сложных сцен UI (по ТЗ)
 ### Рефакторинг архитектуры и стандартизация
 - **1. Правило 9 в `CLAUDE.md` (модульность логики и лимит размера скриптов)**:

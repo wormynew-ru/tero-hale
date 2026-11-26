@@ -175,40 +175,44 @@ func is_gear_blocked_by_challenge() -> bool:
 	return _gm.active_challenge_id == "naked_ascetic"
 
 
-func on_final_boss_defeated() -> void:
-	if _gm.boss_defeated_this_run:
-		return
-	_gm.boss_defeated_this_run = true
-	var gained: int = 0
-	if not _gm.dark_points_claimed_difficulties.has(_gm.difficulty_level):
-		_gm.dark_points_claimed_difficulties.append(_gm.difficulty_level)
-		gained = 2
-		_gm.dark_points += gained
-	var coins_gained: int = maxi(1, _gm.difficulty_level)
-	_gm.dark_shop_coins += coins_gained
-	if _gm.difficulty_level >= _gm.max_unlocked_difficulty:
-		_gm.max_unlocked_difficulty = _gm.difficulty_level + 1
-	if not _gm.active_challenge_id.is_empty():
-		var passed: bool = (_gm.active_challenge_id != "speedrun_titan") or (_gm.run_elapsed_seconds <= 300.0)
-		if passed and not _gm.completed_challenges.has(_gm.active_challenge_id):
-			_gm.completed_challenges.append(_gm.active_challenge_id)
-		_gm.active_challenge_id = ""
-		_gm.challenge_changed.emit()
-	ensure_curses_for_difficulty(_gm.max_unlocked_difficulty)
-	_gm._invalidate_progression_caches()
-	_gm.dark_skills_changed.emit()
-	_gm.dark_shop_changed.emit()
-	_gm.difficulty_changed.emit()
-	_gm.stats_changed.emit()
-	_gm.final_boss_cleared.emit(gained, _gm.max_unlocked_difficulty)
+func on_final_boss_defeated() -> bool:
+	var was_already_defeated: bool = _gm.boss_defeated_this_run
+	if not was_already_defeated:
+		_gm.boss_defeated_this_run = true
+		var gained: int = 0
+		if not _gm.dark_points_claimed_difficulties.has(_gm.difficulty_level):
+			_gm.dark_points_claimed_difficulties.append(_gm.difficulty_level)
+			gained = 2
+			_gm.dark_points += gained
+		var coins_gained: int = maxi(1, _gm.difficulty_level)
+		_gm.dark_shop_coins += coins_gained
+		if _gm.difficulty_level >= _gm.max_unlocked_difficulty:
+			_gm.max_unlocked_difficulty = _gm.difficulty_level + 1
+		if not _gm.active_challenge_id.is_empty():
+			var passed: bool = (_gm.active_challenge_id != "speedrun_titan") or (_gm.run_elapsed_seconds <= 300.0)
+			if passed and not _gm.completed_challenges.has(_gm.active_challenge_id):
+				_gm.completed_challenges.append(_gm.active_challenge_id)
+			_gm.active_challenge_id = ""
+			_gm.challenge_changed.emit()
+		ensure_curses_for_difficulty(_gm.max_unlocked_difficulty)
+		_gm._invalidate_progression_caches()
+		_gm.dark_skills_changed.emit()
+		_gm.dark_shop_changed.emit()
+		_gm.difficulty_changed.emit()
+		_gm.stats_changed.emit()
+		_gm.final_boss_cleared.emit(gained, _gm.max_unlocked_difficulty)
+
 	if _gm.auto_advance_next_boss and not _gm.wave_dungeon_active:
 		_gm.total_runs_completed += 1
 		_gm._init_run_state(_gm.difficulty_level + 1, "")
 		_gm.save_game(true)
-		_gm._emit_all_refresh_signals()
 		_gm.difficulty_run_auto_advanced.emit(_gm.difficulty_level)
-	else:
+		_gm._emit_all_refresh_signals()
+		return true
+
+	if not was_already_defeated:
 		_gm.save_game()
+	return false
 
 
 func on_curse_warden_defeated() -> void:

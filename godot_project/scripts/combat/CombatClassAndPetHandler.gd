@@ -43,6 +43,8 @@ func reset_for_spawn() -> void:
 
 
 func apply_start_of_battle_effects() -> void:
+	if _cs.current_enemy == null or _cs.current_state != CombatSystem.State.FIGHTING or _cs.get_alive_pack_count() <= 0:
+		return
 	var pet: PetData = GameManager.get_equipped_pet()
 	if pet != null and pet.effect_type == "start_stun" and not _pet_stun_used_this_fight:
 		_pet_stun_used_this_fight = true
@@ -72,16 +74,16 @@ func trigger_reflector_aura_pulse() -> void:
 
 func process_reflector_aura(delta: float) -> void:
 	_reflector_pulse_timer += delta
-	while _reflector_pulse_timer >= 1.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING:
+	while _reflector_pulse_timer >= 1.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING and _cs.get_alive_pack_count() > 0:
 		_reflector_pulse_timer -= 1.0
 		trigger_reflector_aura_pulse()
-		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null:
+		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null or _cs.get_alive_pack_count() <= 0:
 			return
 
 
 func process_pet_combat(delta: float) -> void:
 	var pet: PetData = GameManager.get_equipped_pet()
-	if pet == null or _cs.current_enemy == null:
+	if pet == null or _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null or _cs.get_alive_pack_count() <= 0 or _cs.get_unit_max_hp() <= 0.0:
 		return
 	match pet.effect_type:
 		"aura_regen":
@@ -90,7 +92,7 @@ func process_pet_combat(delta: float) -> void:
 				GameManager.heal(heal_amt, false)
 		"enemy_burn":
 			_pet_pulse_timer += delta
-			while _pet_pulse_timer >= 1.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING:
+			while _pet_pulse_timer >= 1.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING and _cs.get_alive_pack_count() > 0:
 				_pet_pulse_timer -= 1.0
 				var burn_dmg: float = maxf(1.0, _cs.get_unit_max_hp() * GameManager.get_pet_effect_value("enemy_burn")) * GameManager.get_pack_or_boss_damage_mult(_cs.current_enemy.id, _cs.pack_total_count)
 				_cs.dot_tick_landed.emit(pet.icon_emoji, pet.pet_name, burn_dmg)
@@ -98,7 +100,7 @@ func process_pet_combat(delta: float) -> void:
 					return
 		"crit_lightning":
 			_pet_lightning_timer += delta
-			while _pet_lightning_timer >= 4.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING:
+			while _pet_lightning_timer >= 4.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING and _cs.get_alive_pack_count() > 0:
 				_pet_lightning_timer -= 4.0
 				var bolt_mult: float = GameManager.get_pet_training_multiplier(pet.id)
 				var bolt_dmg: float = maxf(1.0, (GameManager.get_max_hp() * 0.08 + GameManager.get_player_damage() * 1.6) * bolt_mult) * GameManager.get_pack_or_boss_damage_mult(_cs.current_enemy.id, _cs.pack_total_count)
@@ -108,6 +110,8 @@ func process_pet_combat(delta: float) -> void:
 
 
 func process_spirit_companions(delta: float) -> void:
+	if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null or _cs.get_alive_pack_count() <= 0:
+		return
 	var communion_bonus: float = GameManager.get_dark_bonus("spirit_communion")
 	var base_power_mult: float = 1.0 + communion_bonus
 	var base_tick_delta: float = delta * (1.0 + communion_bonus * 0.5)
@@ -122,7 +126,7 @@ func process_spirit_companions(delta: float) -> void:
 		var fire_pow: float = base_power_mult * GameManager.get_spirit_power_multiplier("fire")
 		var fire_raw: float = (14.0 + float(GameManager.get_total_strength()) * 1.4) * GameManager.get_mastery_bonus_multiplier("magic") * fire_pow
 		_deal_spirit_damage("Дух Огня", "🔥", fire_raw, 0.5, "magic")
-		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null:
+		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null or _cs.get_alive_pack_count() <= 0:
 			return
 
 	if _spirit_wind_timer >= SPIRIT_WIND_INTERVAL:
@@ -130,7 +134,7 @@ func process_spirit_companions(delta: float) -> void:
 		var wind_pow: float = base_power_mult * GameManager.get_spirit_power_multiplier("wind")
 		var wind_raw: float = (10.0 + float(GameManager.get_total_agility()) * 1.3) * GameManager.get_mastery_bonus_multiplier("ranged") * wind_pow
 		_deal_spirit_damage("Дух Ветра", "🌪️", wind_raw, 0.65, "ranged")
-		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null:
+		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null or _cs.get_alive_pack_count() <= 0:
 			return
 
 	if _spirit_forest_timer >= SPIRIT_FOREST_INTERVAL:

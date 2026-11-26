@@ -48,10 +48,10 @@ func process_overcharge(delta: float) -> void:
 	if not overcharge_active:
 		return
 	_overcharge_timer += delta
-	while _overcharge_timer >= OVERCHARGE_TICK_INTERVAL and overcharge_active and _cs.current_state == CombatSystem.State.FIGHTING and _cs.current_enemy != null:
+	while _overcharge_timer >= OVERCHARGE_TICK_INTERVAL and overcharge_active and _cs.current_state == CombatSystem.State.FIGHTING and _cs.current_enemy != null and _cs.get_alive_pack_count() > 0:
 		_overcharge_timer -= OVERCHARGE_TICK_INTERVAL
 		execute_overcharge_tick()
-		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null:
+		if _cs.current_state != CombatSystem.State.FIGHTING or _cs.current_enemy == null or _cs.get_alive_pack_count() <= 0:
 			return
 
 
@@ -370,7 +370,7 @@ func process_enemy_dots(delta: float) -> void:
 		var d: Dictionary = _enemy_dots[i]
 		d["remaining"] = float(d["remaining"]) - delta
 		d["tick_timer"] = float(d["tick_timer"]) + delta
-		while float(d["tick_timer"]) >= 1.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING:
+		while float(d["tick_timer"]) >= 1.0 and _cs.current_enemy != null and _cs.current_state == CombatSystem.State.FIGHTING and _cs.get_alive_pack_count() > 0:
 			d["tick_timer"] = float(d["tick_timer"]) - 1.0
 			var alive_before: int = maxi(1, _cs.get_alive_pack_count())
 			var raw_dmg: float = GameManager.get_player_damage() * float(d["power_mult"]) * (1.0 + GameManager.get_bestiary_damage_bonus(_cs.current_enemy.id)) * GameManager.get_pack_or_boss_damage_mult(_cs.current_enemy.id, _cs.pack_total_count)

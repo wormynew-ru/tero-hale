@@ -125,8 +125,8 @@ func bind_combat_system(combat: CombatSystem) -> void:
 
 	_on_battle_search_changed(_combat_system.is_seeking_battle)
 	_on_combat_state_changed(int(_combat_system.current_state))
-	if _combat_system.current_enemy != null:
-		_on_enemy_pack_changed(_combat_system.pack_total_count, _combat_system.pack_total_count)
+	if _combat_system.current_enemy != null and _combat_system.current_state != CombatSystem.State.SPAWNING and _combat_system.enemy_max_hp > 0.0 and _combat_system.get_alive_pack_count() > 0:
+		_on_enemy_pack_changed(_combat_system.get_alive_pack_count(), _combat_system.pack_total_count)
 		_on_enemy_spawned(_combat_system.current_enemy, _combat_system.enemy_hp, _combat_system.enemy_max_hp, _combat_system.enemy_mana, _combat_system.current_enemy.max_mana)
 	else:
 		_on_enemy_cleared()
@@ -155,7 +155,8 @@ func _refresh_all() -> void:
 	if _combat_system != null:
 		_on_battle_search_changed(_combat_system.is_seeking_battle)
 		_on_combat_state_changed(int(_combat_system.current_state))
-		if _combat_system.current_enemy != null:
+		if _combat_system.current_enemy != null and _combat_system.current_state != CombatSystem.State.SPAWNING and _combat_system.enemy_max_hp > 0.0 and _combat_system.get_alive_pack_count() > 0:
+			_on_enemy_pack_changed(_combat_system.get_alive_pack_count(), _combat_system.pack_total_count)
 			_on_enemy_spawned(_combat_system.current_enemy, _combat_system.enemy_hp, _combat_system.enemy_max_hp, _combat_system.enemy_mana, _combat_system.current_enemy.max_mana)
 		else:
 			_on_enemy_cleared()
@@ -343,10 +344,14 @@ func _update_enemy_name_label() -> void:
 func _on_enemy_hp_changed(current_hp: float, max_hp: float) -> void:
 	if GameManager.is_afk_mode:
 		return
-	var pct: int = clampi(roundi((current_hp / maxf(1.0, max_hp)) * 100.0), 0, 100)
-	var hp_str: String = "%s / %s (%d%%)" % [NumberFormatter.format_number(ceil(current_hp)), NumberFormatter.format_number(maxf(1.0, max_hp)), pct]
+	if max_hp <= 0.0:
+		enemy_hp_bar.max_value = 1.0
+		enemy_hp_bar.value = 0.0
+		return
+	var pct: int = clampi(roundi((current_hp / max_hp) * 100.0), 0, 100)
+	var hp_str: String = "%s / %s (%d%%)" % [NumberFormatter.format_number(ceil(current_hp)), NumberFormatter.format_number(max_hp), pct]
 	enemy_hp_bar.max_value = max_hp
-	enemy_hp_bar.value = current_hp
+	enemy_hp_bar.value = clampf(current_hp, 0.0, max_hp)
 	if hp_str != _last_enemy_hp_str:
 		_last_enemy_hp_str = hp_str
 		enemy_hp_bar_label.text = hp_str

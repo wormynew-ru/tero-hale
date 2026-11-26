@@ -240,9 +240,11 @@ func _process_fighting(delta: float) -> void:
 	if not is_seeking_battle:
 		_set_state(State.IDLE)
 		return
-	if current_enemy == null:
+	if current_enemy == null or _pack_hps.is_empty() or get_alive_pack_count() <= 0 or enemy_max_hp <= 0.0:
+		if current_enemy != null:
+			_reset_active_enemy_state()
 		_spawn_enemy()
-		if current_enemy == null:
+		if current_enemy == null or _pack_hps.is_empty():
 			return
 
 	var combat_regen_pct: float = (0.025 if GameManager.has_hero_class("troll") else 0.0) + (0.02 if GameManager.has_dark_skill("immortal_pact") else 0.0)
@@ -373,7 +375,7 @@ func _process_resting(delta: float) -> void:
 			_player_attack_timer = 0.0
 			_enemy_attack_timer = 0.0
 			_set_state(State.FIGHTING)
-			if current_enemy == null or enemy_hp <= 0.0:
+			if current_enemy == null or enemy_hp <= 0.0 or _pack_hps.is_empty() or get_alive_pack_count() <= 0 or enemy_max_hp <= 0.0:
 				_spawn_enemy()
 		else:
 			_set_state(State.IDLE)
@@ -556,7 +558,7 @@ func sync_pack_totals() -> void:
 
 
 func apply_damage_to_pack_rollover(damage: float) -> void:
-	if damage <= 0.0 or current_enemy == null:
+	if damage <= 0.0 or current_state != State.FIGHTING or current_enemy == null or _pack_hps.is_empty() or get_alive_pack_count() <= 0:
 		return
 	var remaining_dmg: float = damage
 	for i: int in range(_pack_hps.size()):
@@ -580,7 +582,7 @@ func apply_damage_to_pack_rollover(damage: float) -> void:
 
 
 func apply_damage_to_all_alive_in_pack(dmg_amount: float) -> bool:
-	if dmg_amount <= 0.0 or current_enemy == null:
+	if dmg_amount <= 0.0 or current_state != State.FIGHTING or current_enemy == null or _pack_hps.is_empty() or get_alive_pack_count() <= 0:
 		return false
 	var killed_indices: Array[int] = []
 	for i: int in range(_pack_hps.size()):
@@ -656,11 +658,18 @@ func _set_state(new_state: State) -> void:
 
 
 func _on_location_changed(_location: LocationData) -> void:
+	var keep_spawning: bool = current_state == State.SPAWNING
+	var prev_spawn_timer: float = _spawn_timer
 	_reset_active_enemy_state()
 	if not is_seeking_battle:
 		return
-	if current_state != State.RESTING:
-		_set_state(State.FIGHTING)
+	if current_state == State.RESTING or GameManager.current_hp <= 0.0:
+		_set_state(State.RESTING)
+		return
+	if keep_spawning:
+		_spawn_timer = maxf(0.05, prev_spawn_timer)
+		return
+	_set_state(State.FIGHTING)
 	_spawn_enemy()
 
 

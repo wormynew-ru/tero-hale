@@ -512,7 +512,7 @@ func is_challenge_completed(challenge_id: String) -> bool: return difficulty_ser
 func is_potions_blocked_by_challenge() -> bool: return difficulty_service.is_potions_blocked_by_challenge()
 func is_non_staff_blocked_by_challenge() -> bool: return difficulty_service.is_non_staff_blocked_by_challenge()
 func is_gear_blocked_by_challenge() -> bool: return difficulty_service.is_gear_blocked_by_challenge()
-func on_final_boss_defeated() -> void: difficulty_service.on_final_boss_defeated()
+func on_final_boss_defeated() -> bool: return difficulty_service.on_final_boss_defeated()
 func on_curse_warden_defeated() -> void: difficulty_service.on_curse_warden_defeated()
 
 func get_total_strength() -> int: return stats_calc.get_total_strength()

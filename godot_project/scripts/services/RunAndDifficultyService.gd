@@ -314,8 +314,8 @@ func start_new_run(target_difficulty: int, challenge_id: String = "") -> void:
 		_gm.total_runs_completed += 1
 	init_run_state(clamped_diff, challenge_id)
 	_gm.save_game(true)
-	_gm._emit_all_refresh_signals()
 	_gm.game_reset.emit()
+	_gm._emit_all_refresh_signals()
 
 
 func reset_progress() -> void:
@@ -326,8 +326,8 @@ func reset_progress() -> void:
 	_gm.set_afk_mode(false)
 	init_full_reset_state()
 	_gm.save_game(true)
-	_gm._emit_all_refresh_signals()
 	_gm.game_reset.emit()
+	_gm._emit_all_refresh_signals()
 
 
 func roll_difficulty_reset_item_drop() -> void:
