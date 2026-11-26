@@ -2,6 +2,20 @@
 
 Все значимые изменения проекта фиксируются в этом файле.
 
+## [0.27.0] — Модульная декомпозиция ядра, боевой системы и сложных сцен UI (по ТЗ)
+### Рефакторинг архитектуры и стандартизация
+- **1. Правило 9 в `CLAUDE.md` (модульность логики и лимит размера скриптов)**:
+  - Закреплён мягкий лимит `350–400` строк на `.gd`-файлы, запрет раздувания `GameManager.gd`/`CombatSystem.gd` и процедурного создания сложных UI-вкладок через `.new()` без вынесения в отдельные `.tscn` + `.gd`.
+- **2. Декомпозиция `GameManager.gd` → `scripts/data/` и `scripts/services/` (`22` модуля)**:
+  - Статические каталоги вынесены в `scripts/data/`: `ItemAndShopCatalog.gd`, `WorldAndAbilityCatalog.gd`, `SanctuaryAndForgeCatalog.gd`.
+  - Доменная логика разделена на `19` изолированных дочерних сервисов в `scripts/services/`: `SaveService.gd`, `SaveSerializer.gd`, `SaveDictCodec.gd`, `StatsCalculator.gd`, `CombatStatsCalculator.gd`, `InventoryService.gd`, `PotionService.gd`, `CombatLoadoutService.gd`, `ProgressionService.gd`, `RunAndDifficultyService.gd`, `DifficultyAndChallengeService.gd`, `SkillAndClassService.gd`, `PetAndMasteryService.gd`, `AbilityAndBuffService.gd`, `ForgeService.gd`, `SanctuaryService.gd`, `BrewingService.gd`, `WorldAndMineService.gd`, `WaveAndWellService.gd`.
+  - `GameManager.gd` преобразован в чистый корневой Autoload-фасад со 100% сохранением публичных методов, сигналов и совместимости `SaveData`.
+- **3. Декомпозиция `CombatSystem.gd` → `scripts/combat/`**:
+  - Боевая подсистема разделена на `CombatAbilityHandler.gd` (27 чар, DoT, `soul_overload` 12 тиков/с), `CombatClassAndPetHandler.gd` (духи Спирита, аура Отражателя, срез брони Тролля, 6 путников) и `CombatRewardHandler.gd` (лут/дроп, пачки, Шахта, Авто-маршрут).
+- **4. Модульные подсцены `SanctuaryUI` и `BattleArenaUI` (`scenes/sanctuary/`, `scenes/arena/`)**:
+  - `SanctuaryUI` вынесен в 3 сцены вкладок (`SanctuaryGardenTab.tscn`, `SanctuaryBrewingTab.tscn`, `SanctuarySpiritTab.tscn`) и 4 переиспользуемые сцены карточек (`GardenPlotCard.tscn`, `BrewCauldronCard.tscn`, `PetExpeditionCard.tscn`, `SpiritTrainingCard.tscn`) без `queue_free()`.
+  - `BattleArenaUI` вынесен в подсцены `ArenaHeroHud.tscn`, `ArenaBuffsPanel.tscn` и `ArenaDamagePopups.tscn` (пулы всплывающих чисел и снарядов, троттленные анимации аватаров).
+
 ## [0.26.0] — Починка оффхендов, Параллельные бои, Авто-сложность, Бафф Барьера, 50/37 узлов, Полигон тренировок и Вечный Монолит Отражения (по ТЗ)
 ### Добавлено и исправлено
 - **1. Починка экипировки любой второй руки (`GameManager.gd`, `InventoryUI.gd`, `RightSidebarUI.gd`)**:

@@ -1,0 +1,52 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/sanctuary/SanctuarySpiritTab.gd" id="1_spirit_tab"]
+
+[node name="SanctuarySpiritTab" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+script = ExtResource("1_spirit_tab")
+
+[node name="ExpeditionsHeaderLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.9, 0.96, 1)
+theme_override_font_sizes/font_size = 17
+text = "🧭 Экспедиции путников (15м / 1ч • Золото, Семена, ⛏️ Руда Бездны и 📜 Листы)"
+autowrap_mode = 3
+
+[node name="ExpeditionsHintLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.9, 0.98, 1)
+theme_override_font_sizes/font_size = 13
+text = "Отправьте свободных (неэкипированных) путников на вылазку — награда забирается здесь после завершения таймера."
+autowrap_mode = 3
+
+[node name="ExpeditionsBox" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ExpeditionsSeparator" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="SpiritHeaderLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.96, 0.98, 1)
+theme_override_font_sizes/font_size = 17
+text = "🌿 Дрессировка духов Спирита (🌟 Плод первоцвета духов • 0.03% с Вечного титана)"
+autowrap_mode = 3
+
+[node name="SpiritTrainingStatusLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.9, 0.98, 1)
+theme_override_font_sizes/font_size = 13
+text = "Доступно классу 🌿 Спирит (Сл.50+)."
+autowrap_mode = 3
+
+[node name="SpiritTrainingBox" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8

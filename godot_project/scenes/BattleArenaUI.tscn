@@ -1,91 +1,10 @@
-[gd_scene load_steps=23 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/BattleArenaUI.gd" id="1_arena_ui"]
 [ext_resource type="PackedScene" path="res://scenes/AttackDiamond.tscn" id="2_attack_diamond"]
-[ext_resource type="PackedScene" path="res://scenes/AbilitySlotButton.tscn" id="3_ability_slot"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_crest"]
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-bg_color = Color(0.2, 0.22, 0.24, 0.95)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.78, 0.76, 0.68, 0.95)
-corner_radius_top_left = 72
-corner_radius_top_right = 72
-corner_radius_bottom_right = 72
-corner_radius_bottom_left = 72
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_crest_btn_normal"]
-bg_color = Color(0, 0, 0, 0)
-corner_radius_top_left = 72
-corner_radius_top_right = 72
-corner_radius_bottom_right = 72
-corner_radius_bottom_left = 72
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_crest_btn_hover"]
-bg_color = Color(1, 0.95, 0.78, 0.08)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.96, 0.84, 0.36, 0.95)
-corner_radius_top_left = 72
-corner_radius_top_right = 72
-corner_radius_bottom_right = 72
-corner_radius_bottom_left = 72
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stat_red"]
-bg_color = Color(0.68, 0.2, 0.2, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.84, 0.8, 0.72, 0.95)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stat_green"]
-bg_color = Color(0.29, 0.48, 0.24, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.84, 0.8, 0.72, 0.95)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stat_blue"]
-bg_color = Color(0.18, 0.35, 0.56, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.84, 0.8, 0.72, 0.95)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_stat_purple"]
-bg_color = Color(0.36, 0.22, 0.54, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.84, 0.8, 0.72, 0.95)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
+[ext_resource type="PackedScene" path="res://scenes/arena/ArenaHeroHud.tscn" id="3_hero_hud"]
+[ext_resource type="PackedScene" path="res://scenes/arena/ArenaBuffsPanel.tscn" id="4_buffs_panel"]
+[ext_resource type="PackedScene" path="res://scenes/arena/ArenaDamagePopups.tscn" id="5_damage_popups"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_chip"]
 content_margin_left = 10.0
@@ -188,13 +107,6 @@ corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mana_fill"]
 bg_color = Color(0.2, 0.56, 0.88, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp_fill"]
-bg_color = Color(0.88, 0.7, 0.2, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -344,245 +256,9 @@ theme_override_constants/margin_bottom = 14
 layout_mode = 2
 mouse_filter = 2
 
-[node name="TopLeftHUD" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot"]
+[node name="ArenaHeroHud" parent="ArenaHUDMargin/HUDRoot" instance=ExtResource("3_hero_hud")]
+unique_name_in_owner = true
 layout_mode = 0
-offset_right = 340.0
-offset_bottom = 148.0
-mouse_filter = 2
-theme_override_constants/separation = 12
-
-[node name="HeroCrestPanel" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD"]
-custom_minimum_size = Vector2(140, 140)
-layout_mode = 2
-size_flags_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_crest")
-
-[node name="CrestVBox" type="VBoxContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel"]
-layout_mode = 2
-mouse_filter = 2
-alignment = 1
-theme_override_constants/separation = 3
-
-[node name="CrestXPTitle" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel/CrestVBox"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.92, 0.74, 0.24, 1)
-theme_override_font_sizes/font_size = 13
-text = "XP"
-horizontal_alignment = 1
-
-[node name="CrestHeroTitle" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel/CrestVBox"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 15
-text = "ГЕРОЙ"
-horizontal_alignment = 1
-
-[node name="LevelLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel/CrestVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 19
-text = "Lv. 1"
-horizontal_alignment = 1
-
-[node name="XPBar" type="ProgressBar" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel/CrestVBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(104, 15)
-layout_mode = 2
-size_flags_horizontal = 4
-mouse_filter = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_xp_fill")
-value = 0.0
-show_percentage = false
-
-[node name="XPLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel/CrestVBox/XPBar"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 10
-text = "0 / 50"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="HeroCrestHPBar" type="ProgressBar" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel/CrestVBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 13)
-layout_mode = 2
-size_flags_horizontal = 4
-mouse_filter = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_hp_fill")
-max_value = 400.0
-value = 400.0
-show_percentage = false
-
-[node name="HeroCrestHPLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel/CrestVBox/HeroCrestHPBar"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 9
-text = "400/400"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="HeroCrestButton" type="Button" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/HeroCrestPanel"]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "Открыть меню героя"
-mouse_default_cursor_shape = 2
-theme_override_styles/normal = SubResource("StyleBoxFlat_crest_btn_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_crest_btn_hover")
-theme_override_styles/pressed = SubResource("StyleBoxFlat_crest_btn_hover")
-flat = true
-
-[node name="StatCirclesColumn" type="VBoxContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 4
-
-[node name="StrBadgeRow" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 6
-
-[node name="StrCircle" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/StrBadgeRow"]
-custom_minimum_size = Vector2(36, 34)
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_stat_red")
-
-[node name="StrBadgeLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/StrBadgeRow/StrCircle"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 10
-text = "⚔️
-5"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="CrestBarsCol" type="VBoxContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/StrBadgeRow"]
-layout_mode = 2
-size_flags_vertical = 4
-mouse_filter = 2
-theme_override_constants/separation = 3
-
-[node name="CrestRedPill" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/StrBadgeRow/CrestBarsCol"]
-custom_minimum_size = Vector2(76, 17)
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_hp_fill")
-
-[node name="CrestRedLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/StrBadgeRow/CrestBarsCol/CrestRedPill"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 11
-text = "❤️ 400"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="CrestBluePill" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/StrBadgeRow/CrestBarsCol"]
-custom_minimum_size = Vector2(76, 17)
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_mana_fill")
-
-[node name="CrestBlueLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/StrBadgeRow/CrestBarsCol/CrestBluePill"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 11
-text = "💧 285"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="AgiBadgeRow" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 6
-
-[node name="AgiCircle" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/AgiBadgeRow"]
-custom_minimum_size = Vector2(36, 34)
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_stat_green")
-
-[node name="AgiBadgeLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/AgiBadgeRow/AgiCircle"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 10
-text = "⚡
-5"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="EndBadgeRow" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 6
-
-[node name="EndCircle" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/EndBadgeRow"]
-custom_minimum_size = Vector2(36, 34)
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_stat_blue")
-
-[node name="EndBadgeLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/EndBadgeRow/EndCircle"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 10
-text = "🛡️
-5"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="IntBadgeRow" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 6
-
-[node name="IntCircle" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/IntBadgeRow"]
-custom_minimum_size = Vector2(36, 34)
-layout_mode = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_stat_purple")
-
-[node name="IntBadgeLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/TopLeftHUD/StatCirclesColumn/IntBadgeRow/IntCircle"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-theme_override_colors/font_outline_color = Color(0, 0, 0, 0.9)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 10
-text = "🧠
-5"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="TopRightHUD" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot"]
 layout_mode = 1
@@ -926,68 +602,9 @@ text = "60 / 60 (100%)"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BottomLeftHUD" type="VBoxContainer" parent="ArenaHUDMargin/HUDRoot"]
+[node name="ArenaBuffsPanel" parent="ArenaHUDMargin/HUDRoot" instance=ExtResource("4_buffs_panel")]
+unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_top = -152.0
-offset_right = 276.0
-grow_vertical = 0
-mouse_filter = 2
-alignment = 2
-theme_override_constants/separation = 8
-
-[node name="MagicTopRow" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_constants/separation = 8
-
-[node name="MagicStatusCircle" type="PanelContainer" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD/MagicTopRow"]
-custom_minimum_size = Vector2(62, 62)
-layout_mode = 2
-size_flags_horizontal = 0
-tooltip_text = "Тап — применить заклинание | Удерживание 1 сек — автоприменение"
-theme_override_styles/panel = SubResource("StyleBoxFlat_circle_btn")
-
-[node name="MagicStatusLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD/MagicTopRow/MagicStatusCircle"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-text = "✨
-0/3"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="ActiveBuffsLabel" type="Label" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD/MagicTopRow"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 4
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.58, 0.95, 0.72, 1)
-theme_override_colors/font_outline_color = Color(0.04, 0.05, 0.08, 0.95)
-theme_override_constants/outline_size = 3
-theme_override_font_sizes/font_size = 12
-text = ""
-
-[node name="AbilitiesRow" type="HBoxContainer" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD"]
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="AbilitySlot0" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD/AbilitiesRow" instance=ExtResource("3_ability_slot")]
-unique_name_in_owner = true
-layout_mode = 2
-slot_index = 0
-
-[node name="AbilitySlot1" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD/AbilitiesRow" instance=ExtResource("3_ability_slot")]
-unique_name_in_owner = true
-layout_mode = 2
-slot_index = 1
-
-[node name="AbilitySlot2" parent="ArenaHUDMargin/HUDRoot/BottomLeftHUD/AbilitiesRow" instance=ExtResource("3_ability_slot")]
-unique_name_in_owner = true
-layout_mode = 2
-slot_index = 2
 
 [node name="BottomCenterHUD" type="VBoxContainer" parent="ArenaHUDMargin/HUDRoot"]
 layout_mode = 1
@@ -1049,3 +666,7 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_backpack_card")
 theme_override_styles/hover = SubResource("StyleBoxFlat_backpack_card")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_circle_btn_pressed")
 text = "РЮКЗАК  🎒"
+
+[node name="ArenaDamagePopups" parent="." instance=ExtResource("5_damage_popups")]
+unique_name_in_owner = true
+layout_mode = 1

@@ -1,0 +1,65 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/sanctuary/SanctuaryGardenTab.gd" id="1_garden_tab"]
+
+[node name="SanctuaryGardenTab" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+script = ExtResource("1_garden_tab")
+
+[node name="LightGardenHeaderLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.88, 0.45, 1)
+theme_override_font_sizes/font_size = 17
+text = "☀️ Светлый сад (Сл.1+ • Простые растения, приманка путников и подкормка)"
+autowrap_mode = 3
+
+[node name="LightGardenHintLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.84, 0.9, 0.96, 1)
+theme_override_font_sizes/font_size = 13
+text = "Вырастите растения на всех 3 грядках и нажмите «Приманить путника!». Если узор совпадёт с новым путником — он приручится; если повторка или ошибка — ничего не произойдёт и растения завянут."
+autowrap_mode = 3
+
+[node name="LightGardenPlotsBox" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="LureActionPanel" type="PanelContainer" parent="."]
+layout_mode = 2
+
+[node name="LureActionRow" type="HBoxContainer" parent="LureActionPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LurePreviewLabel" type="Label" parent="LureActionPanel/LureActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "Высадка приманки: [ ? ] + [ ? ] + [ ? ]"
+autowrap_mode = 3
+
+[node name="LurePetButton" type="Button" parent="LureActionPanel/LureActionRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(210, 44)
+layout_mode = 2
+text = "🐾 Приманить путника!"
+
+[node name="DarkGardenSeparator" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="GardenHeaderLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78, 0.56, 0.98, 1)
+theme_override_font_sizes/font_size = 17
+text = "🌑 Тёмный сад (Сл.10+ • Мощные травы для супер-зелий и Первоцвет духов)"
+autowrap_mode = 3
+
+[node name="GardenPlotsBox" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10

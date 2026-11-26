@@ -1,6 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/SanctuaryUI.gd" id="1_sanctuary_ui"]
+[ext_resource type="PackedScene" path="res://scenes/sanctuary/SanctuaryGardenTab.tscn" id="2_garden_tab"]
+[ext_resource type="PackedScene" path="res://scenes/sanctuary/SanctuaryBrewingTab.tscn" id="3_brewing_tab"]
+[ext_resource type="PackedScene" path="res://scenes/sanctuary/SanctuarySpiritTab.tscn" id="4_spirit_tab"]
 
 [node name="SanctuaryUI" type="ScrollContainer"]
 layout_mode = 2
@@ -35,6 +38,34 @@ theme_override_font_sizes/font_size = 13
 text = "ℹ️ Посадки, варка, путники и дрессировка сохраняются между ранами!"
 autowrap_mode = 3
 
+[node name="TabsRow" type="HBoxContainer" parent="SanctuaryVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TabGardenButton" type="Button" parent="SanctuaryVBox/TabsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "🌱 Сады"
+
+[node name="TabBrewButton" type="Button" parent="SanctuaryVBox/TabsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "⚗️ Котлы и Рецепты"
+
+[node name="TabSpiritButton" type="Button" parent="SanctuaryVBox/TabsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "🧭 Вылазки и Духи"
+
 [node name="FeedbackLabel" type="Label" parent="SanctuaryVBox"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -43,131 +74,16 @@ theme_override_font_sizes/font_size = 14
 text = ""
 autowrap_mode = 3
 
-[node name="LightGardenHeaderLabel" type="Label" parent="SanctuaryVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.88, 0.45, 1)
-theme_override_font_sizes/font_size = 17
-text = "☀️ Светлый сад (Сл.1+ • Простые растения, приманка путников и подкормка)"
-
-[node name="LightGardenHintLabel" type="Label" parent="SanctuaryVBox"]
+[node name="SanctuaryGardenTab" parent="SanctuaryVBox" instance=ExtResource("2_garden_tab")]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.84, 0.9, 0.96, 1)
-theme_override_font_sizes/font_size = 13
-text = "Вырастите растения на всех 3 грядках и нажмите «Приманить путника!». Если узор совпадёт с новым путником — он приручится; если повторка или ошибка — ничего не произойдёт и растения завянут."
-autowrap_mode = 3
 
-[node name="LightGardenPlotsBox" type="VBoxContainer" parent="SanctuaryVBox"]
+[node name="SanctuaryBrewingTab" parent="SanctuaryVBox" instance=ExtResource("3_brewing_tab")]
 unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="LureActionPanel" type="PanelContainer" parent="SanctuaryVBox"]
+visible = false
 layout_mode = 2
 
-[node name="LureActionRow" type="HBoxContainer" parent="SanctuaryVBox/LureActionPanel"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="LurePreviewLabel" type="Label" parent="SanctuaryVBox/LureActionPanel/LureActionRow"]
+[node name="SanctuarySpiritTab" parent="SanctuaryVBox" instance=ExtResource("4_spirit_tab")]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 13
-text = "Высадка приманки: [ ? ] + [ ? ] + [ ? ]"
-autowrap_mode = 3
-
-[node name="LurePetButton" type="Button" parent="SanctuaryVBox/LureActionPanel/LureActionRow"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(210, 44)
-layout_mode = 2
-text = "🐾 Приманить путника!"
-
-[node name="LightSeparator" type="HSeparator" parent="SanctuaryVBox"]
-layout_mode = 2
-
-[node name="ExpeditionsHeaderLabel" type="Label" parent="SanctuaryVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.9, 0.96, 1)
-theme_override_font_sizes/font_size = 17
-text = "🧭 Экспедиции путников (15м / 1ч • Золото, Семена, ⛏️ Руда Бездны и 📜 Листы)"
-
-[node name="ExpeditionsHintLabel" type="Label" parent="SanctuaryVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.9, 0.98, 1)
-theme_override_font_sizes/font_size = 13
-text = "Отправьте свободных (неэкипированных) путников на вылазку — награда забирается здесь после завершения таймера."
-autowrap_mode = 3
-
-[node name="ExpeditionsBox" type="VBoxContainer" parent="SanctuaryVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="ExpeditionsSeparator" type="HSeparator" parent="SanctuaryVBox"]
-layout_mode = 2
-
-[node name="SpiritHeaderLabel" type="Label" parent="SanctuaryVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.96, 0.98, 1)
-theme_override_font_sizes/font_size = 17
-text = "🌿 Дрессировка духов Спирита (🌟 Плод первоцвета духов • 0.03% с Вечного титана)"
-
-[node name="SpiritTrainingStatusLabel" type="Label" parent="SanctuaryVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.9, 0.98, 1)
-theme_override_font_sizes/font_size = 13
-text = "Доступно классу 🌿 Спирит (Сл.50+)."
-autowrap_mode = 3
-
-[node name="SpiritTrainingBox" type="VBoxContainer" parent="SanctuaryVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="SpiritSeparator" type="HSeparator" parent="SanctuaryVBox"]
-layout_mode = 2
-
-[node name="GardenHeaderLabel" type="Label" parent="SanctuaryVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.78, 0.56, 0.98, 1)
-theme_override_font_sizes/font_size = 17
-text = "🌑 Тёмный сад (Сл.10+ • Мощные травы для супер-зелий и Первоцвет духов)"
-
-[node name="GardenPlotsBox" type="VBoxContainer" parent="SanctuaryVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="GardenSeparator" type="HSeparator" parent="SanctuaryVBox"]
-layout_mode = 2
-
-[node name="BrewHeaderLabel" type="Label" parent="SanctuaryVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.58, 0.84, 0.98, 1)
-theme_override_font_sizes/font_size = 17
-text = "⚗️ Котлы зельеварения (Сл.10+ • Вода → Шаг 1 → Шаг 2 → Шаг 3)"
-
-[node name="BrewCauldronsBox" type="VBoxContainer" parent="SanctuaryVBox"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="RecipeSeparator" type="HSeparator" parent="SanctuaryVBox"]
-layout_mode = 2
-
-[node name="RecipeTitleLabel" type="Label" parent="SanctuaryVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.98, 0.84, 0.42, 1)
-theme_override_font_sizes/font_size = 16
-text = "📖 Справочник Садов, Узоров путников и Рецептов зелий"
-
-[node name="RecipeGuideLabel" type="RichTextLabel" parent="SanctuaryVBox"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 260)
-layout_mode = 2
-bbcode_enabled = true
-fit_content = true
-text = ""

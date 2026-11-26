@@ -1,0 +1,79 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/arena/ArenaBuffsPanel.gd" id="1_buffs_panel"]
+[ext_resource type="PackedScene" path="res://scenes/AbilitySlotButton.tscn" id="2_ability_slot"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_circle_btn"]
+bg_color = Color(0.17, 0.19, 0.22, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.78, 0.75, 0.66, 0.95)
+corner_radius_top_left = 48
+corner_radius_top_right = 48
+corner_radius_bottom_right = 48
+corner_radius_bottom_left = 48
+
+[node name="ArenaBuffsPanel" type="VBoxContainer"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -152.0
+offset_right = 276.0
+grow_vertical = 0
+mouse_filter = 2
+alignment = 2
+theme_override_constants/separation = 8
+script = ExtResource("1_buffs_panel")
+
+[node name="MagicTopRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="MagicStatusCircle" type="PanelContainer" parent="MagicTopRow"]
+custom_minimum_size = Vector2(62, 62)
+layout_mode = 2
+size_flags_horizontal = 0
+tooltip_text = "Тап — применить заклинание | Удерживание 1 сек — автоприменение"
+theme_override_styles/panel = SubResource("StyleBoxFlat_circle_btn")
+
+[node name="MagicStatusLabel" type="Label" parent="MagicTopRow/MagicStatusCircle"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+text = "✨
+0/3"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ActiveBuffsLabel" type="Label" parent="MagicTopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.58, 0.95, 0.72, 1)
+theme_override_colors/font_outline_color = Color(0.04, 0.05, 0.08, 0.95)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="AbilitiesRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AbilitySlot0" parent="AbilitiesRow" instance=ExtResource("2_ability_slot")]
+unique_name_in_owner = true
+layout_mode = 2
+slot_index = 0
+
+[node name="AbilitySlot1" parent="AbilitiesRow" instance=ExtResource("2_ability_slot")]
+unique_name_in_owner = true
+layout_mode = 2
+slot_index = 1
+
+[node name="AbilitySlot2" parent="AbilitiesRow" instance=ExtResource("2_ability_slot")]
+unique_name_in_owner = true
+layout_mode = 2
+slot_index = 2

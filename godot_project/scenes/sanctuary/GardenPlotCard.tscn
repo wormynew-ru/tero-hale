@@ -1,0 +1,62 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/sanctuary/GardenPlotCard.gd" id="1_garden_card"]
+
+[node name="GardenPlotCard" type="PanelContainer"]
+layout_mode = 2
+script = ExtResource("1_garden_card")
+
+[node name="CardVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="HeaderRow" type="HBoxContainer" parent="CardVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="CardVBox/HeaderRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "🌼 Грядка"
+autowrap_mode = 3
+
+[node name="ActionButton" type="Button" parent="CardVBox/HeaderRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(170, 44)
+layout_mode = 2
+text = "🧺 Собрать"
+
+[node name="ProgressBar" type="ProgressBar" parent="CardVBox"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+
+[node name="FeedRow" type="HBoxContainer" parent="CardVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FeedHintLabel" type="Label" parent="CardVBox/FeedRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = ""
+autowrap_mode = 3
+
+[node name="FeedButton" type="Button" parent="CardVBox/FeedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "🌿 Скормить духам (Момент. рост!)"
+
+[node name="ChoicesFlow" type="HFlowContainer" parent="CardVBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8

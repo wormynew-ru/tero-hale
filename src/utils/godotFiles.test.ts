@@ -130,14 +130,23 @@ test('tokenizeLine highlights HeroClassData, DarkSkillNodeData, PetData, and Num
   assert.ok(tokens.some((t) => t.text === 'NumberFormatter' && t.kind === 'type'));
 });
 
-test('all res:// paths in GameManager.gd, .tscn, and .tres files resolve on disk', () => {
-  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  const gmPaths = [...gmContent.matchAll(/"(res:\/\/[^"]+)"/g)]
-    .map((m) => m[1])
-    .filter((p) => !p.includes('%'));
-  assert.ok(gmPaths.length >= 60, 'Expected GameManager.gd to register locations, items, skills, classes');
+test('all res:// paths in catalog scripts, .tscn, and .tres files resolve on disk', () => {
+  const catalogPaths = [
+    path.join(GODOT_ROOT, 'scripts/GameManager.gd'),
+    path.join(GODOT_ROOT, 'scripts/data/ItemAndShopCatalog.gd'),
+    path.join(GODOT_ROOT, 'scripts/data/WorldAndAbilityCatalog.gd'),
+    path.join(GODOT_ROOT, 'scripts/data/SanctuaryAndForgeCatalog.gd'),
+  ];
+  const gmPaths: string[] = [];
+  for (const catFile of catalogPaths) {
+    const content = fs.readFileSync(catFile, 'utf-8');
+    for (const m of content.matchAll(/"(res:\/\/[^"]+)"/g)) {
+      if (!m[1].includes('%')) gmPaths.push(m[1]);
+    }
+  }
+  assert.ok(gmPaths.length >= 60, 'Expected GameManager & data catalogs to register locations, items, skills, classes');
   for (const resPath of gmPaths) {
-    assert.ok(fs.existsSync(resolveResPath(resPath)), `Missing GameManager resource on disk: ${resPath}`);
+    assert.ok(fs.existsSync(resolveResPath(resPath)), `Missing catalog resource on disk: ${resPath}`);
   }
 
   const allSceneAndRes = [
@@ -315,15 +324,17 @@ test('Reflector class and 6 immortal Pets (including Firework 5s start-of-battle
   assert.ok(saveContent.includes('equipped_pet_id'), 'SaveData must persist equipped_pet_id');
 
   const gmReflContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  assert.ok(gmReflContent.includes('base_reflect: float = 0.20'), 'GameManager must define 20% base reflection for Reflector');
+  const combatStatsTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/CombatStatsCalculator.gd'), 'utf-8');
+  assert.ok(combatStatsTxt.includes('base_reflect: float = 0.20'), 'CombatStatsCalculator must define 20% base reflection for Reflector');
   assert.ok(gmReflContent.includes('func get_reflector_mitigation_pct()'), 'GameManager must expose pre-armor mitigation cap (up to 99%)');
 
   const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const classPetTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatClassAndPetHandler.gd'), 'utf-8');
   assert.ok(combatContent.includes('raw_damage * total_reflect_pct'), 'CombatSystem must reflect total_reflect_pct of raw incoming damage for Reflector');
   assert.ok(combatContent.includes('get_reflector_mitigation_pct()'), 'CombatSystem must disperse incoming damage before armor using get_reflector_mitigation_pct()');
-  assert.ok(combatContent.includes('get_max_hp() * 0.05'), 'CombatSystem must pulse 5% Max HP/s for Reflector');
-  assert.ok(combatContent.includes('_unit_max_hp * 0.001'), 'CombatSystem must apply 0.1% single-unit enemy Max HP/s rot for Reflector (even across parallel packs)');
-  assert.ok(combatContent.includes('start_stun'), 'CombatSystem must trigger start_stun pet effect on enemy spawn');
+  assert.ok(classPetTxt.includes('get_max_hp() * 0.05'), 'CombatClassAndPetHandler must pulse 5% Max HP/s for Reflector');
+  assert.ok(classPetTxt.includes('_cs.get_unit_max_hp() * 0.001'), 'CombatClassAndPetHandler must apply 0.1% single-unit enemy Max HP/s rot for Reflector (even across parallel packs)');
+  assert.ok(classPetTxt.includes('start_stun'), 'CombatClassAndPetHandler must trigger start_stun pet effect on enemy spawn');
 });
 
 test('all 50 regular skills cost 1 SP with empowered bonuses, XP curve is steepened, and Dark Points are capped at 1 claim per difficulty', () => {
@@ -350,9 +361,11 @@ test('all 50 regular skills cost 1 SP with empowered bonuses, XP curve is steepe
   checkBonusAtLeast('guardian_aegis.tres', 80);
 
   const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  assert.ok(gmContent.includes('150.0 * pow(1.10'), 'GameManager must use steeper exponential+quadratic XP curve');
+  const combatStatsTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/CombatStatsCalculator.gd'), 'utf-8');
+  const diffSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/DifficultyAndChallengeService.gd'), 'utf-8');
+  assert.ok(combatStatsTxt.includes('150.0 * pow(1.10'), 'CombatStatsCalculator must use steeper exponential+quadratic XP curve');
   assert.ok(gmContent.includes('dark_points_claimed_difficulties'), 'GameManager must track claimed Dark Points per difficulty');
-  assert.ok(gmContent.includes('if not dark_points_claimed_difficulties.has(difficulty_level):'), 'GameManager must award Dark Points at most once per difficulty');
+  assert.ok(diffSvcTxt.includes('if not _gm.dark_points_claimed_difficulties.has(_gm.difficulty_level):'), 'DifficultyAndChallengeService must award Dark Points at most once per difficulty');
 
   const saveContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
   assert.ok(saveContent.includes('dark_points_claimed_difficulties'), 'SaveData must persist dark_points_claimed_difficulties');
@@ -381,14 +394,15 @@ test('mana potions, buff potions, village map hotspots, Diff-10 Sanctuary garden
   assert.ok(invScene.includes('QuickManaPotionButton'), 'InventoryUI.tscn must include QuickManaPotionButton');
 
   const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const runSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/RunAndDifficultyService.gd'), 'utf-8');
+  const rewardHandlerTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatRewardHandler.gd'), 'utf-8');
   assert.ok(gmContent.includes('ALCHEMY_UNLOCK_DIFFICULTY: int = 10'), 'Sanctuary & brewing must unlock at Difficulty 10');
   assert.ok(gmContent.includes('alchemist_next_mistake_safe: bool'), 'Alchemist explosion safety must use deterministic boolean flag');
   assert.ok(gmContent.includes('on_final_boss_killed_for_garden'), 'GameManager must track final boss kills for Scarlet Petal');
-  assert.ok(gmContent.includes('preserved_garden_items'), 'Seeds, harvests, garden plots, and brewing cauldrons must persist across start_new_run()');
+  assert.ok(runSvcTxt.includes('preserved_garden_items'), 'Seeds, harvests, garden plots, and brewing cauldrons must persist across start_new_run()');
 
-  const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
-  assert.ok(combatContent.includes('on_final_boss_killed_for_garden'), 'CombatSystem must increment Scarlet Petal boss kill counter on FINAL_BOSS_ID defeat');
-  assert.ok(combatContent.includes('roll_rare_seed_drops'), 'CombatSystem must roll rare seed drops on enemy defeat');
+  assert.ok(rewardHandlerTxt.includes('on_final_boss_killed_for_garden'), 'CombatRewardHandler must increment Scarlet Petal boss kill counter on FINAL_BOSS_ID defeat');
+  assert.ok(rewardHandlerTxt.includes('roll_rare_seed_drops'), 'CombatRewardHandler must roll rare seed drops on enemy defeat');
 
   for (const lockedSkill of ['herbal_mastery.tres', 'master_brewer.tres']) {
     const txt = fs.readFileSync(path.join(GODOT_ROOT, 'resources/skills', lockedSkill), 'utf-8');
@@ -409,9 +423,9 @@ test('SpellbookUI updates slot and spell buttons in-place without rebuilding on 
 });
 
 test('Shop excludes high-tier melee/armor (drop-only) while keeping starter gear and all ranged weapons/ammo', () => {
-  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  const shopMatch = /const SHOP_ITEM_PATHS: Array\[String\] = \[([\s\S]*?)\]/.exec(gmContent);
-  assert.ok(shopMatch, 'Expected SHOP_ITEM_PATHS in GameManager.gd');
+  const shopCatalog = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/ItemAndShopCatalog.gd'), 'utf-8');
+  const shopMatch = /const SHOP_ITEM_PATHS: Array\[String\] = \[([\s\S]*?)\]/.exec(shopCatalog);
+  assert.ok(shopMatch, 'Expected SHOP_ITEM_PATHS in ItemAndShopCatalog.gd');
   const shopBlock = shopMatch[1];
 
   const dropOnlyItems = [
@@ -479,8 +493,9 @@ test('Light Garden pet luring, withering duplicates, pet treat training, 0.03% S
   }
 
   const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  const recipeBlockMatch = /const PET_LURE_RECIPES: Array\[Dictionary\] = \[([\s\S]*?)\r?\n\]/.exec(gmContent);
-  assert.ok(recipeBlockMatch, 'GameManager must define PET_LURE_RECIPES');
+  const sancCatalogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/SanctuaryAndForgeCatalog.gd'), 'utf-8');
+  const recipeBlockMatch = /const PET_LURE_RECIPES: Array\[Dictionary\] = \[([\s\S]*?)\r?\n\]/.exec(sancCatalogTxt);
+  assert.ok(recipeBlockMatch, 'SanctuaryAndForgeCatalog must define PET_LURE_RECIPES');
   const recipeBlock = recipeBlockMatch[1];
   const patternSet = new Set<string>();
   for (const pid of petIds) {
@@ -493,20 +508,21 @@ test('Light Garden pet luring, withering duplicates, pet treat training, 0.03% S
   }
   assert.equal(patternSet.size, petIds.length, 'Every pet must have a unique 3-crop lure pattern');
 
-  assert.ok(gmContent.includes('func lure_pet_from_light_garden()'), 'GameManager must implement lure_pet_from_light_garden');
-  assert.ok(gmContent.includes('func train_pet_with_treat('), 'GameManager must implement train_pet_with_treat');
-  assert.ok(gmContent.includes('func feed_growing_crop_for_instant_growth('), 'GameManager must implement feed_growing_crop_for_instant_growth');
-  assert.ok(gmContent.includes('func train_spirit('), 'GameManager must implement train_spirit');
-  assert.ok(gmContent.includes('func buy_pet(_pet_id: String)'), 'Gold buy_pet must be disabled in favor of Light Garden luring');
+  assert.ok(gmContent.includes('func lure_pet_from_light_garden()'), 'GameManager must expose lure_pet_from_light_garden');
+  assert.ok(gmContent.includes('func train_pet_with_treat('), 'GameManager must expose train_pet_with_treat');
+  assert.ok(gmContent.includes('func feed_growing_crop_for_instant_growth('), 'GameManager must expose feed_growing_crop_for_instant_growth');
+  assert.ok(gmContent.includes('func train_spirit('), 'GameManager must expose train_spirit');
+  assert.ok(gmContent.includes('func buy_pet(pet_id: String)') || gmContent.includes('func buy_pet(_pet_id: String)'), 'Gold buy_pet must be delegated cleanly');
 
-  const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
-  assert.ok(combatContent.includes('get_spirit_power_multiplier'), 'CombatSystem must apply Spirit power multiplier');
-  assert.ok(combatContent.includes('get_spirit_speed_multiplier'), 'CombatSystem must apply Spirit speed multiplier');
-  assert.ok(combatContent.includes('get_pet_effect_value'), 'CombatSystem must use trained pet effect values');
+  const classPetTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatClassAndPetHandler.gd'), 'utf-8');
+  assert.ok(classPetTxt.includes('get_spirit_power_multiplier'), 'CombatClassAndPetHandler must apply Spirit power multiplier');
+  assert.ok(classPetTxt.includes('get_spirit_speed_multiplier'), 'CombatClassAndPetHandler must apply Spirit speed multiplier');
+  assert.ok(classPetTxt.includes('get_pet_effect_value'), 'CombatClassAndPetHandler must use trained pet effect values');
 
   const sanctuaryGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SanctuaryUI.gd'), 'utf-8');
-  assert.ok(sanctuaryGd.includes('_last_light_sig'), 'SanctuaryUI must cache Light Garden signature');
-  assert.ok(sanctuaryGd.includes('_last_dark_sig'), 'SanctuaryUI must cache Dark Garden signature');
+  const gardenTabGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/sanctuary/SanctuaryGardenTab.gd'), 'utf-8');
+  assert.ok(gardenTabGd.includes('_last_light_sig'), 'SanctuaryGardenTab must cache Light Garden signature');
+  assert.ok(gardenTabGd.includes('_last_dark_sig'), 'SanctuaryGardenTab must cache Dark Garden signature');
   assert.ok(sanctuaryGd.includes('is_visible_in_tree()'), 'SanctuaryUI must skip rebuilds when hidden');
 
   const petUiGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/PetUI.gd'), 'utf-8');
@@ -555,7 +571,7 @@ test('HoldAutoClicker provides 50/sec hold repeat across multi-tap UIs and no GD
     'scripts/ui/InventoryUI.gd',
     'scripts/ui/RightSidebarUI.gd',
     'scripts/ui/PetUI.gd',
-    'scripts/ui/SanctuaryUI.gd',
+    'scripts/ui/sanctuary/SpiritTrainingCard.gd',
     'scripts/ui/DifficultyUI.gd',
     'scripts/ui/DarkForgeUI.gd',
     'scripts/ui/DarkShopUI.gd',
@@ -587,18 +603,18 @@ test('HoldAutoClicker provides 50/sec hold repeat across multi-tap UIs and no GD
 });
 
 test('soul_overload (overcharge_burn) fires at 12 ticks per second for up to 12 ticks', () => {
-  const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const combatAbilityTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatAbilityHandler.gd'), 'utf-8');
   assert.ok(
-    combatContent.includes('OVERCHARGE_TICKS_PER_SECOND: float = 12.0'),
-    'CombatSystem must define 12 ticks per second for overcharge_burn',
+    combatAbilityTxt.includes('OVERCHARGE_TICKS_PER_SECOND: float = 12.0'),
+    'CombatAbilityHandler must define 12 ticks per second for overcharge_burn',
   );
   assert.ok(
-    combatContent.includes('OVERCHARGE_TICK_INTERVAL: float = 1.0 / OVERCHARGE_TICKS_PER_SECOND'),
-    'CombatSystem must compute tick interval as 1.0 / OVERCHARGE_TICKS_PER_SECOND',
+    combatAbilityTxt.includes('OVERCHARGE_TICK_INTERVAL: float = 1.0 / OVERCHARGE_TICKS_PER_SECOND'),
+    'CombatAbilityHandler must compute tick interval as 1.0 / OVERCHARGE_TICKS_PER_SECOND',
   );
   assert.ok(
-    combatContent.includes('OVERCHARGE_MAX_TICKS: int = 12'),
-    'CombatSystem must cap overcharge_burn at 12 ticks (1 second max)',
+    combatAbilityTxt.includes('OVERCHARGE_MAX_TICKS: int = 12'),
+    'CombatAbilityHandler must cap overcharge_burn at 12 ticks (1 second max)',
   );
 
   const soulOverloadTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/abilities/soul_overload.tres'), 'utf-8');
@@ -609,8 +625,11 @@ test('soul_overload (overcharge_burn) fires at 12 ticks per second for up to 12 
 test('Mage staffs & 2 tome types, Dark Forge (25%->20%->min 15% + eternal items), 1-attempt Mine, and configurable Auto-Potions are wired cleanly', () => {
   // 1. Mage equipment & drop-only top mage gear
   const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  const shopMatch = /const SHOP_ITEM_PATHS: Array\[String\] = \[([\s\S]*?)\]/.exec(gmContent);
-  assert.ok(shopMatch, 'Expected SHOP_ITEM_PATHS in GameManager.gd');
+  const itemCatalogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/ItemAndShopCatalog.gd'), 'utf-8');
+  const forgeSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/ForgeService.gd'), 'utf-8');
+  const runSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/RunAndDifficultyService.gd'), 'utf-8');
+  const shopMatch = /const SHOP_ITEM_PATHS: Array\[String\] = \[([\s\S]*?)\]/.exec(itemCatalogTxt);
+  assert.ok(shopMatch, 'Expected SHOP_ITEM_PATHS in ItemAndShopCatalog.gd');
   const shopBlock = shopMatch[1];
 
   for (const dropOnlyMage of ['druid_staff.tres', 'lich_scepter.tres', 'astral_staff.tres', 'astral_vestments.tres']) {
@@ -630,8 +649,8 @@ test('Mage staffs & 2 tome types, Dark Forge (25%->20%->min 15% + eternal items)
   assert.ok(/is_dark_forged\s*=\s*true/.test(eternalCodex), 'tome_eternal_codex must be eternal (is_dark_forged = true)');
 
   // 2. Dark Forge chances & UI wiring
-  assert.ok(gmContent.includes('return 25.0') && gmContent.includes('maxf(15.0, 20.0'), 'Dark Forge enchant must use 25% -> 20% -> min 15% curve');
-  assert.ok(gmContent.includes('item.is_dark_forged') && gmContent.includes('ItemData.ItemType.MATERIAL'), 'start_new_run() must preserve dark-forged items and mine materials');
+  assert.ok(forgeSvcTxt.includes('return 25.0') && forgeSvcTxt.includes('maxf(15.0, 20.0'), 'ForgeService Dark Forge enchant must use 25% -> 20% -> min 15% curve');
+  assert.ok(runSvcTxt.includes('.is_dark_forged') && runSvcTxt.includes('ItemData.ItemType.MATERIAL'), 'RunAndDifficultyService.init_run_state() must preserve dark-forged items and mine materials');
   assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'scenes/DarkForgeUI.tscn')), 'DarkForgeUI.tscn must exist');
   const heroMenuTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/HeroMenuUI.tscn'), 'utf-8');
   assert.ok(heroMenuTscn.includes('DarkForgeUI'), 'HeroMenuUI.tscn must embed DarkForgeUI');
@@ -649,8 +668,9 @@ test('Mage staffs & 2 tome types, Dark Forge (25%->20%->min 15% + eternal items)
   assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items/ancient_page.tres')), 'ancient_page.tres must exist');
 
   const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const rewardHandlerTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatRewardHandler.gd'), 'utf-8');
   assert.ok(combatContent.includes('fail_mine_run()'), 'CombatSystem must lock Mine on player death');
-  assert.ok(combatContent.includes('roll_mine_ambient_find()'), 'CombatSystem must trigger ambient Mine finds');
+  assert.ok(rewardHandlerTxt.includes('roll_mine_ambient_find()'), 'CombatRewardHandler must trigger ambient Mine finds');
 
   // 4. Configurable Auto-Potions (HP/MP thresholds + conditions + buff on-expire whitelist)
   const invScene = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/InventoryUI.tscn'), 'utf-8');
@@ -661,26 +681,27 @@ test('Mage staffs & 2 tome types, Dark Forge (25%->20%->min 15% + eternal items)
   assert.ok(combatContent.includes('try_auto_use_all_potions'), 'CombatSystem must invoke configurable auto-potions');
 });
 
-test('GameManager runs 8-minute autosave (480s) with atomic temp/backup saves and SaveData schema versioning', () => {
-  const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+test('GameManager and SaveService run 8-minute autosave (480s) with atomic temp/backup saves and SaveData schema versioning', () => {
+  const saveSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/SaveService.gd'), 'utf-8');
   const saveContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
 
-  assert.ok(gmContent.includes('const AUTOSAVE_INTERVAL: float = 480.0'), 'AUTOSAVE_INTERVAL must be 480.0 seconds (8 minutes)');
-  assert.ok(gmContent.includes('const SAVE_BACKUP_PATH: String = "user://save.bak.tres"'), 'GameManager must maintain user://save.bak.tres backup');
-  assert.ok(gmContent.includes('const SAVE_TEMP_PATH: String = "user://save.tmp.tres"'), 'GameManager must write atomically via user://save.tmp.tres');
-  assert.ok(gmContent.includes('ResourceLoader.CACHE_MODE_IGNORE'), 'load_game must bypass stale resource cache');
+  assert.ok(saveSvcTxt.includes('const AUTOSAVE_INTERVAL: float = 480.0'), 'AUTOSAVE_INTERVAL must be 480.0 seconds (8 minutes)');
+  assert.ok(saveSvcTxt.includes('const SAVE_BACKUP_PATH: String = "user://save.bak.tres"'), 'SaveService must maintain user://save.bak.tres backup');
+  assert.ok(saveSvcTxt.includes('const SAVE_TEMP_PATH: String = "user://save.tmp.tres"'), 'SaveService must write atomically via user://save.tmp.tres');
+  assert.ok(saveSvcTxt.includes('ResourceLoader.CACHE_MODE_IGNORE'), 'SaveService.load_game must bypass stale resource cache');
   assert.ok(saveContent.includes('@export var save_version: int = 1'), 'SaveData must include save_version with safe default');
 });
 
 test('GameManager and StatsUI support .txt save export/import and clipboard transfer', () => {
   const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const saveSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/SaveService.gd'), 'utf-8');
   const statsTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/StatsUI.tscn'), 'utf-8');
   const statsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
 
   for (const fnName of ['export_save_to_text', 'export_save_to_txt_file', 'import_save_from_text', 'import_save_from_txt_file']) {
     assert.ok(gmContent.includes(`func ${fnName}(`), `GameManager must define ${fnName}`);
   }
-  assert.ok(gmContent.includes('HERO_TALE_SAVE_TXT'), 'Exported .txt save must include HERO_TALE_SAVE_TXT format marker');
+  assert.ok(saveSvcTxt.includes('HERO_TALE_SAVE_TXT'), 'Exported .txt save must include HERO_TALE_SAVE_TXT format marker');
 
   for (const nodeName of ['ExportTxtButton', 'ImportTxtButton', 'CopyTxtButton', 'PasteTxtButton', 'ExportTxtDialog', 'ImportTxtDialog']) {
     assert.ok(statsTscn.includes(nodeName), `StatsUI.tscn must include ${nodeName}`);
@@ -727,17 +748,27 @@ test('OLED 2 FPS mode and interface blackout button are completely removed from 
 
 test('Android freeze optimizations (worker Thread save, O(1) caches, throttled signals, Label pools, coalesced UI) are wired', () => {
   const gmContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
-  for (const sym of ['const SAVE_THROTTLE_INTERVAL: float = 120.0', '_save_thread', '_wait_for_save_thread', '_save_worker_entry', 'func get_cached_item(', '_ensure_progression_caches', 'emit_signal_immediately']) {
-    assert.ok(gmContent.includes(sym), `GameManager.gd must implement ${sym}`);
+  const saveSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/SaveService.gd'), 'utf-8');
+  const runSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/RunAndDifficultyService.gd'), 'utf-8');
+  const progSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/ProgressionService.gd'), 'utf-8');
+  assert.ok(gmContent.includes('func get_cached_item('), 'GameManager.gd must implement get_cached_item');
+  for (const sym of ['const SAVE_THROTTLE_INTERVAL: float = 120.0', '_save_thread', 'wait_for_save_thread', '_save_worker_entry']) {
+    assert.ok(saveSvcTxt.includes(sym), `SaveService.gd must implement ${sym}`);
   }
+  assert.ok(runSvcTxt.includes('func ensure_progression_caches('), 'RunAndDifficultyService.gd must implement ensure_progression_caches');
+  assert.ok(progSvcTxt.includes('emit_signal_immediately'), 'ProgressionService.gd must support emit_signal_immediately');
 
   const combatContent = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
   assert.ok(combatContent.includes('func _emit_attack_progress('), 'CombatSystem must deduplicate idle attack progress emissions');
   assert.ok(combatContent.includes('_enemy_hud_sync_timer'), 'CombatSystem must throttle enemy continuous HUD updates');
 
   const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
-  for (const sym of ['_player_popup_pool', '_enemy_popup_pool', '_proj_pool', '_enemy_avatar_style', '_request_hud_refresh']) {
+  const popupsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/arena/ArenaDamagePopups.gd'), 'utf-8');
+  for (const sym of ['_enemy_avatar_style', '_request_hud_refresh']) {
     assert.ok(arenaGd.includes(sym), `BattleArenaUI.gd must implement ${sym}`);
+  }
+  for (const sym of ['_player_popup_pool', '_enemy_popup_pool', '_proj_pool']) {
+    assert.ok(popupsGd.includes(sym), `ArenaDamagePopups.gd must implement ${sym}`);
   }
 
   for (const treeRel of ['scripts/SkillTreeUI.gd', 'scripts/ui/DarkSkillTreeUI.gd']) {
@@ -755,7 +786,7 @@ test('Android freeze optimizations (worker Thread save, O(1) caches, throttled s
     assert.ok(idleGd.includes('set_process(false)'), `${idleProcessRel} must disable _process when confirmation timers are inactive`);
   }
 
-  for (const cachedRel of ['scripts/ui/PetUI.gd', 'scripts/ui/SanctuaryUI.gd']) {
+  for (const cachedRel of ['scripts/ui/PetUI.gd', 'scripts/ui/sanctuary/SanctuarySpiritTab.gd']) {
     const cachedGd = fs.readFileSync(path.join(GODOT_ROOT, cachedRel), 'utf-8');
     assert.ok(cachedGd.includes('GameManager.get_cached_item('), `${cachedRel} must use GameManager.get_cached_item instead of raw load()`);
   }
@@ -797,12 +828,14 @@ test('base_intellect is trainable, persisted, shown in StatsUI/BattleArenaUI, an
 
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
   assert.ok(gmTxt.includes('var base_intellect: int = 5'), 'GameManager must define base_intellect');
-  assert.ok(gmTxt.includes('float(base_intellect + roundi(get_skill_bonus("intellect"))'), 'get_total_intellect() must include base_intellect and intellect skill bonus');
-  assert.ok(gmTxt.includes('case "intellect":') || gmTxt.includes('"intellect":'), 'GameManager must allow training/upgrading intellect');
-  assert.ok(gmTxt.includes('float(get_total_endurance()) * 60.0'), 'Max HP must scale by 4x (60.0 per Endurance)');
-  assert.ok(gmTxt.includes('float(get_total_endurance()) * 16.0'), 'Max Mana must scale by 8x from Endurance (16.0 per Endurance)');
-  assert.ok(gmTxt.includes('float(get_total_intellect()) * 32.0'), 'Max Mana must scale by 8x from Intellect (32.0 per Intellect)');
-  assert.ok(gmTxt.includes('var prev_max_hp: float = get_max_hp()'), 'Upgrading stats must add proportional Max HP/Mana delta');
+  const statsCalcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/StatsCalculator.gd'), 'utf-8');
+  assert.ok(statsCalcTxt.includes('float(_gm.base_intellect + roundi(_gm.get_skill_bonus("intellect"))'), 'get_total_intellect() must include base_intellect and intellect skill bonus');
+  assert.ok(statsCalcTxt.includes('float(get_total_endurance()) * 60.0'), 'Max HP must scale by 4x (60.0 per Endurance)');
+  assert.ok(statsCalcTxt.includes('float(get_total_endurance()) * 16.0'), 'Max Mana must scale by 8x from Endurance (16.0 per Endurance)');
+  assert.ok(statsCalcTxt.includes('float(get_total_intellect()) * 32.0'), 'Max Mana must scale by 8x from Intellect (32.0 per Intellect)');
+  const progTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/ProgressionService.gd'), 'utf-8');
+  assert.ok(progTxt.includes('"intellect":'), 'ProgressionService must allow training/upgrading intellect');
+  assert.ok(progTxt.includes('var prev_max_hp: float = _gm.get_max_hp()'), 'Upgrading stats must add proportional Max HP/Mana delta');
 
   const statsTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/StatsUI.tscn'), 'utf-8');
   for (const nodeName of ['IntellectRow', 'IntValueLabel', 'IntSPButton', 'IntGoldButton']) {
@@ -811,10 +844,10 @@ test('base_intellect is trainable, persisted, shown in StatsUI/BattleArenaUI, an
   const statsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
   assert.ok(statsGd.includes('HoldAutoClicker.attach(int_sp_button') && statsGd.includes('HoldAutoClicker.attach(int_gold_button'), 'StatsUI.gd must attach 50/s HoldAutoClicker to Intellect buttons');
 
-  const arenaTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/BattleArenaUI.tscn'), 'utf-8');
-  assert.ok(arenaTscn.includes('IntBadgeLabel'), 'BattleArenaUI.tscn must render 4th HUD circle IntBadgeLabel');
-  const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
-  assert.ok(arenaGd.includes('int_badge_label.text ='), 'BattleArenaUI.gd must update IntBadgeLabel');
+  const heroHudTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/arena/ArenaHeroHud.tscn'), 'utf-8');
+  assert.ok(heroHudTscn.includes('IntBadgeLabel'), 'ArenaHeroHud.tscn must render 4th HUD circle IntBadgeLabel');
+  const heroHudGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/arena/ArenaHeroHud.gd'), 'utf-8');
+  assert.ok(heroHudGd.includes('int_badge_label.text ='), 'ArenaHeroHud.gd must update IntBadgeLabel');
 });
 
 test('high-mana high-potency spells (110-260 MP) are registered and HeroMenuUI/SpellbookUI reflect 27 spells', () => {
@@ -832,9 +865,9 @@ test('high-mana high-potency spells (110-260 MP) are registered and HeroMenuUI/S
     assert.ok(mpMatch && parseFloat(mpMatch[1]) >= 110.0, `${file} must have mana_cost >= 110`);
   }
 
-  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const worldCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/WorldAndAbilityCatalog.gd'), 'utf-8');
   for (const file of highManaSpells) {
-    assert.ok(gmTxt.includes(file), `GameManager.gd must load ${file}`);
+    assert.ok(worldCatTxt.includes(file), `WorldAndAbilityCatalog.gd must load ${file}`);
   }
 
   const spellbookTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/SpellbookUI.tscn'), 'utf-8');
@@ -850,16 +883,18 @@ test('regular skill tree auto-upgrade preset profiles (3 profiles, preserved acr
   }
 
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const progSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/ProgressionService.gd'), 'utf-8');
+  const worldCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/WorldAndAbilityCatalog.gd'), 'utf-8');
   for (const sym of [
     'const SKILL_PRESET_COUNT: int = 3',
     'func toggle_skill_in_active_preset(',
     'func set_active_skill_preset(',
     'func set_skill_auto_upgrade_enabled(',
     'func try_apply_skill_preset(',
-    'try_apply_skill_preset(false)',
   ]) {
     assert.ok(gmTxt.includes(sym), `GameManager.gd must implement ${sym}`);
   }
+  assert.ok(progSvcTxt.includes('try_apply_skill_preset(false)'), 'ProgressionService must invoke try_apply_skill_preset(false)');
 
   const skillTreeTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/SkillTreeUI.tscn'), 'utf-8');
   for (const nodeName of ['Preset1Button', 'Preset2Button', 'Preset3Button', 'PresetAutoButton', 'PresetEditButton', 'PresetClearButton', 'PresetToggleNodeButton']) {
@@ -877,7 +912,7 @@ test('regular skill tree auto-upgrade preset profiles (3 profiles, preserved acr
   ];
   for (const id of reflectionNodes) {
     assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/dark_skills', `${id}.tres`)), `${id}.tres must exist`);
-    assert.ok(gmTxt.includes(`dark_skills/${id}.tres`), `GameManager.gd must register dark_skills/${id}.tres`);
+    assert.ok(worldCatTxt.includes(`dark_skills/${id}.tres`), `WorldAndAbilityCatalog.gd must register dark_skills/${id}.tres`);
   }
   assert.ok(gmTxt.includes('func get_damage_reflection_pct()'), 'GameManager must expose get_damage_reflection_pct()');
 
@@ -887,10 +922,10 @@ test('regular skill tree auto-upgrade preset profiles (3 profiles, preserved acr
 });
 
 test('Alchemist ignores greedy_curse price increases and Blood Archmage casts a random quick-access spell instead of basic hit', () => {
-  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const diffSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/DifficultyAndChallengeService.gd'), 'utf-8');
   assert.ok(
-    /func get_curse_value\([\s\S]*?curse_id == "greedy_curse" and has_hero_class\("alchemist"\)[\s\S]*?return 0\.0/.test(gmTxt),
-    'GameManager.get_curse_value must return 0.0 for greedy_curse when Alchemist is active',
+    /func get_curse_value\([\s\S]*?curse_id == "greedy_curse" and _gm\.has_hero_class\("alchemist"\)[\s\S]*?return 0\.0/.test(diffSvcTxt),
+    'DifficultyAndChallengeService.get_curse_value must return 0.0 for greedy_curse when Alchemist is active',
   );
 
   const alchemistTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/classes/alchemist.tres'), 'utf-8');
@@ -904,20 +939,21 @@ test('Alchemist ignores greedy_curse price increases and Blood Archmage casts a 
   assert.ok(enchantUiGd.includes('иммунитет к дебафу цен'), 'EnchantUI must mention Alchemist price-debuff immunity');
 
   const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const combatAbilityTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatAbilityHandler.gd'), 'utf-8');
   assert.ok(
     combatTxt.includes('const BLOOD_ARCHMAGE_QUICK_CAST_CHANCE: float = 0.10'),
     'CombatSystem must define 10% proc chance for Blood Archmage quick-access spell basic attack',
   );
   assert.ok(
-    combatTxt.includes('func _try_cast_random_quick_ability(') && combatTxt.includes('_quick_cast_slots.shuffle()'),
-    'CombatSystem must define _try_cast_random_quick_ability reusing _quick_cast_slots',
+    combatAbilityTxt.includes('func try_cast_random_quick_ability(') && combatAbilityTxt.includes('_quick_cast_slots.shuffle()'),
+    'CombatAbilityHandler must define try_cast_random_quick_ability reusing _quick_cast_slots',
   );
   assert.ok(
-    combatTxt.includes('try_cast_ability(slot_idx, true, true, false, power_scale)'),
+    combatAbilityTxt.includes('try_cast_ability(slot_idx, true, true, false, power_scale)'),
     'Blood Archmage random quick-access basic attack must ignore and not lock slot cooldowns',
   );
   assert.ok(
-    /func _perform_player_attack\([\s\S]*?has_hero_class\("blood_archmage"\) and randf\(\) < BLOOD_ARCHMAGE_QUICK_CAST_CHANCE[\s\S]*?_try_cast_random_quick_ability\(power_scale\)/.test(combatTxt),
+    /func _perform_player_attack\([\s\S]*?has_hero_class\("blood_archmage"\) and randf\(\) < BLOOD_ARCHMAGE_QUICK_CAST_CHANCE[\s\S]*?try_cast_random_quick_ability\(power_scale\)/.test(combatTxt),
     'CombatSystem._perform_player_attack must trigger random quick-access spell with 10% chance for Blood Archmage',
   );
 
@@ -934,8 +970,8 @@ test('Alchemist ignores greedy_curse price increases and Blood Archmage casts a 
   const abilityBtnGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/AbilitySlotButton.gd'), 'utf-8');
   assert.ok(abilityBtnGd.includes('set_process(false)') && abilityBtnGd.includes('set_process(true)'), 'AbilitySlotButton must disable _process when idle');
 
-  const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
-  assert.ok(arenaGd.includes('AVATAR_TWEEN_MIN_INTERVAL_MS') && arenaGd.includes('last_size'), 'BattleArenaUI must throttle burst avatar tweens and cache popup theme overrides');
+  const popupsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/arena/ArenaDamagePopups.gd'), 'utf-8');
+  assert.ok(popupsGd.includes('AVATAR_TWEEN_MIN_INTERVAL_MS') && popupsGd.includes('last_size'), 'ArenaDamagePopups must throttle burst avatar tweens and cache popup theme overrides');
 });
 
 test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Shop Coins (repeatable per run) & ultimate % consumables are wired cleanly', () => {
@@ -943,24 +979,28 @@ test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Sho
   assert.ok(saveTxt.includes('@export var reflector_kill_hp_stacks: int = 0'), 'SaveData must persist reflector_kill_hp_stacks');
   assert.ok(saveTxt.includes('@export var dark_shop_coins: int = 0'), 'SaveData must persist dark_shop_coins');
 
-  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const progSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/ProgressionService.gd'), 'utf-8');
+  const statsCalcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/StatsCalculator.gd'), 'utf-8');
+  const diffSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/DifficultyAndChallengeService.gd'), 'utf-8');
+  const runSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/RunAndDifficultyService.gd'), 'utf-8');
+  const itemCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/ItemAndShopCatalog.gd'), 'utf-8');
   assert.ok(
-    /func record_kill\([\s\S]*?has_hero_class\("reflector"\)[\s\S]*?reflector_kill_hp_stacks \+= stack_gain/.test(gmTxt),
+    /func record_kill\([\s\S]*?_gm\.has_hero_class\("reflector"\)[\s\S]*?_gm\.reflector_kill_hp_stacks \+= stack_gain/.test(progSvcTxt),
     'record_kill() must increment reflector_kill_hp_stacks infinitely only while Reflector is active',
   );
   assert.ok(
-    /func get_max_hp\([\s\S]*?elif has_hero_class\("reflector"\):[\s\S]*?float\(reflector_kill_hp_stacks\)[\s\S]*?total_hp_gain \* 20\.0/.test(gmTxt),
+    /func get_max_hp\([\s\S]*?elif _gm\.has_hero_class\("reflector"\):[\s\S]*?float\(_gm\.reflector_kill_hp_stacks\)[\s\S]*?total_hp_gain \* 20\.0/.test(statsCalcTxt),
     'get_max_hp() must scope reflector_kill_hp_stacks strictly inside has_hero_class("reflector") and apply 20x HP gain scaling',
   );
   assert.ok(
-    /func on_final_boss_defeated\([\s\S]*?var coins_gained: int = maxi\(1, difficulty_level\)[\s\S]*?dark_shop_coins \+= coins_gained/.test(gmTxt),
+    /func on_final_boss_defeated\([\s\S]*?var coins_gained: int = maxi\(1, _gm\.difficulty_level\)[\s\S]*?_gm\.dark_shop_coins \+= coins_gained/.test(diffSvcTxt),
     'on_final_boss_defeated() must repeatedly award Dark Shop Coins equal to difficulty_level',
   );
-  const initRunMatch = /func _init_run_state\([^)]*\) -> void:\n([\s\S]*?)\nfunc start_new_run/.exec(gmTxt);
-  assert.ok(initRunMatch, 'GameManager.gd must define _init_run_state()');
+  const initRunMatch = /func init_run_state\([^)]*\) -> void:\n([\s\S]*?)\nfunc start_new_run/.exec(runSvcTxt);
+  assert.ok(initRunMatch, 'RunAndDifficultyService.gd must define init_run_state()');
   assert.ok(
     !initRunMatch[1].includes('dark_shop_coins = 0') && !initRunMatch[1].includes('reflector_kill_hp_stacks = 0'),
-    '_init_run_state() must preserve dark_shop_coins and reflector_kill_hp_stacks across runs',
+    'init_run_state() must preserve dark_shop_coins and reflector_kill_hp_stacks across runs',
   );
 
   const darkShopItems = [
@@ -977,7 +1017,7 @@ test('Reflector stacks +1 Max HP per kill bound to Reflector class, and Dark Sho
     const itemTxt = fs.readFileSync(itemPath, 'utf-8');
     assert.ok(/^dark_shop_coin_price\s*=\s*[1-9]\d*$/m.test(itemTxt), `${file} must define cheap dark_shop_coin_price >= 1`);
     assert.ok(!/^is_dark_forged\s*=\s*true$/m.test(itemTxt), `${file} must NOT be permanent across runs (bought consumables reset on new run)`);
-    assert.ok(gmTxt.includes(`items/${file}`), `GameManager.gd must register ${file}`);
+    assert.ok(itemCatTxt.includes(`items/${file}`), `ItemAndShopCatalog.gd must register ${file}`);
   }
 
   assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'scenes/DarkShopUI.tscn')), 'DarkShopUI.tscn must exist');
@@ -1018,13 +1058,13 @@ test('v0.26.0 auto-difficulty progression toggles cleanly via DifficultyUI/Right
 });
 
 test('Blood Archmage gets 2x intellect and 3x mana per intellect, and README.md reflects CHANGELOG.md', () => {
-  const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const statsCalcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/StatsCalculator.gd'), 'utf-8');
   assert.ok(
-    /func get_total_intellect\([\s\S]*?elif has_hero_class\("blood_archmage"\):\s*\n\s*total \*= 2\.0/.test(gmTxt),
+    /func get_total_intellect\([\s\S]*?elif _gm\.has_hero_class\("blood_archmage"\):\s*\n\s*total \*= 2\.0/.test(statsCalcTxt),
     'get_total_intellect() must double intellect (2x) when Blood Archmage is active',
   );
   assert.ok(
-    /func get_max_mana\([\s\S]*?var mana_from_int: float = float\(get_total_intellect\(\)\) \* 32\.0[\s\S]*?if has_hero_class\("blood_archmage"\):\s*\n\s*mana_from_int \*= 3\.0/.test(gmTxt),
+    /func get_max_mana\([\s\S]*?var mana_from_int: float = float\(get_total_intellect\(\)\) \* 32\.0[\s\S]*?if _gm\.has_hero_class\("blood_archmage"\):\s*\n\s*mana_from_int \*= 3\.0/.test(statsCalcTxt),
     'get_max_mana() must grant 3x mana from intellect (96 MP/int) when Blood Archmage is active',
   );
 
@@ -1093,6 +1133,14 @@ test('v0.22.0 performance optimizations (AFK HUD skip, FPS selector, 20Hz Attack
 
 test('v0.22.0 gameplay mechanics (Quality/Salvage, Bestiary, Challenges, Loadouts, Merge/Ultimates, Offhand/Barrier, Auto-Route, Well of Greed, Spell Level/Runes, Expeditions/WaveDungeon/Checkpoints) are wired', () => {
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const invSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/InventoryService.gd'), 'utf-8');
+  const statsCalcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/StatsCalculator.gd'), 'utf-8');
+  const petSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/PetAndMasteryService.gd'), 'utf-8');
+  const abSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/AbilityAndBuffService.gd'), 'utf-8');
+  const worldSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/WorldAndMineService.gd'), 'utf-8');
+  const waveSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/WaveAndWellService.gd'), 'utf-8');
+  const worldCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/WorldAndAbilityCatalog.gd'), 'utf-8');
+  const sancCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/SanctuaryAndForgeCatalog.gd'), 'utf-8');
   const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
   const itemDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/ItemData.gd'), 'utf-8');
   const abilityDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/AbilityData.gd'), 'utf-8');
@@ -1101,16 +1149,16 @@ test('v0.22.0 gameplay mechanics (Quality/Salvage, Bestiary, Challenges, Loadout
   for (const field of ['auto_salvage_mode', 'auto_salvage_min_quality', 'abyss_ore_shards', 'inventory_qualities', 'inventory_stars', 'equipped_weapon_quality', 'equipped_weapon_stars']) {
     assert.ok(saveTxt.includes(field), `SaveData must persist ${field}`);
   }
-  assert.ok(gmTxt.includes('func set_auto_salvage_settings(') && gmTxt.includes('var forged_ores: int = floori(float(abyss_ore_shards) / 10.0)'), 'GameManager must implement auto-salvage & shard smelting');
+  assert.ok(invSvcTxt.includes('func set_auto_salvage_settings(') && invSvcTxt.includes('var forged_ores: int = floori(float(_gm.abyss_ore_shards) / 10.0)'), 'InventoryService must implement auto-salvage & shard smelting');
 
-  // 2. Bestiary (26 enemies)
+  // 2. Bestiary
   assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'scenes/BestiaryUI.tscn')), 'BestiaryUI.tscn must exist');
-  assert.ok(gmTxt.includes('const BESTIARY_MILESTONES') && gmTxt.includes('func record_bestiary_kill('), 'GameManager must track Bestiary milestones');
+  assert.ok(worldCatTxt.includes('const BESTIARY_MILESTONES') && worldSvcTxt.includes('func record_bestiary_kill('), 'Bestiary milestones & kill tracking must be wired');
   const bestiaryGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BestiaryUI.gd'), 'utf-8');
   assert.ok(bestiaryGd.includes('get_bestiary_kills') && bestiaryGd.includes('get_bestiary_damage_bonus'), 'BestiaryUI must display enemy kill milestones');
 
   // 3. 4 Abyss Challenges
-  assert.ok(gmTxt.includes('const CHALLENGE_CATALOG') && gmTxt.includes('speedrun_titan') && gmTxt.includes('no_potions_titan') && gmTxt.includes('staff_master') && gmTxt.includes('naked_ascetic'), 'GameManager must define all 4 Abyss Challenges');
+  assert.ok(worldCatTxt.includes('const CHALLENGE_CATALOG') && worldCatTxt.includes('speedrun_titan') && worldCatTxt.includes('no_potions_titan') && worldCatTxt.includes('staff_master') && worldCatTxt.includes('naked_ascetic'), 'WorldAndAbilityCatalog must define all 4 Abyss Challenges');
   const diffGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/DifficultyUI.gd'), 'utf-8');
   assert.ok(diffGd.includes('CHALLENGE_CATALOG') && diffGd.includes('_selected_challenge_id'), 'DifficultyUI must allow selecting Challenges before start_new_run');
 
@@ -1121,13 +1169,14 @@ test('v0.22.0 gameplay mechanics (Quality/Salvage, Bestiary, Challenges, Loadout
     assert.ok(heroMenuTscn.includes(btnName), `HeroMenuUI.tscn must include ${btnName}`);
   }
 
-  // 5. Duplicate Merge & 3 Ultimate Dark Forge items
-  assert.ok(gmTxt.includes('func merge_duplicate_item('), 'GameManager must implement merge_duplicate_item');
+  // 5. Duplicate Merge & Ultimate Dark Forge items
+  assert.ok(invSvcTxt.includes('func merge_duplicate_item('), 'InventoryService must implement merge_duplicate_item');
   const enchantGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/EnchantUI.gd'), 'utf-8');
   assert.ok(enchantGd.includes('merge_duplicate_item') && enchantGd.includes('ItemData.ItemType.OFFHAND'), 'EnchantUI must support duplicate merge and offhand enchanting');
+  const itemCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/ItemAndShopCatalog.gd'), 'utf-8');
   for (const ultFile of ['eternal_cataclysm_reaver.tres', 'eternal_eclipse_aegis.tres', 'eternal_archon_talisman.tres']) {
     assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items', ultFile)), `Ultimate item ${ultFile} must exist`);
-    assert.ok(gmTxt.includes(ultFile), `GameManager must register ultimate recipe for ${ultFile}`);
+    assert.ok(itemCatTxt.includes(ultFile), `ItemAndShopCatalog must register ultimate recipe for ${ultFile}`);
   }
 
   // 6. Offhand (Shields/Talismans) + Barrier + Reflector 1:1 Max HP conversion
@@ -1135,32 +1184,32 @@ test('v0.22.0 gameplay mechanics (Quality/Salvage, Bestiary, Challenges, Loadout
   for (const offFile of ['wooden_buckler.tres', 'iron_tower_shield.tres', 'aegis_bulwark_shield.tres', 'apprentice_talisman.tres', 'astral_arcane_talisman.tres']) {
     assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items', offFile)), `Offhand item ${offFile} must exist`);
   }
-  assert.ok(gmTxt.includes('func get_max_barrier(') && gmTxt.includes('get_raw_max_barrier()'), 'GameManager must compute Barrier and convert 1:1 to Max HP for Reflector');
+  assert.ok(statsCalcTxt.includes('func get_max_barrier(') && statsCalcTxt.includes('get_raw_max_barrier()'), 'StatsCalculator must compute Barrier and convert 1:1 to Max HP for Reflector');
   const reflectorTres = fs.readFileSync(path.join(GODOT_ROOT, 'resources/classes/reflector.tres'), 'utf-8');
   assert.ok(reflectorTres.includes('1:1'), 'reflector.tres must document 1:1 Barrier -> Max HP conversion');
 
   // 7. Smart Auto-Route
-  assert.ok(gmTxt.includes('func set_auto_route_settings(') && gmTxt.includes('func record_location_win_for_auto_route('), 'GameManager must implement Smart Auto-Route');
+  assert.ok(worldSvcTxt.includes('func set_auto_route_settings(') && worldSvcTxt.includes('func record_location_win_for_auto_route('), 'WorldAndMineService must implement Smart Auto-Route');
   const sidebarGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/RightSidebarUI.gd'), 'utf-8');
   assert.ok(sidebarGd.includes('set_auto_route_settings'), 'RightSidebarUI must wire Auto-Route controls');
 
   // 8. Well of Greed
-  assert.ok(gmTxt.includes('func sacrifice_all_gold_to_well(') && gmTxt.includes('func can_sacrifice_to_well('), 'GameManager must implement Well of Greed sacrifice');
+  assert.ok(waveSvcTxt.includes('func sacrifice_all_gold_to_well(') && waveSvcTxt.includes('func can_sacrifice_to_well('), 'WaveAndWellService must implement Well of Greed sacrifice');
   const villageTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/VillageMapUI.tscn'), 'utf-8');
   assert.ok(villageTscn.includes('WellHotspot') && villageTscn.includes('WellOverlay'), 'VillageMapUI.tscn must expose WellHotspot & WellOverlay');
 
-  // 9. Spell Leveling (1..5) & 26 Spell Runes
+  // 9. Spell Leveling (1..5) & Spell Runes
   assert.ok(abilityDataTxt.includes('const MAX_SPELL_LEVEL: int = 5') && abilityDataTxt.includes('static func get_level_multiplier('), 'AbilityData must define MAX_SPELL_LEVEL = 5');
-  assert.ok(gmTxt.includes('const SPELL_RUNES_CATALOG') && gmTxt.includes('func upgrade_ability_with_page(') && gmTxt.includes('func set_ability_rune('), 'GameManager must implement Spell Leveling and Runes');
+  assert.ok(sancCatTxt.includes('const SPELL_RUNES_CATALOG') && abSvcTxt.includes('func upgrade_ability_with_page(') && abSvcTxt.includes('func set_ability_rune('), 'Spell Leveling and Runes must be implemented');
   const spellbookGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SpellbookUI.gd'), 'utf-8');
   assert.ok(spellbookGd.includes('upgrade_ability_with_page') && spellbookGd.includes('set_ability_rune') && spellbookGd.includes('SPELL_RUNES_CATALOG'), 'SpellbookUI must expose spell leveling and A/B rune toggles');
 
   // 10. Pet Expeditions, 10-Wave Dungeon & Mine Checkpoints
-  assert.ok(gmTxt.includes('const PET_EXPEDITION_PLANS') && gmTxt.includes('func start_pet_expedition(') && gmTxt.includes('func claim_pet_expedition('), 'GameManager must implement Pet Expeditions');
-  assert.ok(gmTxt.includes('const WAVE_DUNGEON_TOTAL_WAVES: int = 10') && gmTxt.includes('func start_wave_dungeon('), 'GameManager must implement 10-Wave Dungeon');
-  assert.ok(gmTxt.includes('const MINE_CHECKPOINT_DEPTHS: Array[int] = [10, 25, 50]') && gmTxt.includes('func buy_mine_checkpoint('), 'GameManager must implement Mine Checkpoints [10, 25, 50]');
-  const sanctuaryGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SanctuaryUI.gd'), 'utf-8');
-  assert.ok(sanctuaryGd.includes('start_pet_expedition') && sanctuaryGd.includes('claim_pet_expedition'), 'SanctuaryUI must wire Pet Expeditions');
+  assert.ok(sancCatTxt.includes('const PET_EXPEDITION_PLANS') && petSvcTxt.includes('func start_pet_expedition(') && petSvcTxt.includes('func claim_pet_expedition('), 'Pet Expeditions must be implemented');
+  assert.ok(gmTxt.includes('const WAVE_DUNGEON_TOTAL_WAVES: int = 10') && waveSvcTxt.includes('func start_wave_dungeon('), '10-Wave Dungeon must be implemented');
+  assert.ok(gmTxt.includes('const MINE_CHECKPOINT_DEPTHS: Array[int] = [10, 25, 50]') && worldSvcTxt.includes('func buy_mine_checkpoint('), 'Mine Checkpoints [10, 25, 50] must be implemented');
+  const expCardGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/sanctuary/PetExpeditionCard.gd'), 'utf-8');
+  assert.ok(expCardGd.includes('start_pet_expedition') && expCardGd.includes('claim_pet_expedition'), 'PetExpeditionCard must wire Pet Expeditions');
   assert.ok(sidebarGd.includes('start_wave_dungeon') && sidebarGd.includes('buy_mine_checkpoint'), 'RightSidebarUI must wire Wave Dungeon and Mine Checkpoints');
 
   const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
@@ -1189,7 +1238,13 @@ test('GDScripts have zero SHADOWED_GLOBAL_IDENTIFIER, Control SHADOWED_VARIABLE_
 
 test('v0.23.0 features: Reflector rework (20x HP, 0% dodge, pre-armor 99% cap, battle-start aura, +200% spell), 0.25s spawn, 3 Dark Forge ultimates + weapon def, bulk stats, and 0.001% difficulty reset orb', () => {
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const combatStatsTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/CombatStatsCalculator.gd'), 'utf-8');
+  const progSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/ProgressionService.gd'), 'utf-8');
+  const worldCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/WorldAndAbilityCatalog.gd'), 'utf-8');
+  const itemCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/ItemAndShopCatalog.gd'), 'utf-8');
   const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const classPetTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatClassAndPetHandler.gd'), 'utf-8');
+  const rewardHandlerTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatRewardHandler.gd'), 'utf-8');
   const abilityDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/AbilityData.gd'), 'utf-8');
   const itemDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/ItemData.gd'), 'utf-8');
 
@@ -1198,33 +1253,33 @@ test('v0.23.0 features: Reflector rework (20x HP, 0% dodge, pre-armor 99% cap, b
   const mirrorApotheosisTxt = fs.readFileSync(path.join(GODOT_ROOT, 'resources/abilities/mirror_apotheosis.tres'), 'utf-8');
   assert.ok(/required_class_id\s*=\s*"reflector"/.test(mirrorApotheosisTxt), 'mirror_apotheosis.tres must require reflector class');
   assert.ok(/buff_reflect_pct\s*=\s*2\.0/.test(mirrorApotheosisTxt), 'mirror_apotheosis.tres must grant +200% (2.0) reflection');
-  assert.ok(gmTxt.includes('abilities/mirror_apotheosis.tres'), 'GameManager must register mirror_apotheosis.tres');
+  assert.ok(worldCatTxt.includes('abilities/mirror_apotheosis.tres'), 'WorldAndAbilityCatalog must register mirror_apotheosis.tres');
 
   const spellbookGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/SpellbookUI.gd'), 'utf-8');
   assert.ok(spellbookGd.includes('reflector') && spellbookGd.includes('Отражатель'), 'SpellbookUI must style and tag Reflector exclusive spells');
 
   // 2. Pre-armor dispersion with 99% mitigation cap + overflow reflection
-  assert.ok(gmTxt.includes('minf(get_damage_reflection_pct(), 0.99)'), 'get_reflector_mitigation_pct() must cap incoming damage reduction at 99%');
+  assert.ok(combatStatsTxt.includes('minf(get_damage_reflection_pct(), 0.99)'), 'get_reflector_mitigation_pct() must cap incoming damage reduction at 99%');
   assert.ok(combatTxt.includes('var mitigated_pct: float = GameManager.get_reflector_mitigation_pct()') && combatTxt.includes('raw_damage * (1.0 - mitigated_pct)'), 'CombatSystem must apply pre-armor dispersion before apply_damage()');
 
   // 3. Battle-start Reflector Max HP aura trigger
-  assert.ok(combatTxt.includes('func _trigger_reflector_aura_pulse()'), 'CombatSystem must extract _trigger_reflector_aura_pulse()');
-  assert.ok(/func _spawn_enemy\([\s\S]*?_trigger_reflector_aura_pulse\(\)/.test(combatTxt), 'CombatSystem._spawn_enemy() must immediately trigger Reflector aura pulse at battle start');
+  assert.ok(classPetTxt.includes('func trigger_reflector_aura_pulse()'), 'CombatClassAndPetHandler must expose trigger_reflector_aura_pulse()');
+  assert.ok(/func _spawn_enemy\([\s\S]*?apply_start_of_battle_effects\(\)/.test(combatTxt) && classPetTxt.includes('trigger_reflector_aura_pulse()'), 'CombatSystem._spawn_enemy() must immediately trigger Reflector aura pulse at battle start');
 
   // 4. Reflector 20x HP scaling + 0% dodge
-  assert.ok(/func get_dodge_chance\([\s\S]*?has_hero_class\("reflector"\):\s*\n\s*return 0\.0/.test(gmTxt), 'GameManager.get_dodge_chance() must return 0.0 for Reflector');
-  assert.ok(/func record_kill\([\s\S]*?20\.0/.test(gmTxt), 'GameManager.record_kill() must heal proportionally for 20x Reflector HP stack');
+  assert.ok(/func get_dodge_chance\([\s\S]*?has_hero_class\("reflector"\):\s*\n\s*return 0\.0/.test(combatStatsTxt), 'CombatStatsCalculator.get_dodge_chance() must return 0.0 for Reflector');
+  assert.ok(/func record_kill\([\s\S]*?20\.0/.test(progSvcTxt), 'ProgressionService.record_kill() must heal proportionally for 20x Reflector HP stack');
 
   // 5. Faster next-battle start (0.25s normal / 0.2s wave dungeon)
   assert.ok(combatTxt.includes('const SPAWN_DELAY: float = 0.25'), 'CombatSystem must set SPAWN_DELAY = 0.25');
-  assert.ok(combatTxt.includes('_spawn_timer = 0.2'), 'CombatSystem must set wave dungeon _spawn_timer = 0.2');
+  assert.ok(rewardHandlerTxt.includes('schedule_next_spawn(0.2'), 'CombatRewardHandler must set wave dungeon spawn delay = 0.2');
 
   // 6. 3 new Dark Forge ultimate items + equipped weapon bonus_defense
   for (const newUlt of ['eternal_void_bastion_plate.tres', 'eternal_abyss_bulwark.tres', 'eternal_bastion_greatsword.tres']) {
     assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/items', newUlt)), `${newUlt} must exist`);
-    assert.ok(gmTxt.includes(newUlt), `GameManager must register Dark Forge recipe for ${newUlt}`);
+    assert.ok(itemCatTxt.includes(newUlt), `ItemAndShopCatalog must register Dark Forge recipe for ${newUlt}`);
   }
-  assert.ok(/func get_armor_reduction\([\s\S]*?equipped_weapon\.bonus_defense/.test(gmTxt), 'GameManager.get_armor_reduction() must include equipped_weapon.bonus_defense');
+  assert.ok(/func get_armor_reduction\([\s\S]*?equipped_weapon\.bonus_defense/.test(combatStatsTxt), 'CombatStatsCalculator.get_armor_reduction() must include equipped_weapon.bonus_defense');
 
   // 7. Bulk stat upgrades (+10, +25, +50, Max)
   for (const sym of ['func upgrade_stat_with_skill_points_bulk(', 'func train_stat_with_gold_bulk(', 'func get_train_bulk_cost(']) {
@@ -1243,25 +1298,26 @@ test('v0.23.0 features: Reflector rework (20x HP, 0% dodge, pre-armor 99% cap, b
   assert.ok(/resets_claimed_difficulties\s*=\s*true/.test(orbTxt) && /is_dark_forged\s*=\s*true/.test(orbTxt), 'abyss_difficulty_reset_orb.tres must reset claimed difficulties and persist as dark-forged item');
   assert.ok(gmTxt.includes('const DIFFICULTY_RESET_DROP_CHANCE: float = 0.00001'), 'GameManager must set DIFFICULTY_RESET_DROP_CHANCE = 0.00001 (0.001%)');
   assert.ok(gmTxt.includes('func reset_claimed_difficulties_rewards(') && gmTxt.includes('func roll_difficulty_reset_item_drop('), 'GameManager must implement reset_claimed_difficulties_rewards and roll_difficulty_reset_item_drop');
-  assert.ok(combatTxt.includes('roll_difficulty_reset_item_drop'), 'CombatSystem._roll_drops must invoke roll_difficulty_reset_item_drop');
+  assert.ok(rewardHandlerTxt.includes('roll_difficulty_reset_item_drop'), 'CombatRewardHandler.roll_drops must invoke roll_difficulty_reset_item_drop');
   const invGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/InventoryUI.gd'), 'utf-8');
   assert.ok(invGd.includes('resets_claimed_difficulties') && invGd.includes('Сбросить'), 'InventoryUI.gd must support using the difficulty reset orb');
 });
 
 test('v0.24.0 Alchemist Golden Reaction passive adds 5% of current gold to basic/manual attack damage only', () => {
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const combatStatsTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/CombatStatsCalculator.gd'), 'utf-8');
   assert.ok(gmTxt.includes('const ALCHEMIST_GOLD_REACTION_RATIO: float = 0.05'), 'GameManager must define ALCHEMIST_GOLD_REACTION_RATIO = 0.05');
   assert.ok(
-    /func get_alchemist_gold_reaction_bonus\(\) -> float:[\s\S]*?has_hero_class\("alchemist"\)[\s\S]*?gold \* ALCHEMIST_GOLD_REACTION_RATIO/.test(gmTxt),
-    'GameManager.get_alchemist_gold_reaction_bonus() must return 5% of current gold when Alchemist is active',
+    /func get_alchemist_gold_reaction_bonus\(\) -> float:[\s\S]*?_gm\.has_hero_class\("alchemist"\)[\s\S]*?_gm\.gold \* _gm\.ALCHEMIST_GOLD_REACTION_RATIO/.test(combatStatsTxt),
+    'CombatStatsCalculator.get_alchemist_gold_reaction_bonus() must return 5% of current gold when Alchemist is active',
   );
   assert.ok(
-    /func get_basic_attack_damage\([\s\S]*?get_player_damage\(preview_ammo_ready\) \+ get_alchemist_gold_reaction_bonus\(\)/.test(gmTxt),
-    'GameManager.get_basic_attack_damage() must add get_alchemist_gold_reaction_bonus() on top of base weapon damage',
+    /func get_basic_attack_damage\([\s\S]*?get_player_damage\(preview_ammo_ready\) \+ get_alchemist_gold_reaction_bonus\(\)/.test(combatStatsTxt),
+    'CombatStatsCalculator.get_basic_attack_damage() must add get_alchemist_gold_reaction_bonus() on top of base weapon damage',
   );
   assert.ok(
-    /func get_player_dps\(\) -> float:[\s\S]*?get_basic_attack_damage\(\)/.test(gmTxt),
-    'GameManager.get_player_dps() must reflect get_basic_attack_damage()',
+    /func get_player_dps\(\) -> float:[\s\S]*?get_basic_attack_damage\(\)/.test(combatStatsTxt),
+    'CombatStatsCalculator.get_player_dps() must reflect get_basic_attack_damage()',
   );
 
   const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
@@ -1319,7 +1375,15 @@ test('v0.25.0 Android Release APK CI (Godot 4.7.2-stable + Gradle without debug)
 
 test('v0.26.0 TZ features: offhand fix + reflect on all offhands, Reflector boss stacks + parallel battles, Barrier buff, 50/37 nodes, Training Grounds + 6 Dark Masteries, and Eternal Mirror Monolith', () => {
   const gmTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/GameManager.gd'), 'utf-8');
+  const loadoutSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/CombatLoadoutService.gd'), 'utf-8');
+  const invSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/InventoryService.gd'), 'utf-8');
+  const statsCalcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/StatsCalculator.gd'), 'utf-8');
+  const progSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/ProgressionService.gd'), 'utf-8');
+  const runSvcTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/services/RunAndDifficultyService.gd'), 'utf-8');
+  const worldCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/WorldAndAbilityCatalog.gd'), 'utf-8');
+  const itemCatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/data/ItemAndShopCatalog.gd'), 'utf-8');
   const combatTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd'), 'utf-8');
+  const rewardHandlerTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/combat/CombatRewardHandler.gd'), 'utf-8');
   const saveTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/SaveData.gd'), 'utf-8');
   const itemDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/ItemData.gd'), 'utf-8');
   const locDataTxt = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/resources/LocationData.gd'), 'utf-8');
@@ -1327,10 +1391,10 @@ test('v0.26.0 TZ features: offhand fix + reflect on all offhands, Reflector boss
   // 1 & 6a. Offhand equip fallback, quality/stars preservation & bonus_reflect_pct on ALL offhands
   assert.ok(itemDataTxt.includes('@export var bonus_reflect_pct: float = 0.0'), 'ItemData.gd must declare bonus_reflect_pct');
   assert.ok(
-    /func use_or_equip_item\([\s\S]*?item\.id[\s\S]*?ItemData\.ItemType\.OFFHAND/.test(gmTxt),
-    'GameManager.use_or_equip_item must support ID fallback and OFFHAND equipping',
+    invSvcTxt.includes('ItemData.ItemType.OFFHAND') && /func equip_gear_item\([\s\S]*?item\.id[\s\S]*?ItemData\.ItemType\.OFFHAND/.test(loadoutSvcTxt),
+    'InventoryService & CombatLoadoutService must support ID fallback and OFFHAND equipping',
   );
-  assert.ok(gmTxt.includes('func get_equipped_reflection_bonus() -> float:'), 'GameManager must compute equipped reflection bonus');
+  assert.ok(statsCalcTxt.includes('func get_equipped_reflection_bonus() -> float:'), 'StatsCalculator must compute equipped reflection bonus');
   const invGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/InventoryUI.gd'), 'utf-8');
   assert.ok(invGd.includes('equipped_offhand') && invGd.includes('bonus_reflect_pct'), 'InventoryUI must track equipped offhand in sig and display reflection %');
   const sidebarGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/RightSidebarUI.gd'), 'utf-8');
@@ -1353,39 +1417,39 @@ test('v0.26.0 TZ features: offhand fix + reflect on all offhands, Reflector boss
 
   // 3. Reflector boss stacks (+50 Titan, +15 Curse Warden, +5 Overseer) & Parallel Battles (1/3/5/10)
   assert.ok(
-    /func record_kill\([\s\S]*?stack_gain = 50[\s\S]*?stack_gain = 15[\s\S]*?stack_gain = 5/.test(gmTxt),
+    /func record_kill\([\s\S]*?stack_gain = 50[\s\S]*?stack_gain = 15[\s\S]*?stack_gain = 5/.test(progSvcTxt),
     'record_kill() must award +50 stacks on eternal_titan, +15 on curse_warden, and +5 on mine_overseer',
   );
   assert.ok(gmTxt.includes('const PARALLEL_BATTLE_OPTIONS: Array[int] = [1, 3, 5, 10]') && gmTxt.includes('func set_parallel_battle_count('), 'GameManager must define PARALLEL_BATTLE_OPTIONS [1, 3, 5, 10]');
   assert.ok(saveTxt.includes('@export var parallel_battle_count: int = 1'), 'SaveData must persist parallel_battle_count');
   assert.ok(
     combatTxt.includes('signal enemy_pack_changed(') &&
-      combatTxt.includes('func _apply_damage_to_pack_rollover(') &&
-      combatTxt.includes('func _apply_damage_to_all_alive_in_pack('),
+      combatTxt.includes('func apply_damage_to_pack_rollover(') &&
+      combatTxt.includes('func apply_damage_to_all_alive_in_pack('),
     'CombatSystem must simulate enemy packs with single-target rollover and AoE multi-target damage',
   );
   const arenaGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd'), 'utf-8');
-  assert.ok(arenaGd.includes('enemy_pack_changed') && arenaGd.includes('training_grounds'), 'BattleArenaUI must show pack counts [xAlive/Total] and style training_grounds');
+  assert.ok(arenaGd.includes('enemy_pack_changed') && worldCatTxt.includes('training_grounds'), 'BattleArenaUI must show pack counts [xAlive/Total] and WorldAndAbilityCatalog must include training_grounds tint');
 
   // 4. Buffed Barrier (combat regen + on-kill restore + % scaling)
   assert.ok(
-    gmTxt.includes('func get_barrier_regen_per_sec_pct() -> float:') &&
-      gmTxt.includes('func get_on_kill_barrier_restore_pct() -> float:') &&
-      gmTxt.includes('bar_pct_bonus'),
-    'GameManager must implement Barrier % scaling, combat regen, and on-kill restore',
+    statsCalcTxt.includes('func get_barrier_regen_per_sec_pct() -> float:') &&
+      statsCalcTxt.includes('func get_on_kill_barrier_restore_pct() -> float:') &&
+      statsCalcTxt.includes('bar_pct_bonus'),
+    'StatsCalculator must implement Barrier % scaling, combat regen, and on-kill restore',
   );
-  assert.ok(combatTxt.includes('get_barrier_regen_per_sec_pct()') && combatTxt.includes('get_on_kill_barrier_restore_pct()'), 'CombatSystem must trigger Barrier combat regen and on-kill Barrier restore');
+  assert.ok(combatTxt.includes('get_barrier_regen_per_sec_pct()') && rewardHandlerTxt.includes('get_on_kill_barrier_restore_pct()'), 'CombatSystem & CombatRewardHandler must trigger Barrier combat regen and on-kill Barrier restore');
 
   // 5. 6 new regular skills (50) + 6 new dark skills (37)
   const newRegSkills = ['barrier_bulwark', 'reflect_stance', 'barrier_mending', 'iron_shell', 'lethal_fury', 'vital_fortitude'];
   for (const id of newRegSkills) {
     assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/skills', `${id}.tres`)), `${id}.tres must exist`);
-    assert.ok(gmTxt.includes(`skills/${id}.tres`), `GameManager must register skills/${id}.tres`);
+    assert.ok(worldCatTxt.includes(`skills/${id}.tres`), `WorldAndAbilityCatalog must register skills/${id}.tres`);
   }
   const newDarkSkills = ['obsidian_barrier_core', 'aegis_regeneration', 'mirror_apocalypse', 'pack_slayer', 'abyssal_haste', 'crimson_harvest_dark'];
   for (const id of newDarkSkills) {
     assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/dark_skills', `${id}.tres`)), `${id}.tres must exist`);
-    assert.ok(gmTxt.includes(`dark_skills/${id}.tres`), `GameManager must register dark_skills/${id}.tres`);
+    assert.ok(worldCatTxt.includes(`dark_skills/${id}.tres`), `WorldAndAbilityCatalog must register dark_skills/${id}.tres`);
   }
 
   // 6b. Training Grounds + 6 persistent Dark Masteries
@@ -1394,15 +1458,15 @@ test('v0.26.0 TZ features: offhand fix + reflect on all offhands, Reflector boss
   assert.ok(fs.existsSync(tgPath), 'training_grounds.tres must exist');
   assert.ok(/is_training_grounds\s*=\s*true/.test(fs.readFileSync(tgPath, 'utf-8')), 'training_grounds.tres must set is_training_grounds = true');
   assert.ok(fs.existsSync(path.join(GODOT_ROOT, 'resources/enemies/training_construct.tres')), 'training_construct.tres must exist');
-  assert.ok(gmTxt.includes('training_grounds.tres') && gmTxt.includes('const DARK_MASTERY_CATALOG'), 'GameManager must register training_grounds.tres and DARK_MASTERY_CATALOG');
+  assert.ok(worldCatTxt.includes('training_grounds.tres') && worldCatTxt.includes('const DARK_MASTERY_CATALOG'), 'WorldAndAbilityCatalog must register training_grounds.tres and DARK_MASTERY_CATALOG');
   for (const key of ['dark_melee', 'dark_ranged', 'dark_magic', 'dark_reflect', 'dark_armor', 'dark_temper']) {
-    assert.ok(gmTxt.includes(`"${key}"`), `DARK_MASTERY_CATALOG must define ${key}`);
+    assert.ok(worldCatTxt.includes(`"${key}"`), `DARK_MASTERY_CATALOG must define ${key}`);
   }
   for (const field of ['dark_mastery_levels', 'dark_mastery_xp', 'active_dark_mastery_id']) {
     assert.ok(saveTxt.includes(field), `SaveData must persist ${field}`);
   }
-  const initRunMatch = /func _init_run_state\([^)]*\) -> void:\n([\s\S]*?)\nfunc start_new_run/.exec(gmTxt);
-  assert.ok(initRunMatch && !initRunMatch[1].includes('dark_mastery_levels ='), '_init_run_state() must preserve Dark Masteries permanently across runs');
+  const initRunMatch = /func init_run_state\([^)]*\) -> void:\n([\s\S]*?)\nfunc start_new_run/.exec(runSvcTxt);
+  assert.ok(initRunMatch && !initRunMatch[1].includes('dark_mastery_levels ='), 'init_run_state() must preserve Dark Masteries permanently across runs');
   const statsTscn = fs.readFileSync(path.join(GODOT_ROOT, 'scenes/StatsUI.tscn'), 'utf-8');
   const statsGd = fs.readFileSync(path.join(GODOT_ROOT, 'scripts/ui/StatsUI.gd'), 'utf-8');
   assert.ok(statsTscn.includes('DarkMasteryCard') && statsTscn.includes('DarkMasteryRowsVBox'), 'StatsUI.tscn must include DarkMasteryCard and DarkMasteryRowsVBox');
@@ -1413,7 +1477,56 @@ test('v0.26.0 TZ features: offhand fix + reflect on all offhands, Reflector boss
   assert.ok(fs.existsSync(monolithPath), 'eternal_mirror_monolith.tres must exist');
   const monolithTxt = fs.readFileSync(monolithPath, 'utf-8');
   assert.ok(/is_dark_forged\s*=\s*true/.test(monolithTxt) && /bonus_reflect_pct\s*=\s*0\.45/.test(monolithTxt), 'eternal_mirror_monolith.tres must be eternal and grant +45% reflection');
-  assert.ok(gmTxt.includes('ultimate_mirror_monolith') && gmTxt.includes('eternal_mirror_monolith.tres'), 'GameManager must register Dark Forge ultimate_mirror_monolith recipe');
+  assert.ok(itemCatTxt.includes('ultimate_mirror_monolith') && itemCatTxt.includes('eternal_mirror_monolith.tres'), 'ItemAndShopCatalog must register Dark Forge ultimate_mirror_monolith recipe');
+});
+
+test('v0.27.0 modularization: CLAUDE Rule 9, ROADMAP/CHANGELOG, services/data/combat/subscenes exist and obey soft size limits', () => {
+  const claudeTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CLAUDE.md'), 'utf-8');
+  assert.ok(claudeTxt.includes('9. **Модульная архитектура логики'), 'CLAUDE.md must enforce Rule 9');
+
+  const roadmapTxt = fs.readFileSync(path.join(GODOT_ROOT, 'ROADMAP.md'), 'utf-8');
+  for (const ref of ['scripts/data/', 'scripts/services/', 'scripts/combat/', 'scenes/sanctuary/', 'scenes/arena/']) {
+    assert.ok(roadmapTxt.includes(ref), `ROADMAP.md must document ${ref}`);
+  }
+
+  const changelogTxt = fs.readFileSync(path.join(GODOT_ROOT, 'CHANGELOG.md'), 'utf-8');
+  assert.ok(changelogTxt.includes('## [0.27.0]'), 'CHANGELOG.md must include [0.27.0] entry');
+
+  const dataFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'scripts/data'), '.gd');
+  const serviceFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'scripts/services'), '.gd');
+  const combatFiles = collectFilesRecursive(path.join(GODOT_ROOT, 'scripts/combat'), '.gd');
+  const sancScripts = collectFilesRecursive(path.join(GODOT_ROOT, 'scripts/ui/sanctuary'), '.gd');
+  const sancScenes = collectFilesRecursive(path.join(GODOT_ROOT, 'scenes/sanctuary'), '.tscn');
+  const arenaScripts = collectFilesRecursive(path.join(GODOT_ROOT, 'scripts/ui/arena'), '.gd');
+  const arenaScenes = collectFilesRecursive(path.join(GODOT_ROOT, 'scenes/arena'), '.tscn');
+
+  assert.equal(dataFiles.length, 3, 'Expected 3 catalog modules in scripts/data/');
+  assert.equal(serviceFiles.length, 19, 'Expected 19 services in scripts/services/');
+  assert.equal(combatFiles.length, 3, 'Expected 3 combat handlers in scripts/combat/');
+  assert.equal(sancScripts.length, 7, 'Expected 7 Sanctuary tab/card scripts');
+  assert.equal(sancScenes.length, 7, 'Expected 7 Sanctuary tab/card scenes');
+  assert.equal(arenaScripts.length, 3, 'Expected 3 Arena subscene scripts');
+  assert.equal(arenaScenes.length, 3, 'Expected 3 Arena subscenes');
+
+  const countLines = (filePath: string): number => fs.readFileSync(filePath, 'utf-8').split(/\r?\n/).length;
+  for (const modPath of [...dataFiles, ...serviceFiles, ...combatFiles, ...sancScripts, ...arenaScripts]) {
+    assert.ok(countLines(modPath) <= 405, `Extracted module ${path.relative(GODOT_ROOT, modPath)} exceeds soft 400-line target (${countLines(modPath)} lines)`);
+  }
+
+  assert.ok(countLines(path.join(GODOT_ROOT, 'scripts/GameManager.gd')) < 850, 'GameManager.gd facade must remain slimmed');
+  assert.ok(countLines(path.join(GODOT_ROOT, 'scripts/CombatSystem.gd')) < 750, 'CombatSystem.gd orchestrator must remain slimmed');
+  assert.ok(countLines(path.join(GODOT_ROOT, 'scripts/ui/SanctuaryUI.gd')) <= 200, 'SanctuaryUI.gd coordinator must remain <= 200 lines');
+  assert.ok(countLines(path.join(GODOT_ROOT, 'scripts/ui/BattleArenaUI.gd')) <= 405, 'BattleArenaUI.gd coordinator must remain <= 400 lines');
+
+  for (const pooledUi of [
+    'scripts/ui/sanctuary/SanctuaryGardenTab.gd',
+    'scripts/ui/sanctuary/SanctuaryBrewingTab.gd',
+    'scripts/ui/sanctuary/SanctuarySpiritTab.gd',
+    'scripts/ui/arena/ArenaDamagePopups.gd',
+  ]) {
+    const src = fs.readFileSync(path.join(GODOT_ROOT, pooledUi), 'utf-8');
+    assert.ok(!src.includes('queue_free('), `${pooledUi} must pool/reuse UI nodes without queue_free()`);
+  }
 });
 
 

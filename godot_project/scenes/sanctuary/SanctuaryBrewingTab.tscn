@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/sanctuary/SanctuaryBrewingTab.gd" id="1_brewing_tab"]
+
+[node name="SanctuaryBrewingTab" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+script = ExtResource("1_brewing_tab")
+
+[node name="BrewHeaderLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.58, 0.84, 0.98, 1)
+theme_override_font_sizes/font_size = 17
+text = "⚗️ Котлы зельеварения (Сл.10+ • Вода → Шаг 1 → Шаг 2 → Шаг 3)"
+autowrap_mode = 3
+
+[node name="BrewCauldronsBox" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RecipeSeparator" type="HSeparator" parent="."]
+layout_mode = 2
+
+[node name="RecipeTitleLabel" type="Label" parent="."]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.84, 0.42, 1)
+theme_override_font_sizes/font_size = 16
+text = "📖 Справочник Садов, Узоров путников и Рецептов зелий"
+autowrap_mode = 3
+
+[node name="RecipeGuideLabel" type="RichTextLabel" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+text = ""

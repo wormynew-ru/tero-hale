@@ -39,46 +39,49 @@
    - Игрок управляет только тактикой персонажа (включает/выключает поиск боя кнопкой `⚔️`/`🏳️`, применяет или переводит на автокаст магические способности, выбирает локацию, экипировку и быстрые слоты инвентаря).
    - **Запрещено** ускорять таймеры атаки или наносить прямой урон обычными кликами по экрану/кнопке атаки.
    - Текстовый лог боя в игре не используется (`CombatLogUI` удалён).
+9. **Модульная архитектура логики и ограничение размера скриптов**:
+   - Мягкий лимит на размер любого `.gd` файла — до `350–400` строк.
+   - Запрещено добавлять новые игровые подсистемы, каталоги, формулы и бизнес-логику напрямую в `GameManager.gd` и `CombatSystem.gd`.
+   - `GameManager.gd` выполняет только роль корневого фасада (Autoload): хранит ссылки на сервисы, пробрасывает сигналы и публичные методы для совместимости с UI.
+   - Вся новая логика выносится в изолированные сервисы в `res://scripts/services/*.gd` (или боевые компоненты в `res://scripts/combat/*.gd`), а статические каталоги — в `res://scripts/data/*.gd`.
+   - Запрещено строить сложные вкладки и карточки UI процедурно через `.new()` и `StyleBoxFlat` внутри одного большого UI-скрипта: каждую вкладку/повторяющийся блок выносить в отдельную сцену `res://scenes/.../*.tscn` со своим скриптом.
 
 ---
 
 ## 2. Архитектура проекта
 
 ```
-GameManager (Autoload: res://scripts/GameManager.gd, PROCESS_MODE_ALWAYS)
- ├── Хранит состояние игрока: уровень, XP, золото, очки навыков, базовые статы, HP и Ману
- ├── Хранит экипировку, инвентарь, ассортимент лавки (shop_items), открытые навыки (unlocked_skills) и способности (abilities / cooldowns / auto_cast)
- ├── Хранит открытые локации и текущую выбранную локацию
- ├── Считает итоговые статы, DPS, шанс крита, ману, регенерацию маны и множители наград
- ├── Управляет торговлей (buy_item / sell_item), быстрым лечением и авто-зельем (<35% HP)
- ├── Управляет AFK-режимом (скрытие RootHBox, DisplayServer.screen_set_keep_on, счётчики сессии) и сбросом прогресса
- ├── Автосохранение каждые 8 минут (480 сек) + фоновая асинхронная атомарная запись в потоке Thread через user://save.tmp.tres с бэкапом user://save.bak.tres и сохранением при потере фокуса/паузе/выходе в user://save.tres
- └── Излучает сигналы для обновления UI (с троттлингом непрерывной регенерации и КД)
+GameManager (Autoload: res://scripts/GameManager.gd, PROCESS_MODE_ALWAYS — корневой фасад)
+ ├── Каталоги: res://scripts/data/ (ItemAndShopCatalog.gd, WorldAndAbilityCatalog.gd, SanctuaryAndForgeCatalog.gd)
+ ├── Состояние, сигналы и O(1)-кэши игрока, инвентаря, навыков, классов, садов и прогрессии
+ └── Дочерние сервисы (res://scripts/services/):
+      ├── SaveService.gd + SaveSerializer.gd + SaveDictCodec.gd — сохранение/загрузка (Thread, user://save.tres/.tmp/.bak, .txt экспорт/импорт), start_new_run(), reset_progress()
+      ├── StatsCalculator.gd — расчёт итоговых статов, урона, брони, отражения, критов, уклонения, маны, регена, барьера и бонусов классов
+      ├── InventoryService.gd + LoadoutAndPotionService.gd — инвентарь, экипировка, оффхенд, снаряды, торговля, авто-разбор, боевые комплекты, авто-зелья (HP/MP/баффы)
+      ├── ProgressionService.gd + SkillAndClassService.gd + PetAndAbilityService.gd — уровни, XP, Learn by Doing, Тёмные Мастерства, классы, путники, древа навыков/пресеты, сложности/проклятия/испытания, заклинания/руны/баффы
+      ├── ForgeService.gd — обычная заточка, слияние дубликатов, Тёмная кузня и Тёмный магазин
+      ├── SanctuaryService.gd + BrewingService.gd — Светлый/Тёмный сад, многоступенчатое зельеварение, экспедиции и тренировка духов Спирита
+      └── WorldAndMineService.gd — локации, Древняя Шахта (глубина, находки, чекпоинты, провал), Данж 10 волн, Бестиарий, Колодец Жадности и Авто-маршрут
 
 Main.tscn (res://scenes/Main.tscn -> res://scripts/MainUI.gd, корневой оркестратор)
  ├── CombatSystem (Node, PROCESS_MODE_ALWAYS -> res://scripts/CombatSystem.gd)
- │    ├── Конечный автомат боя: IDLE, FIGHTING, RESTING, SPAWNING
- │    ├── Переключатель поиска боя (toggle_battle_search: ⚔️ <-> 🏳️), без кликер-помощи
- │    ├── Таймеры перезарядки атак игрока и врага, автокаст способностей и трата/реген маны врага
- │    ├── Расчёт попаданий, критов, уклонений, урона и триггер авто-зелья
- │    └── Генерация лута и умноженных наград (Gold/XP multipliers)
+ │    ├── Конечный автомат боя: IDLE, FIGHTING, RESTING, SPAWNING + симуляция пачки врагов
+ │    └── Боевые компоненты (res://scripts/combat/):
+ │         ├── CombatAbilityHandler.gd — каст/автокаст 27 способностей, баффы, DoT, перегрузка
+ │         ├── CombatClassAndPetHandler.gd — духи Спирита, аура Отражателя, стаки Тролля, эффекты путников
+ │         └── CombatRewardHandler.gd — генерация лута, XP/золота, находок Шахты, авто-маршрут
  ├── RootHBox (основной горизонтальный макет 1280x720)
  │    ├── BattleArenaUI.tscn (res://scripts/ui/BattleArenaUI.gd)
- │    │    ├── Левый верхний HUD: кликабельный круглый герб героя (открывает HeroMenuUI) и 3 стат-круга (без лишних чипов урона/валюты)
- │    │    ├── Центр арены: AttackDiamond.tscn (ромбы перезарядки над сущностями), HP и Мана внутри полос (с %)
- │    │    ├── Левый низ: кружок статуса автокаста + 3x AbilitySlotButton.tscn (тап — каст, удержание 1с — автокаст)
- │    │    ├── Центр низ: кнопка поиска боя (⚔️ <-> 🏳️)
- │    │    └── Правый низ: кнопка `РЮКЗАК 🎒`
+ │    │    ├── scenes/arena/ArenaHeroHud.tscn (герб героя, стат-круги, верхние чипы сложности/AFK/деревни/волн)
+ │    │    ├── scenes/arena/ArenaBuffsPanel.tscn (индикатор автокаста, активные баффы, 3 слота AbilitySlotButton)
+ │    │    ├── scenes/arena/ArenaDamagePopups.tscn (пулы всплывающих чисел урона/лечения и снарядов)
+ │    │    └── Центр арены: AttackDiamond.tscn, HP/Барьер/Мана, кнопка поиска боя (⚔️ <-> 🏳️) и `РЮКЗАК 🎒`
  │    └── RightSidebarUI.tscn (res://scripts/ui/RightSidebarUI.gd)
- │         └── Блок `КАРТА` (смена локаций) + сетка `2×3` быстрых слотов первых 6 предметов `GameManager.inventory[0..5]`
+ │         └── Блок `КАРТА` (смена локаций, Данж волн, чекпоинты, параллельные бои, авто-маршрут) + сетка `2×3` быстрых слотов
  ├── HeroMenuUI.tscn (res://scripts/ui/HeroMenuUI.gd, полноэкранное меню при нажатии на герб героя)
- │    ├── Меню-хаб с кнопками разделов и навигацией (Назад / Закрыть)
- │    ├── StatsUI.tscn (res://scripts/ui/StatsUI.gd) — характеристики, прокачка и сброс
- │    ├── SkillTreeUI.tscn (res://scripts/SkillTreeUI.gd) — граф дерева навыков
- │    ├── InventoryUI.tscn (res://scripts/ui/InventoryUI.gd) — слоты экипировки, рюкзак, авто-зелье и продажа
- │    ├── ShopUI.tscn (res://scripts/ui/ShopUI.gd) — лавка торговца
- │    └── FaqUI.tscn (res://scripts/ui/FaqUI.gd) — справочник по механикам (F.A.Q.)
- └── AfkOverlayUI.tscn (res://scripts/ui/AfkOverlayUI.gd) — облегчённый экран AFK-режима со статистикой сессии и кнопкой выхода
+ │    ├── SanctuaryUI.tscn + scenes/sanctuary/ (SanctuaryGardenTab, SanctuaryBrewingTab, SanctuarySpiritTab и карточки)
+ │    └── Остальные модульные экраны: StatsUI, SkillTreeUI, DarkSkillTreeUI, InventoryUI, EnchantUI, DarkForgeUI, ShopUI, DarkShopUI, ClassUI, PetUI, SpellbookUI, BestiaryUI, VillageMapUI, DifficultyUI, FaqUI
+ └── AfkOverlayUI.tscn (res://scripts/ui/AfkOverlayUI.gd) — облегчённый экран AFK-режима
 ```
 
 ---

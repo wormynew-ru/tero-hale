@@ -1,0 +1,51 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/sanctuary/PetExpeditionCard.gd" id="1_pet_exp_card"]
+
+[node name="PetExpeditionCard" type="PanelContainer"]
+layout_mode = 2
+script = ExtResource("1_pet_exp_card")
+
+[node name="CardVBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="TopRow" type="HBoxContainer" parent="CardVBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StatusLabel" type="Label" parent="CardVBox/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 13
+text = "🧭 Путник"
+autowrap_mode = 3
+
+[node name="ShortButton" type="Button" parent="CardVBox/TopRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(118, 40)
+layout_mode = 2
+focus_mode = 0
+text = "🌿 15м"
+
+[node name="LongButton" type="Button" parent="CardVBox/TopRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(118, 40)
+layout_mode = 2
+focus_mode = 0
+text = "🗺️ 1ч"
+
+[node name="ClaimButton" type="Button" parent="CardVBox/TopRow"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(150, 40)
+layout_mode = 2
+focus_mode = 0
+text = "🎁 Забрать"
+
+[node name="ProgressBar" type="ProgressBar" parent="CardVBox"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
